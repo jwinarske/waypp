@@ -59,11 +59,6 @@ private:
     } geometry_{};
 
     struct {
-        uint32_t x;
-        uint32_t y;
-    } activation_area_{};
-
-    struct {
         int32_t width;
         int32_t height;
     } window_size_{};

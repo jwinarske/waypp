@@ -65,12 +65,12 @@ Pointer::~Pointer() {
  * such as enter, leave, motion, button, axis, frame, axis source, axis stop,
  * and axis discrete events.
  */
-void Pointer::handle_enter(void *data,
-                           struct wl_pointer *pointer,
-                           uint32_t serial,
-                           struct wl_surface *surface,
-                           wl_fixed_t sx,
-                           wl_fixed_t sy) {
+void Pointer::handle_enter(void * /* data */,
+                           struct wl_pointer * /* pointer */,
+                           uint32_t /* serial */,
+                           struct wl_surface * /* surface */,
+                           wl_fixed_t /* sx */,
+                           wl_fixed_t /* sy */) {
     std::cerr << "Pointer::handle_enter" << std::endl;
 }
 
@@ -85,10 +85,10 @@ void Pointer::handle_enter(void *data,
  * @param serial The serial number of the event.
  * @param surface The surface that the pointer left.
  */
-void Pointer::handle_leave(void *data,
-                           struct wl_pointer *pointer,
-                           uint32_t serial,
-                           struct wl_surface *surface) {
+void Pointer::handle_leave(void * /* data */,
+                           struct wl_pointer * /* pointer */,
+                           uint32_t /* serial */,
+                           struct wl_surface * /* surface */) {
     std::cerr << "Pointer::handle_leave" << std::endl;
 }
 
@@ -104,11 +104,11 @@ void Pointer::handle_leave(void *data,
  * @param sx The X coordinate of the pointer's absolute position.
  * @param sy The Y coordinate of the pointer's absolute position.
  */
-void Pointer::handle_motion(void *data,
+void Pointer::handle_motion(void * /* data */,
                             struct wl_pointer * /* pointer */,
                             uint32_t /* time */,
-                            wl_fixed_t sx,
-                            wl_fixed_t sy) {
+                            wl_fixed_t /* sx */,
+                            wl_fixed_t /* sy */) {
     std::cerr << "Pointer::handle_motion" << std::endl;
 }
 
@@ -163,9 +163,9 @@ enum xdg_toplevel_resize_edge component_edge(const int width, const int height,
  * @param button The button that triggered the event
  * @param state The state of the button (pressed or released)
  */
-void Pointer::handle_button(void *data,
+void Pointer::handle_button(void * /* data */,
                             struct wl_pointer * /* wl_pointer */,
-                            uint32_t serial,
+                            uint32_t /* serial */,
                             uint32_t /* time */,
                             uint32_t button,
                             uint32_t state) {
@@ -189,11 +189,11 @@ void Pointer::handle_button(void *data,
  *
  * @details Prints "Pointer::handle_axis" to the standard error output.
  */
-void Pointer::handle_axis(void *data,
+void Pointer::handle_axis(void * /* data */,
                           struct wl_pointer * /* wl_pointer */,
-                          uint32_t time,
-                          uint32_t axis,
-                          wl_fixed_t value) {
+                          uint32_t /* time */,
+                          uint32_t /* axis */,
+                          wl_fixed_t /* value */) {
     std::cerr << "Pointer::handle_axis" << std::endl;
 }
 
@@ -205,8 +205,8 @@ void Pointer::handle_axis(void *data,
  * @param data The user data associated with the pointer.
  * @param wl_pointer The pointer object.
  */
-void Pointer::handle_frame(void *data,
-                           struct wl_pointer *wl_pointer) {
+void Pointer::handle_frame(void * /* data */,
+                           struct wl_pointer * /* wl_pointer */) {
     std::cerr << "Pointer::handle_frame" << std::endl;
 }
 

@@ -53,6 +53,8 @@ public:
 
     [[nodiscard]] const struct mode &get_mode() const { return output_.mode; }
 
+    [[nodiscard]] uint32_t get_version() const { return version_; }
+
 private:
     struct {
         struct geometry geometry;

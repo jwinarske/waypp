@@ -27,10 +27,10 @@
  * This class is responsible for managing an EGL window surface for rendering on a Wayland compositor. It creates an EGL window surface and initializes the EGL context. It also provides
 * a callback for rendering the window contents.
  */
-WindowEgl::WindowEgl(struct wl_display *display, struct wl_compositor *compositor, struct wl_surface *surface,
+WindowEgl::WindowEgl(struct wl_display *display, struct wl_compositor * /* compositor */, struct wl_surface *surface,
                      int width, int height,
-                     Window::ShellType shell_type,
-                     const std::function<void(void *data, uint32_t time)> &draw_callback) :
+                     Window::ShellType /* shell_type */,
+                     const std::function<void(void *data, uint32_t time)> & /* draw_callback */) :
         Egl(display) {
 
     std::cout << "width: " << width << std::endl;

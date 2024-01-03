@@ -23,7 +23,8 @@
  * This class is a specialized subclass of Window that is specifically designed for Vulkan rendering.
  * It provides functionality to create and manage a Vulkan surface.
  */
-WindowVulkan::WindowVulkan(struct wl_display *display, struct wl_compositor *compositor, int width, int height,
+WindowVulkan::WindowVulkan(struct wl_display * /* display */, struct wl_compositor *compositor, int /* width */,
+                           int /* height */,
                            Window::ShellType shell_type, const std::function<void(void *, uint32_t)> &draw_callback) :
         Window(compositor, shell_type, draw_callback) {
 }

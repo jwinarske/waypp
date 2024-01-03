@@ -43,6 +43,8 @@ public:
 
     [[nodiscard]] const std::string &get_name() const { return name_; };
 
+    [[nodiscard]] const uint32_t get_version() const { return version_; }
+
 private:
     struct wl_seat *wl_seat_;
     struct wl_shm *wl_shm_;

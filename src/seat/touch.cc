@@ -51,14 +51,14 @@ Touch::~Touch() {
  * @param x_w The X coordinate of the touch point in wl_fixed_t format.
  * @param y_w The Y coordinate of the touch point in wl_fixed_t format.
  */
-void Touch::handle_down(void *data,
+void Touch::handle_down(void * /* data */,
                         struct wl_touch * /* wl_touch */,
                         uint32_t /* serial */,
                         uint32_t /* time */,
-                        struct wl_surface *surface,
-                        int32_t id,
-                        wl_fixed_t x_w,
-                        wl_fixed_t y_w) {
+                        struct wl_surface * /* surface */,
+                        int32_t /* id */,
+                        wl_fixed_t /* x_w */,
+                        wl_fixed_t /* y_w */) {
     std::cerr << "Touch::handle_down" << std::endl;
 }
 
@@ -75,11 +75,11 @@ void Touch::handle_down(void *data,
  *
  * @return None.
  */
-void Touch::handle_up(void *data,
+void Touch::handle_up(void * /* data */,
                       struct wl_touch * /* wl_touch */,
                       uint32_t /* serial */,
                       uint32_t /* time */,
-                      int32_t id) {
+                      int32_t /* id */) {
     std::cerr << "Touch::handle_up" << std::endl;
 }
 
@@ -98,12 +98,12 @@ void Touch::handle_up(void *data,
  *
  * @return None.
  */
-void Touch::handle_motion(void *data,
+void Touch::handle_motion(void * /* data */,
                           struct wl_touch * /* wl_touch */,
                           uint32_t /* time */,
-                          int32_t id,
-                          wl_fixed_t x_w,
-                          wl_fixed_t y_w) {
+                          int32_t /* id */,
+                          wl_fixed_t /* x_w */,
+                          wl_fixed_t /* y_w */) {
     std::cerr << "Touch::handle_motion" << std::endl;
 }
 
@@ -118,7 +118,7 @@ void Touch::handle_motion(void *data,
  *
  * @return void
  */
-void Touch::handle_cancel(void *data, struct wl_touch * /* wl_touch */) {
+void Touch::handle_cancel(void * /* data */, struct wl_touch * /* wl_touch */) {
     std::cerr << "Touch::handle_cancel" << std::endl;
 }
 
