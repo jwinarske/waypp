@@ -14,6 +14,13 @@
 # limitations under the License.
 #
 
+
+#
+# Examples
+#
+option(BUILD_EXAMPLES "Build Examples" ON)
+MESSAGE(STATUS "Build Examples ......... ${BUILD_EXAMPLES}")
+
 #
 # Unit Tests
 #

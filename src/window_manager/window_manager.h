@@ -14,62 +14,68 @@
  * limitations under the License.
  */
 
-#ifndef SRC_WINDOW_WINDOW_MANAGER_H_
-#define SRC_WINDOW_WINDOW_MANAGER_H_
+#pragma once
 
-#include "display.h"
+#include <EGL/egl.h>
 
-#include <list>
+#include "registrar.h"
+#include "seat/cursor.h"
 
-#include "window/window.h"
-#include "window/window_egl.h"
+class Registrar;
 
-#include "xdg_wm.h"
+class XdgWindowManager;
 
-
-class Display;
-
-class WindowEgl;
-
-class Window;
-
-class WindowManager : public Display, public Window {
+class WindowManager : public Registrar {
 public:
-    typedef enum {
-        EGL,
-        VULKAN,
-    } WindowType;
-
-    explicit WindowManager(Window::ShellType shell_type = Window::ShellType::XDG, GMainContext *context = nullptr,
+    explicit WindowManager(GMainContext *context = nullptr,
                            bool enable_cursor = true,
-                           const char *name = nullptr);
+                           const char *display_name = nullptr);
 
-    ~WindowManager() override;
+    ~WindowManager();
 
-    WindowEgl *
-    create_window(int width, int height, WindowType window_type = WindowType::EGL,
-                  const std::function<void(void *data, uint32_t time)> &draw_callback = nullptr);
+    [[nodiscard]] struct wl_display *get_display() const { return wl_display_; }
 
     [[nodiscard]] int poll_events(int timeout) const;
 
-    [[nodiscard]] int dispatch(int timeout) const;
+    [[maybe_unused]] [[nodiscard]] int dispatch(int timeout) const;
+
+    [[nodiscard]] int dispatch_pending() const {
+        return wl_display_dispatch_pending(
+                get_display()
+                );
+    }
+
+    // Disallow copy and assign.
+    WindowManager(const WindowManager &) = delete;
+
+    WindowManager &operator=(const WindowManager &) = delete;
 
 private:
-    // list of windows for z-order control
-    std::list<std::unique_ptr<WindowEgl>> windows_;
-    std::unique_ptr<XdgWm> xdg_wm_;
 
-    Window::ShellType shell_type_;
+    friend XdgWindowManager;
 
-    static void handle_surface_enter(void *data,
-                                     struct wl_surface *surface,
-                                     struct wl_output *output);
+    GMainContext *context_;
 
-    static void handle_surface_leave(void *data,
-                                     struct wl_surface *surface,
-                                     struct wl_output *output);
+    bool needs_buffer_geometry_update_{};
 
-    static const struct wl_surface_listener surface_listener_;
+    struct {
+        int width;
+        int height;
+    } buffer_size_{};
+
+    const std::map<struct wl_output *, std::unique_ptr<Output>> &outputs_;
+
+    struct wl_display *wl_display_{};
+
+    struct {
+        bool enable;
+        std::unique_ptr<Cursor> cursor;
+    } cursor_;
+
+    enum wl_output_transform buffer_transform_;
+
+    int32_t buffer_scale_ = 1;
+    double fractional_buffer_scale_ = 1.0;
+
+    struct wl_display *get_display(const char *name);
 };
-
-#endif // SRC_WINDOW_WINDOW_MANAGER_H_

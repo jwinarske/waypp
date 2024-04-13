@@ -16,13 +16,12 @@
 
 #include "keyboard.h"
 
-#include <iostream>
-
 #include <wayland-client.h>
 #include <sys/mman.h>
 #include <unistd.h>
 #include <xkbcommon/xkbcommon.h>
 
+#include "logging.h"
 
 /**
  * @class Keyboard
@@ -33,7 +32,8 @@
  */
 Keyboard::Keyboard(struct wl_keyboard *keyboard) : keyboard_(keyboard),
                                                    xkb_context_(xkb_context_new(XKB_CONTEXT_NO_FLAGS)) {
-    wl_keyboard_add_listener(keyboard, &listener_, this);
+    SPDLOG_DEBUG("Keyboard");
+    wl_keyboard_add_listener(keyboard_, &keyboard_listener_, this);
 }
 
 /**
@@ -44,64 +44,34 @@ Keyboard::Keyboard(struct wl_keyboard *keyboard) : keyboard_(keyboard),
  */
 Keyboard::~Keyboard() {
     wl_keyboard_release(keyboard_);
-    wl_keyboard_destroy(keyboard_);
 }
 
-/**
- * @brief Handles the enter event from the keyboard
- *
- * This function is called when the keyboard enters a surface.
- *
- * @param data The user data associated with the keyboard
- * @param keyboard The keyboard object
- * @param serial The serial of the event
- * @param surface The surface the keyboard entered
- * @param keys The keys array
- *
- * @return None
- */
-void Keyboard::handle_enter(void *data,
-                            struct wl_keyboard * /* keyboard */,
-                            uint32_t /* serial */,
-                            struct wl_surface *surface,
-                            struct wl_array * /* keys */) {
-    std::cerr << "handle_enter" << std::endl;
-    const auto obj = static_cast<Keyboard *>(data);
-    obj->active_surface_ = surface;
+gboolean Keyboard::handle_repeat(Keyboard *keyboard) {
+
+    if (keyboard) {
+        if (keyboard->key_repeat_rate_) {
+            keyboard->key_timeout_id_ = g_timeout_add(static_cast<guint>(keyboard->key_repeat_rate_),
+                                                      reinterpret_cast<GSourceFunc>(handle_repeat), keyboard);
+            return TRUE;
+        } else {
+            g_source_remove(keyboard->key_timeout_id_);
+            return FALSE;
+        }
+    }
+    return TRUE;
 }
 
-/**
- * @brief This function handles the leave event for the keyboard.
- *
- * When the keyboard leaves a surface, this function is called to update the
- * active surface to nullptr.
- *
- * @param data A pointer to the Keyboard object.
- * @param keyboard A pointer to the wl_keyboard object.
- * @param serial The serial of the event.
- * @param surface A pointer to the wl_surface object.
- */
-void Keyboard::handle_leave(void *data,
-                            struct wl_keyboard * /* keyboard */,
-                            uint32_t /* serial */,
-                            struct wl_surface * /* surface */) {
-    std::cerr << "handle_leave" << std::endl;
-    const auto obj = static_cast<Keyboard *>(data);
-    obj->active_surface_ = nullptr;
-}
-
-/**
- * @class Keyboard
- * @brief The Keyboard class handles keyboard input events.
- *
- * This class provides functionality to handle keyboard events such as keymap changes.
- */
 void Keyboard::handle_keymap(void *data,
-                             struct wl_keyboard * /* keyboard */,
+                             struct wl_keyboard *keyboard,
                              uint32_t /* format */,
                              int fd,
                              uint32_t size) {
     const auto obj = static_cast<Keyboard *>(data);
+    if (obj->keyboard_ != keyboard) {
+        return;
+    }
+    SPDLOG_DEBUG("handle_keymap");
+
     char *keymap_string = static_cast<char *>(mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0));
     xkb_keymap_unref(obj->keymap_);
     obj->keymap_ = xkb_keymap_new_from_string(obj->xkb_context_, keymap_string,
@@ -113,25 +83,42 @@ void Keyboard::handle_keymap(void *data,
     obj->xkb_state_ = xkb_state_new(obj->keymap_);
 }
 
-/**
- * @brief Handles key events from the keyboard.
- *
- * This function is called when a key is pressed or released on the keyboard.
- *
- * @param data The pointer to the Keyboard instance.
- * @param keyboard The wl_keyboard object associated with the event.
- * @param serial The serial number of the event.
- * @param time The timestamp of the event.
- * @param key The key that was pressed or released.
- * @param state The state of the key (pressed or released).
- */
+void Keyboard::handle_enter(void *data,
+                            struct wl_keyboard *keyboard,
+                            uint32_t /* serial */,
+                            struct wl_surface *surface,
+                            struct wl_array * /* keys */) {
+    const auto obj = static_cast<Keyboard *>(data);
+    if (obj->keyboard_ != keyboard) {
+        return;
+    }
+    SPDLOG_DEBUG("[Keyboard] handle_enter");
+    obj->active_surface_ = surface;
+}
+
+void Keyboard::handle_leave(void *data,
+                            struct wl_keyboard *keyboard,
+                            uint32_t /* serial */,
+                            struct wl_surface * /* surface */) {
+    const auto obj = static_cast<Keyboard *>(data);
+    if (obj->keyboard_ != keyboard) {
+        return;
+    }
+    SPDLOG_DEBUG("[Keyboard] handle_leave");
+    obj->active_surface_ = nullptr;
+}
+
 void Keyboard::handle_key(void *data,
-                          struct wl_keyboard * /* keyboard */,
+                          struct wl_keyboard *keyboard,
                           uint32_t /* serial */,
                           uint32_t /* time */,
                           uint32_t key,
                           uint32_t state) {
     const auto obj = static_cast<Keyboard *>(data);
+    if (obj->keyboard_ != keyboard) {
+        return;
+    }
+    SPDLOG_DEBUG("[Keyboard] handle_key");
 
     if (!obj->xkb_state_)
         return;
@@ -152,7 +139,7 @@ void Keyboard::handle_key(void *data,
             // only use the first symbol until the use case for two is clarified
             keysym = key_symbols[0];
             for (int i = 0; i < res; i++) {
-                std::cerr << "xkb keysym: 0x" << std::hex << key_symbols[i] << std::dec << std::endl;
+                SPDLOG_DEBUG("xkb keysym: 0x{}", key_symbols[i]);
             }
         }
     }
@@ -164,69 +151,41 @@ void Keyboard::handle_key(void *data,
     }
 }
 
-/***************************************************************************/
 void Keyboard::handle_modifiers(void *data,
-                                struct wl_keyboard * /* keyboard */,
+                                struct wl_keyboard *keyboard,
                                 uint32_t /* serial */,
                                 uint32_t mods_depressed,
                                 uint32_t mods_latched,
                                 uint32_t mods_locked,
                                 uint32_t group) {
     const auto obj = static_cast<Keyboard *>(data);
+    if (obj->keyboard_ != keyboard) {
+        return;
+    }
+    SPDLOG_DEBUG("[Keyboard] handle_modifiers");
     xkb_state_update_mask(obj->xkb_state_, mods_depressed, mods_latched, mods_locked, 0, 0, group);
 }
 
-/**
- * @brief Handles the repeated key events for the Keyboard.
- *
- * This function is called when a key is being held down and needs to be repeated.
- *
- * @param keyboard A pointer to the Keyboard instance.
- *
- * @return TRUE if the key repeat rate is set, FALSE otherwise.
- */
-gboolean Keyboard::handle_repeat(Keyboard *keyboard) {
-
-    if (keyboard) {
-        if (keyboard->key_repeat_rate_) {
-            keyboard->key_timeout_id_ = g_timeout_add(static_cast<guint>(keyboard->key_repeat_rate_),
-                                                      reinterpret_cast<GSourceFunc>(handle_repeat), keyboard);
-            return TRUE;
-        } else {
-            g_source_remove(keyboard->key_timeout_id_);
-            return FALSE;
-        }
-    }
-    return TRUE;
-}
-
-/**
-* @brief Handles repeat info for the Keyboard class.
-*
-* This function is called when repeat rate and delay of key repeats are received.
-* It creates a timeout to call the handle_repeat function at the specified delay.
-*
-* @param data A pointer to the Keyboard object.
-* @param wl_keyboard A pointer to the wl_keyboard object.
-* @param rate The repeat rate of key events in milliseconds.
-* @param delay The delay before key repeat starts in milliseconds.
-*/
 void Keyboard::handle_repeat_info(void *data,
-                                  struct wl_keyboard * /* wl_keyboard */,
+                                  struct wl_keyboard *keyboard,
                                   int32_t rate,
                                   int32_t delay) {
     const auto obj = static_cast<Keyboard *>(data);
+    if (obj->keyboard_ != keyboard) {
+        return;
+    }
+    SPDLOG_DEBUG("[Keyboard] handle_repeat_info: rate: {}, delay: {}", rate, delay);
     obj->key_timeout_id_ = g_timeout_add(static_cast<guint>(delay), reinterpret_cast<GSourceFunc>(handle_repeat), obj);
     obj->key_repeat_rate_ = rate;
     obj->key_timeout_id_ = g_timeout_add(static_cast<guint>(delay),
                                          reinterpret_cast<GSourceFunc>(handle_repeat), obj);
 }
 
-const struct wl_keyboard_listener Keyboard::listener_ = {
+const struct wl_keyboard_listener Keyboard::keyboard_listener_ = {
         .keymap = handle_keymap,
         .enter = handle_enter,
         .leave = handle_leave,
         .key = handle_key,
         .modifiers = handle_modifiers,
-        .repeat_info = handle_repeat_info
+        .repeat_info = handle_repeat_info,
 };

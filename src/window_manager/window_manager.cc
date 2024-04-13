@@ -16,18 +16,18 @@
 
 #include "window_manager.h"
 
-#include <iostream>
-
 #include <poll.h>
 #include <wayland-client.h>
 
-#include "window/window_vulkan.h"
+#include "logging.h"
+#include "registrar.h"
 
+class Registrar;
 
 /**
  * @class WindowManager
  *
- * @brief The WindowManager class is responsible for managing windows and handling window-related operations.
+ * @brief The WindowManager class is responsible for managing windows and handling surface-related operations.
  *
  * The WindowManager class extends the Display and Window classes and is used to create and manage windows in a graphical user interface application.
  *
@@ -35,30 +35,23 @@
  * @see Window
  * @see XdgWm
  */
-WindowManager::WindowManager(Window::ShellType shell_type, GMainContext *context, bool enable_cursor,
-                             const char *name) :
-        Display(context, enable_cursor, name),
-        Window(wl_compositor_, shell_type,
-               [&](void * /* data */, uint32_t /* time */) { std::cerr << "base draw" << std::endl; }),
-        shell_type_(shell_type) {
-
-    if (shell_type == XDG) {
-        xdg_wm_ = std::make_unique<XdgWm>(this->wl_display_, this->wl_surface_);
-
-        // this makes the start-up from the beginning with the correct dimensions
-        // like starting as maximized/fullscreen, rather than starting up as floating
-        // width, height then performing a resize
-        while (xdg_wm_->get_wait_for_configure()) {
-            wl_display_dispatch(wl_display_);
-
-            // wait until xdg_surface::configure ACKs the new dimensions
-            if (xdg_wm_->get_wait_for_configure())
-                continue;
+WindowManager::WindowManager(GMainContext *context,
+                             bool enable_cursor,
+                             const char *display_name) : Registrar(get_display(display_name)),
+                                                         context_(context),
+                                                         outputs_(get_outputs()),
+                                                         cursor_{.enable = enable_cursor} {
+    SPDLOG_TRACE("++WindowManager::WindowManager()");
+    if (enable_cursor) {
+        if (!shm_has_format(WL_SHM_FORMAT_XRGB8888)) {
+            spdlog::warn("XRGB is not supported. Disabling cursor");
+            cursor_.enable = false;
+            return;
         }
-        std::cout << "configured." << std::endl;
+        cursor_.cursor = std::make_unique<Cursor>(get_shm().value(), get_compositor());
     }
-
-    start_frames();
+    //    start_frames();
+    SPDLOG_TRACE("--WindowManager::WindowManager()");
 }
 
 /**
@@ -68,94 +61,21 @@ WindowManager::WindowManager(Window::ShellType shell_type, GMainContext *context
  * It calls the stop_frames() function to stop rendering frames.
  */
 WindowManager::~WindowManager() {
-    stop_frames();
+    SPDLOG_TRACE("++WindowManager::~WindowManager()");
+    wl_display_flush(wl_display_);
+    wl_display_disconnect(wl_display_);
+    SPDLOG_TRACE("--WindowManager::~WindowManager()");
 }
 
-/**
-
-   * @brief Handles the event when a surface enters the window manager
-
-   *
-   * @param data The data associated with the event
-   * @param surface The surface that enters the window manager
-   * @param output The output associated with the surface
-   *
-   * This function is called when a surface enters the window manager. It prints a message indicating that the surface has entered.
-   *
-   * Example Usage:
-   *
-   * ```
-   * WindowManager wm;
-   * wl_surface *surface;
-   * wl_output *output;
-   * wm.handle_surface_enter(nullptr, surface, output);
-   * ```
-   *
-   */
-void WindowManager::handle_surface_enter(void * /* data */,
-                                         struct wl_surface * /* surface */,
-                                         struct wl_output * /* output */) {
-    std::cout << "WindowManager::handle_surface_enter" << std::endl;
-}
-
-/**
- * @brief Handles the event when a surface leaves an output.
- *
- * This function is called when a surface leaves an output. It prints a message
- * to the console indicating that the surface has left the output.
- *
- * @param data    A pointer to the data associated with the event (unused).
- * @param surface The surface that has left the output.
- * @param output  The output that the surface has left.
- */
-void WindowManager::handle_surface_leave(void * /* data */,
-                                         struct wl_surface * /* surface */,
-                                         struct wl_output * /* output */) {
-    std::cout << "WindowManager::handle_surface_leave" << std::endl;
-}
-
-const struct wl_surface_listener WindowManager::surface_listener_ = {
-        .enter = handle_surface_enter,
-        .leave = handle_surface_leave,
-};
-
-/**
- * @brief Creates a new window and adds it to the WindowManager's list of windows.
- *
- * The function creates a new window based on the given parameters and adds it to the list of windows managed by the
- * WindowManager. The type of the window can be either EGL or VULKAN. If the window type is EGL, a WindowEgl object is
- * created using the provided display, compositor, surface, width, height, shell type, and draw callback. If the shell
- * type is XDG, additional actions can be performed. If the window type is VULKAN, a WindowVulkan object can be
- * created, but this part of the code is currently commented out.
- *
- * @param width The width of the window.
- * @param height The height of the window.
- * @param window_type The type of the window (EGL or VULKAN).
- * @param draw_callback The function to be called when the window needs to be drawn.
- * @return A pointer to the created window object, or nullptr if no window was created.
- */
-WindowEgl *WindowManager::create_window(int width, int height, WindowType window_type,
-                                        const std::function<void(void *data, uint32_t)> &draw_callback) {
-    WindowEgl *result = nullptr;
-
-    std::unique_ptr<WindowEgl> window;
-    if (window_type == EGL) {
-        window = std::make_unique<WindowEgl>(this->wl_display_, this->wl_compositor_, this->wl_surface_, width, height,
-                                             shell_type_,
-                                             draw_callback);
-        if (shell_type_ == Window::ShellType::XDG) {
-        }
-    } else if (window_type == VULKAN) {
-        //window = std::make_unique<WindowVulkan>(this->wl_display_, this->wl_compositor_, width, height, shell_type_,
-        //draw_callback);
+struct wl_display *WindowManager::get_display(const char *name) {
+    SPDLOG_TRACE("++WindowManager::get_display()");
+    wl_display_ = (wl_display_connect(name));
+    if (wl_display_ == nullptr) {
+        spdlog::critical("Failed to connect to Wayland display. {}", strerror(errno));
+        exit(EXIT_FAILURE);
     }
-    if (window) {
-        result = window.get();
-        windows_.emplace_back(std::move(window));
-    }
-
-    start_frames();
-    return result;
+    SPDLOG_TRACE("--WindowManager::get_display()");
+    return wl_display_;
 }
 
 /**
@@ -166,7 +86,7 @@ WindowEgl *WindowManager::create_window(int width, int height, WindowType window
  * @param timeout The maximum amount of time to wait for events, in milliseconds.
  * @return The number of events dispatched on success, or a negative error code on failure.
  */
-int WindowManager::dispatch(int timeout) const {
+[[maybe_unused]] int WindowManager::dispatch(int timeout) const {
     struct pollfd fds[1];
     int dispatch_count = 0;
 

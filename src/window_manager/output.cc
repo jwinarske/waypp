@@ -18,7 +18,7 @@
 
 #include <wayland-client-protocol.h>
 
-#include <cassert>
+#include "logging.h"
 
 /**
  * @class Output
@@ -28,40 +28,14 @@
  * access to the output's properties such as geometry and mode. It also handles
  * the events emitted by the output.
  */
-Output::Output(struct wl_output *output, uint32_t version) : version_(
-        version), wl_output_(output) {
+Output::Output(struct wl_output *wl_output) : wl_output_(wl_output) {
+    SPDLOG_TRACE("++Output::Output()");
     wl_output_add_listener(wl_output_, &listener_, this);
+    SPDLOG_TRACE("--Output::Output()");
 }
 
-/**
- * @class Output
- * @brief The Output class represents a Wayland output.
- *
- * The Output class provides methods to manage Wayland outputs, such as releasing and destroying the output.
- */
-Output::~Output() {
-    wl_output_release(wl_output_);
-    wl_output_destroy(wl_output_);
-}
+Output::~Output() = default;
 
-/**
- * @brief Handle the geometry event of the wl_output interface.
- *
- * This function is called when the wl_output interface emits the
- * geometry event, indicating changes in the output's position, size,
- * and physical properties.
- *
- * @param data              Pointer to the Output object.
- * @param wl_output         The wl_output object.
- * @param x                 The x coordinate of the output's position.
- * @param y                 The y coordinate of the output's position.
- * @param physical_width    The physical width of the output in millimeters.
- * @param physical_height   The physical height of the output in millimeters.
- * @param subpixel          The subpixel arrangement of the output.
- * @param make              The make of the output device.
- * @param model             The model of the output device.
- * @param transform         The transform applied to the output.
- */
 void Output::handle_geometry(void *data,
                              struct wl_output *wl_output,
                              int x,
@@ -72,127 +46,142 @@ void Output::handle_geometry(void *data,
                              const char *make,
                              const char *model,
                              int transform) {
-    const auto obj = static_cast<Output *>(data);
-    assert(obj->wl_output_ == wl_output);
-    obj->output_ = {
-            .geometry = {
-                    .x = x,
-                    .y = y,
-                    .physical_width = physical_width,
-                    .physical_height = physical_height,
-                    .subpixel = subpixel,
-                    .make = make,
-                    .model = model,
-                    .transform = transform
-            },
-            .mode = {},
-            .done{},
-            .name{},
-            .description{},
+    SPDLOG_TRACE("++Output::handle_geometry()");
+    auto obj = static_cast<Output *>(data);
+    if (obj->wl_output_ != wl_output) {
+        return;
+    }
+    obj->output_.geometry = {
+            .x = x,
+            .y = y,
+            .physical_width = physical_width,
+            .physical_height = physical_height,
+            .subpixel = subpixel,
+            .make = make,
+            .model = model,
+            .transform = static_cast<enum wl_output_transform>(transform),
     };
+    SPDLOG_TRACE("--Output::handle_geometry()");
 }
 
-/**
-* @brief This function is responsible for handling the mode of the output.
-*
-* The handle_mode function is called when the mode of the output is updated. It sets the mode of the output
-* structure to the provided values.
-*
-* @param data A pointer to the instance of the Output class.
-* @param wl_output A pointer to the wl_output structure.
-* @param flags The flags of the mode.
-* @param width The width of the mode.
-* @param height The height of the mode.
-* @param refresh The refresh rate of the mode.
-*/
 void Output::handle_mode(void *data,
                          struct wl_output *wl_output,
                          uint32_t flags,
                          int width,
                          int height,
                          int refresh) {
-    const auto obj = static_cast<Output *>(data);
-    assert(obj->wl_output_ == wl_output);
+    SPDLOG_TRACE("++Output::handle_mode()");
+    auto obj = static_cast<Output *>(data);
+    if (obj->wl_output_ != wl_output) {
+        return;
+    }
     obj->output_.mode = {
             .flags = flags,
             .width = width,
             .height = height,
-            .refresh = refresh,
+            .refresh = refresh
     };
+    SPDLOG_TRACE("--Output::handle_mode()");
 }
 
-/**
- * @brief Handle the completion of an output event.
- *
- * This function is a callback that is invoked when an output event is completed.
- *
- * @param data A pointer to the associated Output object.
- * @param wl_output The Wayland output object.
- */
-void Output::handle_done(void *data, struct wl_output *wl_output) {
-    const auto obj = static_cast<Output *>(data);
-    assert(obj->wl_output_ == wl_output);
-    obj->output_.done = true;
-}
-
-/**
- * @brief Callback function for handling output scale change.
- *
- * This function is called when the scale of the output is changed.
- * It updates the scale value of the Output object.
- *
- * @param data The user data associated with the Output object.
- * @param wl_output The wl_output object associated with the event.
- * @param scale The new scale value.
- */
 void Output::handle_scale(void *data,
                           struct wl_output *wl_output,
-                          int scale) {
-    const auto obj = static_cast<Output *>(data);
-    assert(obj->wl_output_ == wl_output);
-    obj->output_.scale = scale;
+                          int32_t factor) {
+    SPDLOG_TRACE("++Output::handle_scale()");
+    auto obj = static_cast<Output *>(data);
+    if (obj->wl_output_ != wl_output) {
+        return;
+    }
+    obj->output_.factor = factor;
+    SPDLOG_TRACE("++Output::handle_scale()");
 }
 
-/**
- * @brief Handle the name event from the wl_output interface.
- *
- * This function is called when the name property of the output is updated.
- *
- * @param data A pointer to the Output object.
- * @param wl_output A pointer to the wl_output object.
- * @param name The new name of the output.
- */
+void Output::handle_done(void *data,
+                         struct wl_output *wl_output) {
+    SPDLOG_TRACE("++Output::handle_done()");
+    auto obj = static_cast<Output *>(data);
+    if (wl_output != obj->wl_output_) {
+        return;
+    }
+
+    auto output = obj->output_;
+
+    output.done = true;
+    SPDLOG_TRACE("--Output::handle_done()");
+}
+
 void Output::handle_name(void *data,
                          struct wl_output *wl_output,
                          const char *name) {
-    const auto obj = static_cast<Output *>(data);
-    assert(obj->wl_output_ == wl_output);
+    SPDLOG_TRACE("++Output::handle_name()");
+    auto obj = static_cast<Output *>(data);
+    if (obj->wl_output_ != wl_output) {
+        return;
+    }
     obj->output_.name = name;
+    SPDLOG_TRACE("--Output::handle_name()");
 }
 
-/**
- * @brief Handles the description of an output.
- *
- * This function is invoked when a description is received for a specific output. It updates the description in the
- * `output_` member of the `Output` object.
- *
- * @param data      A pointer to the `Output` object.
- * @param wl_output A pointer to the `wl_output` object.
- * @param description The description of the output.
- */
-void Output::handle_description(void *data,
-                                struct wl_output *wl_output,
-                                const char *description) {
-    const auto obj = static_cast<Output *>(data);
-    assert(obj->wl_output_ == wl_output);
-    obj->output_.description = description;
+void Output::handle_desc(void *data,
+                         struct wl_output *wl_output,
+                         const char *desc) {
+    SPDLOG_TRACE("++Output::handle_desc()");
+    auto obj = static_cast<Output *>(data);
+    if (obj->wl_output_ != wl_output) {
+        return;
+    }
+    obj->output_.description = desc;
+    SPDLOG_TRACE("--Output::handle_desc()");
 }
 
-const struct wl_output_listener Output::listener_ = {
-        .geometry = handle_geometry,
-        .mode = handle_mode,
-        .done = handle_done,
-        .scale = handle_scale,
-        .name = handle_name,
-        .description = handle_description,
-};
+std::string Output::transform_to_string(enum wl_output_transform transform) {
+    switch (transform) {
+        case WL_OUTPUT_TRANSFORM_NORMAL:
+            return "WL_OUTPUT_TRANSFORM_NORMAL";
+        case WL_OUTPUT_TRANSFORM_90:
+            return "WL_OUTPUT_TRANSFORM_90";
+        case WL_OUTPUT_TRANSFORM_180:
+            return "WL_OUTPUT_TRANSFORM_180";
+        case WL_OUTPUT_TRANSFORM_270:
+            return "WL_OUTPUT_TRANSFORM_270";
+        case WL_OUTPUT_TRANSFORM_FLIPPED:
+            return "WL_OUTPUT_TRANSFORM_FLIPPED";
+        case WL_OUTPUT_TRANSFORM_FLIPPED_90:
+            return "WL_OUTPUT_TRANSFORM_FLIPPED_90";
+        case WL_OUTPUT_TRANSFORM_FLIPPED_180:
+            return "WL_OUTPUT_TRANSFORM_FLIPPED_180";
+        case WL_OUTPUT_TRANSFORM_FLIPPED_270:
+            return "WL_OUTPUT_TRANSFORM_FLIPPED_270";
+    }
+    return {};
+}
+
+void Output::print() {
+    spdlog::info("Output");
+#if defined(WL_OUTPUT_NAME_SINCE_VERSION)
+    spdlog::info("\tName: {}", output_.name);
+#endif
+#if defined(WL_OUTPUT_DESCRIPTION_SINCE_VERSION)
+    spdlog::info("\tDescription: {}", output_.description);
+#endif
+    spdlog::info("\tMode");
+    spdlog::info("\t\tSize: {}x{}", output_.mode.width, output_.mode.height);
+    spdlog::info("\t\tRefresh: {}", output_.mode.refresh);
+    spdlog::info("\t\tFlags: ");
+    if ((output_.mode.flags & WL_OUTPUT_MODE_CURRENT) == WL_OUTPUT_MODE_CURRENT) {
+        spdlog::info("\t\t\tWL_OUTPUT_MODE_CURRENT");
+    }
+    if ((output_.mode.flags & WL_OUTPUT_MODE_PREFERRED) == WL_OUTPUT_MODE_PREFERRED) {
+        spdlog::info("\t\t\tWL_OUTPUT_MODE_PREFERRED");
+    }
+    spdlog::info("\tGeometry");
+    spdlog::info("\t\tMake: {}", output_.geometry.make);
+    spdlog::info("\t\tModel: {}", output_.geometry.model);
+    spdlog::info("\t\tPhysical: {}x{}", output_.geometry.physical_width, output_.geometry.physical_height);
+    spdlog::info("\t\tSubpixel: {}", output_.geometry.subpixel);
+    spdlog::info("\t\tTransform: {}", transform_to_string(output_.geometry.transform));
+    spdlog::info("\t\tx: {}, y: {}", output_.geometry.x, output_.geometry.y);
+#if defined(WL_OUTPUT_SCALE_SINCE_VERSION)
+    spdlog::info("\tScaling factor: {}", output_.factor);
+#endif
+}

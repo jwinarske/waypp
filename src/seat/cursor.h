@@ -14,39 +14,24 @@
  * limitations under the License.
  */
 
-#ifndef SRC_SEAT_CURSOR_H_
-#define SRC_SEAT_CURSOR_H_
+#pragma once
 
-#include <cstdint>
-
-#include <wayland-client.h>
-
-#include "window_manager/display.h"
-#include "pointer.h"
-
-class Display;
-
-class Pointer;
+#include <wayland-cursor.h>
 
 class Cursor {
 public:
-    Cursor(Pointer *parent, struct wl_pointer *pointer, struct wl_shm *shm, struct wl_compositor *compositor,
-           bool enable,
-           const char *theme_name = "DMZ-White");
+    explicit Cursor(struct wl_shm *shm, struct wl_compositor *compositor, int size = 24);
 
     ~Cursor();
 
-    bool enable(int32_t device, const char *kind) const;
+    void update_pointer(struct wl_pointer *pointer, uint32_t serial, const char *name = "left_ptr");
+
+    // Disallow copy and assign.
+    Cursor(const Cursor &) = delete;
+
+    Cursor &operator=(const Cursor &) = delete;
 
 private:
-    Pointer *parent_;
-    struct wl_pointer *wl_pointer_;
     struct wl_surface *wl_surface_;
     struct wl_cursor_theme *theme_;
-    struct wl_shm *wl_shm_;
-    bool enable_;
-
-    std::string theme_name_;
 };
-
-#endif // SRC_SEAT_CURSOR_H_

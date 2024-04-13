@@ -48,35 +48,89 @@ endmacro()
 
 set(WAYLAND_PROTOCOL_SOURCES)
 
-wayland_generate(
-        ${WAYLAND_PROTOCOLS_BASE}/stable/xdg-shell/xdg-shell.xml
-        ${CMAKE_CURRENT_BINARY_DIR}/xdg-shell-client-protocol)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/protocols)
 
 wayland_generate(
-        ${WAYLAND_PROTOCOLS_BASE}/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml
-        ${CMAKE_CURRENT_BINARY_DIR}/xdg-decoration-unstable-client-protocol)
+        ${WAYLAND_PROTOCOLS_BASE}/stable/xdg-shell/xdg-shell.xml
+        ${CMAKE_CURRENT_BINARY_DIR}/protocols/xdg-shell-client-protocol)
 
 wayland_generate(
         ${CMAKE_SOURCE_DIR}/third_party/agl/protocol/agl-shell.xml
-        ${CMAKE_CURRENT_BINARY_DIR}/agl-shell-client-protocol)
+        ${CMAKE_CURRENT_BINARY_DIR}/protocols/agl-shell-client-protocol)
 wayland_generate(
         ${CMAKE_SOURCE_DIR}/third_party/agl/protocol/agl-shell-desktop.xml
-        ${CMAKE_CURRENT_BINARY_DIR}/agl-shell-desktop-client-protocol)
+        ${CMAKE_CURRENT_BINARY_DIR}/protocols/agl-shell-desktop-client-protocol)
 wayland_generate(
         ${CMAKE_SOURCE_DIR}/third_party/agl/protocol/agl-screenshooter.xml
-        ${CMAKE_CURRENT_BINARY_DIR}/agl-screenshooter-client-protocol)
+        ${CMAKE_CURRENT_BINARY_DIR}/protocols/agl-screenshooter-client-protocol)
 
 wayland_generate(
         ${CMAKE_SOURCE_DIR}/third_party/weston/protocol/ivi-application.xml
-        ${CMAKE_CURRENT_BINARY_DIR}/ivi-application-client-protocol)
+        ${CMAKE_CURRENT_BINARY_DIR}/protocols/ivi-application-client-protocol)
 wayland_generate(
         ${CMAKE_SOURCE_DIR}/third_party/weston/protocol/ivi-wm.xml
-        ${CMAKE_CURRENT_BINARY_DIR}/ivi-wm-client-protocol)
+        ${CMAKE_CURRENT_BINARY_DIR}/protocols/ivi-wm-client-protocol)
+
+#
+# Optional
+#
+set(WAYLAND_PROTOCOL_HAS_XDG_DECORATION OFF)
+if (EXISTS ${WAYLAND_PROTOCOLS_BASE}/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml)
+    set(WAYLAND_PROTOCOL_HAS_XDG_DECORATION ON)
+    wayland_generate(
+            ${WAYLAND_PROTOCOLS_BASE}/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml
+            ${CMAKE_CURRENT_BINARY_DIR}/protocols/xdg-decoration-unstable-client-protocol)
+endif ()
+message(STATUS "XDG Decoration ........ ${WAYLAND_PROTOCOL_HAS_XDG_DECORATION}")
+
+set(WAYLAND_PROTOCOL_HAS_FRACTIONAL_SCALE OFF)
+if (EXISTS ${WAYLAND_PROTOCOLS_BASE}/staging/fractional-scale/fractional-scale-v1.xml)
+    set(WAYLAND_PROTOCOL_HAS_FRACTIONAL_SCALE ON)
+    wayland_generate(
+            ${WAYLAND_PROTOCOLS_BASE}/staging/fractional-scale/fractional-scale-v1.xml
+            ${CMAKE_CURRENT_BINARY_DIR}/protocols/fractional-scale-v1-client-protocol)
+endif ()
+message(STATUS "Fractional Scale ...... ${WAYLAND_PROTOCOL_HAS_FRACTIONAL_SCALE}")
+
+set(WAYLAND_PROTOCOL_HAS_VIEWPORTER OFF)
+if (EXISTS ${WAYLAND_PROTOCOLS_BASE}/stable/viewporter/viewporter.xml)
+    set(WAYLAND_PROTOCOL_HAS_VIEWPORTER ON)
+    wayland_generate(
+            ${WAYLAND_PROTOCOLS_BASE}/stable/viewporter/viewporter.xml
+            ${CMAKE_CURRENT_BINARY_DIR}/protocols/viewporter-client-protocol)
+endif ()
+message(STATUS "Viewporter ............ ${WAYLAND_PROTOCOL_HAS_VIEWPORTER}")
+
+set(WAYLAND_PROTOCOL_HAS_TEARING_CONTROL OFF)
+if (EXISTS ${WAYLAND_PROTOCOLS_BASE}/staging/tearing-control/tearing-control-v1.xml)
+    set(WAYLAND_PROTOCOL_HAS_TEARING_CONTROL ON)
+    wayland_generate(
+            ${WAYLAND_PROTOCOLS_BASE}/staging/tearing-control/tearing-control-v1.xml
+            ${CMAKE_CURRENT_BINARY_DIR}/protocols/tearing-control-v1-client-protocol)
+endif ()
+message(STATUS "Tearing Control ....... ${WAYLAND_PROTOCOL_HAS_TEARING_CONTROL}")
+
+set(WAYLAND_PROTOCOL_HAS_PRESENTATION_TIME OFF)
+if (EXISTS ${WAYLAND_PROTOCOLS_BASE}/stable/presentation-time/presentation-time.xml)
+    set(WAYLAND_PROTOCOL_HAS_PRESENTATION_TIME ON)
+    wayland_generate(
+            ${WAYLAND_PROTOCOLS_BASE}/stable/presentation-time/presentation-time.xml
+            ${CMAKE_CURRENT_BINARY_DIR}/protocols/presentation-time-client-protocol)
+endif ()
+message(STATUS "Presentation Time ..... ${WAYLAND_PROTOCOL_HAS_PRESENTATION_TIME}")
+
+set(WAYLAND_PROTOCOL_HAS_DRM_LEASE OFF)
+if (EXISTS ${WAYLAND_PROTOCOLS_BASE}/staging/drm-lease/drm-lease-v1.xml)
+    set(WAYLAND_PROTOCOL_HAS_DRM_LEASE ON)
+    wayland_generate(
+            ${WAYLAND_PROTOCOLS_BASE}/staging/drm-lease/drm-lease-v1.xml
+            ${CMAKE_CURRENT_BINARY_DIR}/protocols/drm-lease-v1-client-protocol)
+endif ()
+message(STATUS "DRM Lease ............. ${WAYLAND_PROTOCOL_HAS_DRM_LEASE}")
 
 
 add_library(wayland-gen STATIC ${WAYLAND_PROTOCOL_SOURCES})
 target_link_libraries(wayland-gen PUBLIC PkgConfig::WAYLAND)
-
 
 if (ENABLE_XDG_CLIENT)
     target_compile_definitions(wayland-gen PUBLIC ENABLE_XDG_CLIENT)
@@ -86,6 +140,22 @@ if (ENABLE_AGL_SHELL_CLIENT)
 endif ()
 if (ENABLE_IVI_SHELL_CLIENT)
     target_compile_definitions(wayland-gen PUBLIC ENABLE_IVI_SHELL_CLIENT)
+endif ()
+
+if (WAYLAND_PROTOCOL_HAS_XDG_DECORATION)
+    target_compile_definitions(wayland-gen PUBLIC WAYLAND_PROTOCOL_HAS_XDG_DECORATION)
+endif ()
+if (WAYLAND_PROTOCOL_HAS_PRESENTATION_TIME)
+    target_compile_definitions(wayland-gen PUBLIC WAYLAND_PROTOCOL_HAS_PRESENTATION_TIME)
+endif ()
+if (WAYLAND_PROTOCOL_HAS_FRACTIONAL_SCALE)
+    target_compile_definitions(wayland-gen PUBLIC WAYLAND_PROTOCOL_HAS_FRACTIONAL_SCALE)
+endif ()
+if (WAYLAND_PROTOCOL_HAS_VIEWPORTER)
+    target_compile_definitions(wayland-gen PUBLIC WAYLAND_PROTOCOL_HAS_VIEWPORTER)
+endif ()
+if (WAYLAND_PROTOCOL_HAS_TEARING_CONTROL)
+    target_compile_definitions(wayland-gen PUBLIC WAYLAND_PROTOCOL_HAS_TEARING_CONTROL)
 endif ()
 
 target_include_directories(wayland-gen PUBLIC ${CMAKE_CURRENT_BINARY_DIR})

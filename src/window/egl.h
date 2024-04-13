@@ -14,89 +14,63 @@
  * limitations under the License.
  */
 
-#ifndef SRC_WINDOW_EGL_H_
-#define SRC_WINDOW_EGL_H_
+#pragma once
 
-#include <array>
+#include <cstddef>
+#include <vector>
 
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
+class SurfaceEgl;
+
 class Egl {
 public:
-    explicit Egl(struct wl_display *display);
+    explicit Egl(struct wl_display *display, struct wl_surface *wl_surface, int width, int height,
+                 const int32_t *context_attribs, size_t context_attribs_size,
+                 const int32_t *config_attribs, size_t config_attribs_size, int buffer_bpp);
 
     ~Egl();
 
-    [[nodiscard]] bool clear_current() const;
+    void set_swap_interval(int interval);
 
-    [[nodiscard]] bool make_current() const;
 
-    [[nodiscard]] bool swap_buffers() const;
+    void make_current();
 
-    [[nodiscard]] bool make_resource_current() const;
+    void clear_current();
 
-    [[nodiscard]] bool make_texture_current() const;
+    void swap_buffers();
 
-    [[nodiscard]] PFNEGLSETDAMAGEREGIONKHRPROC get_set_damage_region() const {
-        return pfSetDamageRegion_;
-    }
+    void resize(int width, int height, int dx, int dy);
 
-    [[nodiscard]] PFNEGLSWAPBUFFERSWITHDAMAGEEXTPROC
-    get_swap_buffers_with_damage() const {
-        return pfSwapBufferWithDamage_;
-    }
+    // Disallow copy and assign.
+    Egl(const Egl &) = delete;
 
-    [[maybe_unused]] [[nodiscard]] bool has_ext_buffer_age() const { return has_egl_ext_buffer_age_; }
-
-    [[maybe_unused]] EGLDisplay get_display() { return dpy_; }
-
-    [[maybe_unused]] EGLContext get_texture_context() { return texture_context_; }
-
-    friend class WindowEgl;
+    Egl &operator=(const Egl &) = delete;
 
 private:
-    static constexpr std::array<EGLint, 5> kEglContextAttribs = {
-            {
-                    EGL_CONTEXT_MAJOR_VERSION, 3,
-                    EGL_CONTEXT_MAJOR_VERSION, 2,
-                    EGL_NONE
-            }
-    };
+    friend class SurfaceEgl;
 
-    static constexpr std::array<EGLint, 27> kEglConfigAttribs = {
-            {
-                    EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-                    EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT,
-                    EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-                    EGL_RED_SIZE, 8,
-                    EGL_GREEN_SIZE, 8,
-                    EGL_BLUE_SIZE, 8,
-                    EGL_ALPHA_SIZE, 8,
-                    EGL_STENCIL_SIZE, 8,
-                    EGL_DEPTH_SIZE, 16,
-                    EGL_SAMPLE_BUFFERS, 1,
-                    EGL_SAMPLES, 4,
-                    EGL_NONE // termination sentinel
-            }
-    };
+    std::vector<EGLint> context_attribs_;
+    std::vector<EGLint> config_attribs_;
+    int buffer_bpp_;
 
-    EGLSurface egl_surface_{};
-    EGLConfig config_{};
-    EGLContext texture_context_{};
-
-    int buffer_size_ = 24;
-
-    EGLDisplay dpy_{};
     EGLContext context_{};
-    EGLContext resource_context_{};
 
-    EGLint major_{};
-    EGLint minor_{};
+    EGLint major_{}, minor_{};
+
+    EGLDisplay dpy_;
+    EGLConfig config_{};
+
+    struct wl_surface *wl_surface_;
+    struct wl_egl_window *wl_egl_window_{};
+    EGLSurface egl_surface_{};
+
+    int width_;
+    int height_;
 
     PFNEGLSWAPBUFFERSWITHDAMAGEEXTPROC pfSwapBufferWithDamage_{};
     PFNEGLSETDAMAGEREGIONKHRPROC pfSetDamageRegion_{};
-    bool has_egl_ext_buffer_age_{};
 
     static bool has_egl_extension(const char *extensions, const char *name);
 
@@ -109,5 +83,3 @@ private:
 
     static void egl_khr_debug_init();
 };
-
-#endif // SRC_WINDOW_EGL_H_

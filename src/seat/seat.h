@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef SRC_SEAT_SEAT_H_
-#define SRC_SEAT_SEAT_H_
+#pragma once
 
 #include <memory>
 #include <string>
@@ -34,8 +33,7 @@ class Touch;
 
 class Seat {
 public:
-    explicit Seat(struct wl_seat *seat, struct wl_shm *shm, struct wl_compositor *compositor, bool enable_cursor,
-                  uint32_t version);
+    explicit Seat(struct wl_seat *seat);
 
     [[nodiscard]] struct wl_seat *get_seat() const { return wl_seat_; };
 
@@ -43,14 +41,8 @@ public:
 
     [[nodiscard]] const std::string &get_name() const { return name_; };
 
-    [[nodiscard]] const uint32_t get_version() const { return version_; }
-
 private:
     struct wl_seat *wl_seat_;
-    struct wl_shm *wl_shm_;
-    struct wl_compositor *wl_compositor_;
-    bool enable_cursor_;
-    uint32_t version_;
     uint32_t capabilities_;
     std::string name_;
 
@@ -58,15 +50,16 @@ private:
     std::unique_ptr<Pointer> pointer_;
     std::unique_ptr<Touch> touch_;
 
-    static void handle_capabilities(void * /* data */,
-                                    struct wl_seat * /* seat */,
-                                    uint32_t /* caps */);
+    static void handle_capabilities(void *data,
+                                    struct wl_seat *seat,
+                                    uint32_t caps);
 
-    static void handle_name(void * /* data */,
-                            struct wl_seat * /* seat */,
-                            const char * /* name */);
+    static void handle_name(void *data,
+                            struct wl_seat *seat,
+                            const char *name);
 
-    static const struct wl_seat_listener listener_;
+    static constexpr struct wl_seat_listener listener_ = {
+            .capabilities = handle_capabilities,
+            .name = handle_name,
+    };
 };
-
-#endif // SRC_SEAT_SEAT_H_

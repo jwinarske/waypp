@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef SRC_SEAT_TOUCH_H_
-#define SRC_SEAT_TOUCH_H_
+#pragma once
 
 #include <cstdint>
 
@@ -23,7 +22,7 @@
 
 class Touch {
 public:
-    explicit Touch(struct wl_touch *touch);
+    explicit Touch(struct wl_touch *wl_touch);
 
     ~Touch();
 
@@ -31,33 +30,37 @@ private:
     struct wl_touch *touch_;
 
     static void handle_down(void *data,
-                            struct wl_touch * /* wl_touch */,
-                            uint32_t /* serial */,
-                            uint32_t /* time */,
+                            struct wl_touch *wl_touch,
+                            uint32_t serial,
+                            uint32_t time,
                             struct wl_surface *surface,
                             int32_t id,
                             wl_fixed_t x_w,
                             wl_fixed_t y_w);
 
     static void handle_up(void *data,
-                          struct wl_touch * /* wl_touch */,
-                          uint32_t /* serial */,
-                          uint32_t /* time */,
+                          struct wl_touch *wl_touch,
+                          uint32_t serial,
+                          uint32_t time,
                           int32_t id);
 
     static void handle_motion(void *data,
-                              struct wl_touch * /* wl_touch */,
-                              uint32_t /* time */,
+                              struct wl_touch *wl_touch,
+                              uint32_t time,
                               int32_t id,
                               wl_fixed_t x_w,
                               wl_fixed_t y_w);
 
-    static void handle_cancel(void *data, struct wl_touch * /* wl_touch */);
+    static void handle_cancel(void *data, struct wl_touch *wl_touch);
 
-    static void handle_frame(void * /* data */,
-                             struct wl_touch * /* wl_touch */);
+    static void handle_frame(void *data,
+                             struct wl_touch *wl_touch);
 
-    static const struct wl_touch_listener listener_;
+    static constexpr struct wl_touch_listener listener_ = {
+            .down = handle_down,
+            .up = handle_up,
+            .motion = handle_motion,
+            .frame = handle_frame,
+            .cancel = handle_cancel,
+    };
 };
-
-#endif // SRC_SEAT_TOUCH_H_

@@ -659,7 +659,7 @@ TEST_F(TestForDeathTest, TestExpectDebugDeath) {
 // Tests that EXPECT_DEBUG_DEATH works as expected when in debug mode
 // the Windows CRT crashes the process with an assertion failure.
 // 1. Asserts on death.
-// 2. Has no side effect (doesn't pop up a window or wait for user input).
+// 2. Has no side effect (doesn't pop up a surface or wait for user input).
 //
 // And in opt mode, it:
 // 1.  Has side effects but does not assert.

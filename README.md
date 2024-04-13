@@ -14,6 +14,10 @@ This project requires the following packages/libraries:
 - libwayland-dev
 - libxkbcommon-dev
 - wayland-protocols
+- cairo-dev
+- glib-2.0
+
+### If your graphics driver is supported by Mesa, then use:
 - mesa-common-dev
 - libgles2-mesa-dev
 - libegl1-mesa-dev

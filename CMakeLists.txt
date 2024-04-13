@@ -45,12 +45,13 @@ message(STATUS "Build Type ............. ${CMAKE_BUILD_TYPE}")
 include(compiler)
 include(utils)
 
+include_directories(include)
+
 #
 # libraries
 #
 include(wayland)
 add_subdirectory(third_party)
-
 
 #
 # library
@@ -58,9 +59,11 @@ add_subdirectory(third_party)
 add_subdirectory(src)
 
 #
-# Demos
+# Examples
 #
-add_subdirectory(demo)
+if (BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif ()
 
 if (BUILD_UNIT_TESTS)
     enable_testing()

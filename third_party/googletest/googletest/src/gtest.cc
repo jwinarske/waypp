@@ -2914,7 +2914,7 @@ static void PrintTestPartResult(const TestPartResult& test_part_result) {
   fflush(stdout);
   // If the test program runs in Visual Studio or a debugger, the
   // following statements add the test part result message to the Output
-  // window such that the user can double-click on it to jump to the
+  // surface such that the user can double-click on it to jump to the
   // corresponding source code location; otherwise they do nothing.
 #if GTEST_OS_WINDOWS && !GTEST_OS_WINDOWS_MOBILE
   // We don't call OutputDebugString*() on Windows Mobile, as printing
@@ -4907,7 +4907,7 @@ int UnitTest::Run() {
     if (!GTEST_FLAG(break_on_failure))
       _set_abort_behavior(
           0x0,                                    // Clear the following flags:
-          _WRITE_ABORT_MSG | _CALL_REPORTFAULT);  // pop-up window, core dump.
+          _WRITE_ABORT_MSG | _CALL_REPORTFAULT);  // pop-up surface, core dump.
 # endif
 
     // In debug mode, the Windows CRT can crash with an assertion over invalid

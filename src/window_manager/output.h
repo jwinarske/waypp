@@ -14,59 +14,68 @@
  * limitations under the License.
  */
 
-#ifndef SRC_OUTPUT_H_
-#define SRC_OUTPUT_H_
+#pragma once
 
 #include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
+#include <unordered_map>
 
 #include <wayland-client.h>
 
 
 class Output {
 public:
-    struct geometry {
-        int x;
-        int y;
-        int physical_width;
-        int physical_height;
-        int subpixel;
-        const char *make;
-        const char *model;
-        int transform;
-    };
-
-    struct mode {
-        uint32_t flags;
-        int width;
-        int height;
-        int refresh;
-    };
-
-    Output(struct wl_output *output, uint32_t version);
+    explicit Output(struct wl_output *output);
 
     ~Output();
 
-    [[nodiscard]] const struct geometry &get_geometry() const { return output_.geometry; }
+    [[nodiscard]] int32_t get_scale_factor() const { return output_.factor; }
 
-    [[nodiscard]] const struct mode &get_mode() const { return output_.mode; }
+    [[nodiscard]] enum wl_output_transform get_transform() const { return output_.geometry.transform; }
 
-    [[nodiscard]] uint32_t get_version() const { return version_; }
+    [[nodiscard]] const std::string &get_name() const { return output_.name; }
+
+    void print();
+
+    static std::string transform_to_string(enum wl_output_transform transform);
+
+    // Disallow copy and assign.
+    Output(const Output &) = delete;
+
+    Output &operator=(const Output &) = delete;
 
 private:
-    struct {
-        struct geometry geometry;
-        struct mode mode;
-        bool done;
-        std::optional<int> scale;
+    struct wl_output *wl_output_;
+
+    typedef struct {
+        struct {
+            int x;
+            int y;
+            int physical_width;
+            int physical_height;
+            int subpixel;
+            std::string make;
+            std::string model;
+            enum wl_output_transform transform;
+        } geometry;
+
+        struct {
+            uint32_t flags;
+            int width;
+            int height;
+            int refresh;
+        } mode;
+
+        int32_t factor;
         std::string name;
         std::string description;
-    } output_;
+        bool done;
 
-    uint32_t version_;
-    struct wl_output *wl_output_;
+    } OUTPUT_INFO_T;
+
+    OUTPUT_INFO_T output_;
 
     static void handle_geometry(void *data,
                                 struct wl_output *wl_output,
@@ -86,21 +95,37 @@ private:
                             int height,
                             int refresh);
 
-    static void handle_done(void *data, struct wl_output *wl_output);
+    static void handle_done(void *data,
+                            struct wl_output *wl_output);
 
     static void handle_scale(void *data,
                              struct wl_output *wl_output,
-                             int scale);
+                             int32_t factor);
 
     static void handle_name(void *data,
                             struct wl_output *wl_output,
                             const char *name);
 
-    static void handle_description(void *data,
-                                   struct wl_output *wl_output,
-                                   const char *description);
+    static void handle_desc(void *data,
+                            struct wl_output *wl_output,
+                            const char *desc);
 
-    static const struct wl_output_listener listener_;
+    static constexpr struct wl_output_listener listener_ = {
+            handle_geometry,
+            handle_mode,
+            handle_done
+#if defined(WL_OUTPUT_SCALE_SINCE_VERSION)
+            ,
+            handle_scale
+#endif
+#if defined(WL_OUTPUT_NAME_SINCE_VERSION)
+            ,
+            handle_name
+#endif
+#if defined(WL_OUTPUT_DESCRIPTION_SINCE_VERSION)
+            ,
+            handle_desc
+#endif
+    };
+
 };
-
-#endif //SRC_OUTPUT_H_

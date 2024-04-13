@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef SRC_SEAT_KEYBOARD_H_
-#define SRC_SEAT_KEYBOARD_H_
+#pragma once
 
 #include <cstdint>
 
@@ -40,46 +39,144 @@ private:
 
     int32_t key_repeat_rate_{};
 
+    /**
+     * @brief Handles the repeated key events for the Keyboard.
+     *
+     * This function is called when a key is being held down and needs to be repeated.
+     *
+     * @param keyboard A pointer to the Keyboard instance.
+     *
+     * @return TRUE if the key repeat rate is set, FALSE otherwise.
+     */
     static gboolean handle_repeat(Keyboard *keyboard);
 
-    static void handle_enter(void * /* data */,
-                             struct wl_keyboard * /* keyboard */,
-                             uint32_t /* serial */,
-                             struct wl_surface * /* surface */,
-                             struct wl_array * /* keys */);
+    /**
+     * keyboard mapping
+     *
+     * This event provides a file descriptor to the client which can
+     * be memory-mapped in read-only mode to provide a keyboard mapping
+     * description.
+     *
+     * From version 7 onwards, the fd must be mapped with MAP_PRIVATE
+     * by the recipient, as MAP_SHARED may fail.
+     * @param format keymap format
+     * @param fd keymap file descriptor
+     * @param size keymap size, in bytes
+     */
+    static void handle_keymap(void *data,
+                              struct wl_keyboard *wl_keyboard,
+                              uint32_t format,
+                              int32_t fd,
+                              uint32_t size);
 
-    static void handle_leave(void * /* data */,
-                             struct wl_keyboard * /* keyboard */,
-                             uint32_t /* serial */,
-                             struct wl_surface * /* surface */);
+    /**
+     * enter event
+     *
+     * Notification that this seat's keyboard focus is on a certain
+     * surface.
+     *
+     * The compositor must send the wl_keyboard.modifiers event after
+     * this event.
+     * @param serial serial number of the enter event
+     * @param surface surface gaining keyboard focus
+     * @param keys the currently pressed keys
+     */
+    static void handle_enter(void *data,
+                             struct wl_keyboard *wl_keyboard,
+                             uint32_t serial,
+                             struct wl_surface *surface,
+                             struct wl_array *keys);
 
-    static void handle_keymap(void * /* data */,
-                              struct wl_keyboard * /* keyboard */,
-                              uint32_t /* format */,
-                              int /* fd */,
-                              uint32_t /* size */);
+    /**
+     * leave event
+     *
+     * Notification that this seat's keyboard focus is no longer on a
+     * certain surface.
+     *
+     * The leave notification is sent before the enter notification for
+     * the new focus.
+     *
+     * After this event client must assume that all keys, including
+     * modifiers, are lifted and also it must stop key repeating if
+     * there's some going on.
+     * @param serial serial number of the leave event
+     * @param surface surface that lost keyboard focus
+     */
+    static void handle_leave(void *data,
+                             struct wl_keyboard *wl_keyboard,
+                             uint32_t serial,
+                             struct wl_surface *surface);
 
-    static void handle_key(void *  /* data */,
-                           struct wl_keyboard * /* keyboard */,
-                           uint32_t /* serial */,
-                           uint32_t /* time */,
-                           uint32_t /* key */,
-                           uint32_t /* state */);
+    /**
+     * key event
+     *
+     * A key was pressed or released. The time argument is a
+     * timestamp with millisecond granularity, with an undefined base.
+     *
+     * The key is a platform-specific key code that can be interpreted
+     * by feeding it to the keyboard mapping (see the keymap event).
+     *
+     * If this event produces a change in modifiers, then the resulting
+     * wl_keyboard.modifiers event must be sent after this event.
+     * @param serial serial number of the key event
+     * @param time timestamp with millisecond granularity
+     * @param key key that produced the event
+     * @param state physical state of the key
+     */
+    static void handle_key(void *data,
+                           struct wl_keyboard *wl_keyboard,
+                           uint32_t serial,
+                           uint32_t time,
+                           uint32_t key,
+                           uint32_t state);
 
-    static void handle_modifiers(void * /* data */,
-                                 struct wl_keyboard * /* keyboard */,
-                                 uint32_t /* serial */,
-                                 uint32_t /* mods_depressed */,
-                                 uint32_t /* mods_latched */,
-                                 uint32_t /* mods_locked */,
-                                 uint32_t /* group */);
+    /**
+     * modifier and group state
+     *
+     * Notifies clients that the modifier and/or group state has
+     * changed, and it should update its local state.
+     * @param serial serial number of the modifiers event
+     * @param mods_depressed depressed modifiers
+     * @param mods_latched latched modifiers
+     * @param mods_locked locked modifiers
+     * @param group keyboard layout
+     */
+    static void handle_modifiers(void *data,
+                                 struct wl_keyboard *wl_keyboard,
+                                 uint32_t serial,
+                                 uint32_t mods_depressed,
+                                 uint32_t mods_latched,
+                                 uint32_t mods_locked,
+                                 uint32_t group);
 
-    static void handle_repeat_info(void * /* data */,
-                                   struct wl_keyboard * /* wl_keyboard */,
-                                   int32_t /* rate */,
-                                   int32_t /* delay */);
+    /**
+     * repeat rate and delay
+     *
+     * Informs the client about the keyboard's repeat rate and delay.
+     *
+     * This event is sent as soon as the wl_keyboard object has been
+     * created, and is guaranteed to be received by the client before
+     * any key press event.
+     *
+     * Negative values for either rate or delay are illegal. A rate of
+     * zero will disable any repeating (regardless of the value of
+     * delay).
+     *
+     * This event can be sent later on as well with a new value if
+     * necessary, so clients should continue listening for the event
+     * past the creation of wl_keyboard.
+     * @param rate the rate of repeating keys in characters per second
+     * @param delay delay in milliseconds since key down until repeating starts
+     * @since 4
+     */
+    static void handle_repeat_info(void *data,
+                                   struct wl_keyboard *wl_keyboard,
+                                   int32_t rate,
+                                   int32_t delay);
 
-    static const struct wl_keyboard_listener listener_;
+    /**
+     * @ingroup iface_wl_keyboard
+     * @struct wl_keyboard_listener
+     */
+    static const struct wl_keyboard_listener keyboard_listener_;
 };
-
-#endif // SRC_SEAT_KEYBOARD_H_

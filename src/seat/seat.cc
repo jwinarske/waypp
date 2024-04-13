@@ -16,7 +16,7 @@
 
 #include "seat.h"
 
-#include <cassert>
+#include "logging.h"
 
 /**
  * @class Seat
@@ -25,13 +25,8 @@
  * The Seat class provides a representation of a seat in a Wayland compositor. It is used to handle input events from
  * devices such as keyboards, pointers, and touchscreens.
  */
-Seat::Seat(struct wl_seat *seat, struct wl_shm *shm, struct wl_compositor *compositor, bool enable_cursor,
-           uint32_t version) :
+Seat::Seat(struct wl_seat *seat) :
         wl_seat_(seat),
-        wl_shm_(shm),
-        wl_compositor_(compositor),
-        enable_cursor_(enable_cursor),
-        version_(version),
         capabilities_() {
     wl_seat_add_listener(seat, &listener_, this);
 }
@@ -47,12 +42,10 @@ void Seat::handle_capabilities(void *data,
                                struct wl_seat *seat,
                                uint32_t caps) {
     const auto obj = static_cast<Seat *>(data);
-    assert(obj->wl_seat_ == seat);
     obj->capabilities_ = caps;
 
     if (caps & WL_SEAT_CAPABILITY_POINTER && !obj->pointer_) {
-        obj->pointer_ = std::make_unique<Pointer>(wl_seat_get_pointer(seat), obj->wl_shm_, obj->wl_compositor_,
-                                                  obj->enable_cursor_);
+        obj->pointer_ = std::make_unique<Pointer>(wl_seat_get_pointer(seat));
     } else if (!(caps & WL_SEAT_CAPABILITY_POINTER) && obj->pointer_) {
         obj->pointer_.reset();
     }
@@ -85,11 +78,9 @@ void Seat::handle_name(void *data,
                        struct wl_seat *seat,
                        const char *name) {
     const auto obj = static_cast<Seat *>(data);
-    assert(obj->wl_seat_ == seat);
+    if (obj->wl_seat_ != seat) {
+        return;
+    }
     obj->name_ = name;
+    SPDLOG_DEBUG("Seat: {}", obj->name_);
 }
-
-const struct wl_seat_listener Seat::listener_ = {
-        .capabilities = handle_capabilities,
-        .name = handle_name,
-};

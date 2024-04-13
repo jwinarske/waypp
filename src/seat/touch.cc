@@ -16,15 +16,16 @@
 
 #include "touch.h"
 
-#include <iostream>
+#include "logging.h"
 
 /**
  * @class Touch
  *
  * The Touch class represents a touch input device.
  */
-Touch::Touch(struct wl_touch *touch) : touch_(touch) {
-    wl_touch_add_listener(touch, &listener_, this);
+Touch::Touch(struct wl_touch *wl_touch) : touch_(wl_touch) {
+    SPDLOG_DEBUG("Touch");
+    wl_touch_add_listener(wl_touch, &listener_, this);
 }
 
 /**
@@ -34,7 +35,6 @@ Touch::Touch(struct wl_touch *touch) : touch_(touch) {
  */
 Touch::~Touch() {
     wl_touch_release(touch_);
-    wl_touch_destroy(touch_);
 }
 
 /**
@@ -51,15 +51,19 @@ Touch::~Touch() {
  * @param x_w The X coordinate of the touch point in wl_fixed_t format.
  * @param y_w The Y coordinate of the touch point in wl_fixed_t format.
  */
-void Touch::handle_down(void * /* data */,
-                        struct wl_touch * /* wl_touch */,
+void Touch::handle_down(void *data,
+                        struct wl_touch *touch,
                         uint32_t /* serial */,
                         uint32_t /* time */,
                         struct wl_surface * /* surface */,
                         int32_t /* id */,
                         wl_fixed_t /* x_w */,
                         wl_fixed_t /* y_w */) {
-    std::cerr << "Touch::handle_down" << std::endl;
+    const auto obj = static_cast<Touch *>(data);
+    if (obj->touch_ != touch) {
+        return;
+    }
+    SPDLOG_DEBUG("Touch::handle_down");
 }
 
 /**
@@ -75,12 +79,16 @@ void Touch::handle_down(void * /* data */,
  *
  * @return None.
  */
-void Touch::handle_up(void * /* data */,
-                      struct wl_touch * /* wl_touch */,
+void Touch::handle_up(void *data,
+                      struct wl_touch *touch,
                       uint32_t /* serial */,
                       uint32_t /* time */,
                       int32_t /* id */) {
-    std::cerr << "Touch::handle_up" << std::endl;
+    const auto obj = static_cast<Touch *>(data);
+    if (obj->touch_ != touch) {
+        return;
+    }
+    SPDLOG_DEBUG("Touch::handle_up");
 }
 
 /**
@@ -98,13 +106,17 @@ void Touch::handle_up(void * /* data */,
  *
  * @return None.
  */
-void Touch::handle_motion(void * /* data */,
-                          struct wl_touch * /* wl_touch */,
+void Touch::handle_motion(void *data,
+                          struct wl_touch *touch,
                           uint32_t /* time */,
                           int32_t /* id */,
                           wl_fixed_t /* x_w */,
                           wl_fixed_t /* y_w */) {
-    std::cerr << "Touch::handle_motion" << std::endl;
+    const auto obj = static_cast<Touch *>(data);
+    if (obj->touch_ != touch) {
+        return;
+    }
+    SPDLOG_DEBUG("Touch::handle_motion");
 }
 
 /**
@@ -118,8 +130,12 @@ void Touch::handle_motion(void * /* data */,
  *
  * @return void
  */
-void Touch::handle_cancel(void * /* data */, struct wl_touch * /* wl_touch */) {
-    std::cerr << "Touch::handle_cancel" << std::endl;
+void Touch::handle_cancel(void *data, struct wl_touch *touch) {
+    const auto obj = static_cast<Touch *>(data);
+    if (obj->touch_ != touch) {
+        return;
+    }
+    SPDLOG_DEBUG("Touch::handle_cancel");
 }
 
 /**
@@ -128,15 +144,11 @@ void Touch::handle_cancel(void * /* data */, struct wl_touch * /* wl_touch */) {
  *
  * It handles touch events from a wl_touch object and provides callback functions for various touch events.
  */
-void Touch::handle_frame(void * /* data */,
-                         struct wl_touch * /* wl_touch */) {
-    std::cerr << "Touch::handle_frame" << std::endl;
+void Touch::handle_frame(void *data,
+                         struct wl_touch *touch) {
+    const auto obj = static_cast<Touch *>(data);
+    if (obj->touch_ != touch) {
+        return;
+    }
+    SPDLOG_DEBUG("Touch::handle_frame");
 }
-
-const struct wl_touch_listener Touch::listener_ = {
-        .down = handle_down,
-        .up = handle_up,
-        .motion = handle_motion,
-        .frame = handle_frame,
-        .cancel = handle_cancel,
-};

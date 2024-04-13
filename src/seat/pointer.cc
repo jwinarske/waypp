@@ -15,27 +15,22 @@
  */
 
 #include "pointer.h"
-#include "xdg-shell-client-protocol.h"
-
-#include <iostream>
+#include "wayland-protocols.h"
 
 #include <linux/input-event-codes.h>
 #include <wayland-client.h>
+
+#include "logging.h"
 
 /**
  * @brief Pointer class represents a Wayland pointer device.
  *
  * The Pointer class is responsible for handling Wayland pointer events and managing the cursor.
  */
-Pointer::Pointer(struct wl_pointer *pointer, struct wl_shm *shm, struct wl_compositor *compositor, bool enable_cursor) :
-        pointer_(pointer),
-        shm_(shm),
-        enable_cursor_(enable_cursor) {
-    wl_pointer_add_listener(pointer, &listener_, this);
-    if (enable_cursor_) {
-        cursor_ = std::make_unique<Cursor>(this, pointer_, shm_, compositor, enable_cursor_);
-        cursor_->enable(0, "basic");
-    }
+Pointer::Pointer(struct wl_pointer *pointer) :
+        pointer_(pointer) {
+    SPDLOG_DEBUG("Pointer");
+    wl_pointer_add_listener(pointer, &pointer_listener_, this);
 }
 
 /**
@@ -50,11 +45,7 @@ Pointer::Pointer(struct wl_pointer *pointer, struct wl_shm *shm, struct wl_compo
  * @param enable_cursor A boolean flag indicating whether to enable cursor.
  */
 Pointer::~Pointer() {
-    if (cursor_)
-        cursor_.reset();
-
     wl_pointer_release(pointer_);
-    wl_pointer_destroy(pointer_);
 }
 
 /**
@@ -65,13 +56,17 @@ Pointer::~Pointer() {
  * such as enter, leave, motion, button, axis, frame, axis source, axis stop,
  * and axis discrete events.
  */
-void Pointer::handle_enter(void * /* data */,
-                           struct wl_pointer * /* pointer */,
+void Pointer::handle_enter(void *data,
+                           struct wl_pointer *pointer,
                            uint32_t /* serial */,
                            struct wl_surface * /* surface */,
                            wl_fixed_t /* sx */,
                            wl_fixed_t /* sy */) {
-    std::cerr << "Pointer::handle_enter" << std::endl;
+    auto obj = static_cast<Pointer *>(data);
+    if (obj->pointer_ != pointer) {
+        return;
+    }
+    SPDLOG_DEBUG("Pointer::handle_enter");
 }
 
 /**
@@ -85,11 +80,15 @@ void Pointer::handle_enter(void * /* data */,
  * @param serial The serial number of the event.
  * @param surface The surface that the pointer left.
  */
-void Pointer::handle_leave(void * /* data */,
-                           struct wl_pointer * /* pointer */,
+void Pointer::handle_leave(void *data,
+                           struct wl_pointer *pointer,
                            uint32_t /* serial */,
                            struct wl_surface * /* surface */) {
-    std::cerr << "Pointer::handle_leave" << std::endl;
+    auto obj = static_cast<Pointer *>(data);
+    if (obj->pointer_ != pointer) {
+        return;
+    }
+    SPDLOG_DEBUG("Pointer::handle_leave");
 }
 
 /**
@@ -104,12 +103,16 @@ void Pointer::handle_leave(void * /* data */,
  * @param sx The X coordinate of the pointer's absolute position.
  * @param sy The Y coordinate of the pointer's absolute position.
  */
-void Pointer::handle_motion(void * /* data */,
-                            struct wl_pointer * /* pointer */,
+void Pointer::handle_motion(void *data,
+                            struct wl_pointer *pointer,
                             uint32_t /* time */,
                             wl_fixed_t /* sx */,
                             wl_fixed_t /* sy */) {
-    std::cerr << "Pointer::handle_motion" << std::endl;
+    auto obj = static_cast<Pointer *>(data);
+    if (obj->pointer_ != pointer) {
+        return;
+    }
+    SPDLOG_DEBUG("Pointer::handle_motion");
 }
 
 /**
@@ -163,13 +166,17 @@ enum xdg_toplevel_resize_edge component_edge(const int width, const int height,
  * @param button The button that triggered the event
  * @param state The state of the button (pressed or released)
  */
-void Pointer::handle_button(void * /* data */,
-                            struct wl_pointer * /* wl_pointer */,
+void Pointer::handle_button(void *data,
+                            struct wl_pointer *pointer,
                             uint32_t /* serial */,
                             uint32_t /* time */,
                             uint32_t button,
                             uint32_t state) {
-    std::cerr << "Pointer::handle_button" << std::endl;
+    auto obj = static_cast<Pointer *>(data);
+    if (obj->pointer_ != pointer) {
+        return;
+    }
+    SPDLOG_DEBUG("Pointer::handle_button");
     if (button == BTN_LEFT) {
         if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
         }
@@ -189,12 +196,16 @@ void Pointer::handle_button(void * /* data */,
  *
  * @details Prints "Pointer::handle_axis" to the standard error output.
  */
-void Pointer::handle_axis(void * /* data */,
-                          struct wl_pointer * /* wl_pointer */,
+void Pointer::handle_axis(void *data,
+                          struct wl_pointer *pointer,
                           uint32_t /* time */,
                           uint32_t /* axis */,
                           wl_fixed_t /* value */) {
-    std::cerr << "Pointer::handle_axis" << std::endl;
+    auto obj = static_cast<Pointer *>(data);
+    if (obj->pointer_ != pointer) {
+        return;
+    }
+    SPDLOG_DEBUG("Pointer::handle_axis");
 }
 
 /**
@@ -205,9 +216,13 @@ void Pointer::handle_axis(void * /* data */,
  * @param data The user data associated with the pointer.
  * @param wl_pointer The pointer object.
  */
-void Pointer::handle_frame(void * /* data */,
-                           struct wl_pointer * /* wl_pointer */) {
-    std::cerr << "Pointer::handle_frame" << std::endl;
+void Pointer::handle_frame(void *data,
+                           struct wl_pointer *pointer) {
+    auto obj = static_cast<Pointer *>(data);
+    if (obj->pointer_ != pointer) {
+        return;
+    }
+    SPDLOG_DEBUG("Pointer::handle_frame");
 }
 
 /**
@@ -220,10 +235,14 @@ void Pointer::handle_frame(void * /* data */,
  * This function is called when the axis source event is received for the Pointer object.
  * It prints a message to the standard error stream.
  */
-void Pointer::handle_axis_source(void * /* data */,
-                                 struct wl_pointer * /* wl_pointer */,
+void Pointer::handle_axis_source(void *data,
+                                 struct wl_pointer *pointer,
                                  uint32_t /* axis_source */) {
-    std::cerr << "Pointer::handle_axis_source" << std::endl;
+    auto obj = static_cast<Pointer *>(data);
+    if (obj->pointer_ != pointer) {
+        return;
+    }
+    SPDLOG_DEBUG("Pointer::handle_axis_source");
 }
 
 /**
@@ -236,11 +255,15 @@ void Pointer::handle_axis_source(void * /* data */,
  * @param time      The timestamp of the event.
  * @param axis      The axis that stopped.
  */
-void Pointer::handle_axis_stop(void * /* data */,
-                               struct wl_pointer * /* wl_pointer */,
+void Pointer::handle_axis_stop(void *data,
+                               struct wl_pointer *pointer,
                                uint32_t /* time */,
                                uint32_t /* axis */) {
-    std::cerr << "Pointer::handle_axis_stop" << std::endl;
+    auto obj = static_cast<Pointer *>(data);
+    if (obj->pointer_ != pointer) {
+        return;
+    }
+    SPDLOG_DEBUG("Pointer::handle_axis_stop");
 }
 
 /**
@@ -253,21 +276,13 @@ void Pointer::handle_axis_stop(void * /* data */,
  * @param axis The axis value.
  * @param discrete The discrete value.
  */
-void Pointer::handle_axis_discrete(void * /* data */,
-                                   struct wl_pointer * /* wl_pointer */,
+void Pointer::handle_axis_discrete(void *data,
+                                   struct wl_pointer *pointer,
                                    uint32_t /* axis */,
                                    int32_t /* discrete */) {
-    std::cerr << "Pointer::handle_axis_discrete" << std::endl;
+    auto obj = static_cast<Pointer *>(data);
+    if (obj->pointer_ != pointer) {
+        return;
+    }
+    SPDLOG_DEBUG("Pointer::handle_axis_discrete");
 }
-
-const struct wl_pointer_listener Pointer::listener_ = {
-        .enter = handle_enter,
-        .leave = handle_leave,
-        .motion = handle_motion,
-        .button = handle_button,
-        .axis = handle_axis,
-        .frame = handle_frame,
-        .axis_source = handle_axis_source,
-        .axis_stop = handle_axis_stop,
-        .axis_discrete = handle_axis_discrete,
-};

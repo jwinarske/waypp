@@ -14,83 +14,77 @@
  * limitations under the License.
  */
 
-#ifndef SRC_SEAT_POINTER_H_
-#define SRC_SEAT_POINTER_H_
+#pragma once
 
 #include <wayland-client.h>
 
-#include "cursor.h"
-
-class Cursor;
-
 class Pointer {
 public:
-    explicit Pointer(struct wl_pointer *pointer_, struct wl_shm *shm, struct wl_compositor *compositor,
-                     bool enable_cursor = true);
+    explicit Pointer(struct wl_pointer *pointer);
 
     ~Pointer();
 
-    friend class Cursor;
-
 private:
     struct wl_pointer *pointer_;
-    struct wl_shm *shm_;
-
-    bool enable_cursor_{};
-    std::unique_ptr<Cursor> cursor_;
     uint32_t serial_{};
 
-    [[nodiscard]] uint32_t get_serial() const { return serial_; }
+    static void handle_enter(void *data,
+                             struct wl_pointer *pointer,
+                             uint32_t serial,
+                             struct wl_surface *surface,
+                             wl_fixed_t sx,
+                             wl_fixed_t sy);
 
-    static void handle_enter(void * /* data */,
-                             struct wl_pointer * /* pointer */,
-                             uint32_t /* serial */,
-                             struct wl_surface * /* surface */,
-                             wl_fixed_t /* sx */,
-                             wl_fixed_t /* sy */);
+    static void handle_leave(void *data,
+                             struct wl_pointer *pointer,
+                             uint32_t serial,
+                             struct wl_surface *surface);
 
-    static void handle_leave(void * /* data */,
-                             struct wl_pointer * /* pointer */,
-                             uint32_t /* serial */,
-                             struct wl_surface * /* surface */);
+    static void handle_motion(void *data,
+                              struct wl_pointer *pointer,
+                              uint32_t time,
+                              wl_fixed_t sx,
+                              wl_fixed_t sy);
 
-    static void handle_motion(void * /* data */,
-                              struct wl_pointer * /* pointer */,
-                              uint32_t /* time */,
-                              wl_fixed_t /* sx */,
-                              wl_fixed_t /* sy */);
+    static void handle_button(void *data,
+                              struct wl_pointer *wl_pointer,
+                              uint32_t serial,
+                              uint32_t time,
+                              uint32_t button,
+                              uint32_t state);
 
-    static void handle_button(void * /*  data */,
-                              struct wl_pointer * /* wl_pointer */,
-                              uint32_t /* serial */,
-                              uint32_t /* time */,
-                              uint32_t /* button */,
-                              uint32_t /* state */);
+    static void handle_axis(void *data,
+                            struct wl_pointer *wl_pointer,
+                            uint32_t time,
+                            uint32_t axis,
+                            wl_fixed_t value);
 
-    static void handle_axis(void * /* data */,
-                            struct wl_pointer * /* wl_pointer */,
-                            uint32_t /* time */,
-                            uint32_t /* axis */,
-                            wl_fixed_t /* value */);
+    static void handle_frame(void *data,
+                             struct wl_pointer *wl_pointer);
 
-    static void handle_frame(void * /* data */,
-                             struct wl_pointer * /* wl_pointer */);
+    static void handle_axis_source(void *data,
+                                   struct wl_pointer *wl_pointer,
+                                   uint32_t axis_source);
 
-    static void handle_axis_source(void * /* data */,
-                                   struct wl_pointer * /* wl_pointer */,
-                                   uint32_t /* axis_source */);
+    static void handle_axis_stop(void *data,
+                                 struct wl_pointer *wl_pointer,
+                                 uint32_t time,
+                                 uint32_t axis);
 
-    static void handle_axis_stop(void * /* data */,
-                                 struct wl_pointer * /* wl_pointer */,
-                                 uint32_t /* time */,
-                                 uint32_t /* axis */);
+    static void handle_axis_discrete(void *data,
+                                     struct wl_pointer *wl_pointer,
+                                     uint32_t axis,
+                                     int32_t discrete);
 
-    static void handle_axis_discrete(void * /* data */,
-                                     struct wl_pointer * /* wl_pointer */,
-                                     uint32_t /* axis */,
-                                     int32_t /* discrete */);
-
-    static const struct wl_pointer_listener listener_;
+    static constexpr struct wl_pointer_listener pointer_listener_ = {
+            .enter = handle_enter,
+            .leave = handle_leave,
+            .motion = handle_motion,
+            .button = handle_button,
+            .axis = handle_axis,
+            .frame = handle_frame,
+            .axis_source = handle_axis_source,
+            .axis_stop = handle_axis_stop,
+            .axis_discrete = handle_axis_discrete,
+    };
 };
-
-#endif // SRC_SEAT_POINTER_H_
