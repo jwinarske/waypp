@@ -19,13 +19,27 @@ pkg_check_modules(GLIB REQUIRED IMPORTED_TARGET glib-2.0)
 pkg_check_modules(CAIRO REQUIRED IMPORTED_TARGET cairo)
 find_package(OpenGL REQUIRED COMPONENTS EGL)
 
+include(CheckFunctionExists)
+check_function_exists(memfd_create HAVE_MEMFD_CREATE)
+check_function_exists(posix_fallocate HAVE_POSIX_FALLOCATE)
+check_function_exists(mkostemp HAVE_MKOSTEMP)
+if (HAVE_MEMFD_CREATE)
+    add_compile_definitions(HAVE_MEMFD_CREATE)
+endif ()
+if (HAVE_POSIX_FALLOCATE)
+    add_compile_definitions(HAVE_POSIX_FALLOCATE)
+endif ()
+if (HAVE_MKOSTEMP)
+    add_compile_definitions(HAVE_MKOSTEMP)
+endif ()
+
 set(WINDOW_MANAGER_SRC
         window_manager/agl_shell.cc
         window_manager/ivi_window_manager.cc
         window_manager/output.cc
         window_manager/registrar.cc
         window_manager/window_manager.cc
-        window_manager/xdg_toplevel.cc
+        window/xdg_toplevel.cc
         window_manager/xdg_window_manager.cc
 )
 
@@ -38,6 +52,8 @@ set(SEAT_SRC
 )
 
 set(WINDOW_SRC
+        window/anonymous_file.cc
+        window/buffer.cc
         window/egl.cc
         window/window.cc
 )

@@ -50,7 +50,7 @@ WindowManager::WindowManager(GMainContext *context,
         }
         cursor_.cursor = std::make_unique<Cursor>(get_shm().value(), get_compositor());
     }
-    //    start_frames();
+    //    start_frame_callbacks();
     SPDLOG_TRACE("--WindowManager::WindowManager()");
 }
 
@@ -58,7 +58,7 @@ WindowManager::WindowManager(GMainContext *context,
  * @brief Destructor for the WindowManager class.
  *
  * This destructor stops rendering frames for all windows controlled by the WindowManager.
- * It calls the stop_frames() function to stop rendering frames.
+ * It calls the stop_frame_callbacks() function to stop rendering frames.
  */
 WindowManager::~WindowManager() {
     SPDLOG_TRACE("++WindowManager::~WindowManager()");

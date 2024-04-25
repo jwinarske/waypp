@@ -39,11 +39,9 @@ public:
 
     [[maybe_unused]] [[nodiscard]] int dispatch(int timeout) const;
 
-    [[nodiscard]] int dispatch_pending() const {
-        return wl_display_dispatch_pending(
-                get_display()
-                );
-    }
+    [[nodiscard]] int dispatch_pending() const { return wl_display_dispatch_pending(wl_display_); }
+
+    [[nodiscard]] int display_dispatch() const { return wl_display_dispatch(wl_display_); }
 
     // Disallow copy and assign.
     WindowManager(const WindowManager &) = delete;
@@ -56,8 +54,6 @@ private:
 
     GMainContext *context_;
 
-    bool needs_buffer_geometry_update_{};
-
     struct {
         int width;
         int height;
@@ -65,7 +61,7 @@ private:
 
     const std::map<struct wl_output *, std::unique_ptr<Output>> &outputs_;
 
-    struct wl_display *wl_display_{};
+    struct wl_display *wl_display_;
 
     struct {
         bool enable;

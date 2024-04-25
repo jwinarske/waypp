@@ -5,25 +5,25 @@
 
 #include "logging.h"
 
-Window::Window(WindowManager *wm, struct wl_compositor *wl_compositor,
-               const std::optional<struct wp_viewporter *> &wl_viewporter,
-               const std::optional<struct wp_fractional_scale_manager_v1 *> &fractional_scale_manager,
-               const std::optional<struct wp_tearing_control_manager_v1 *> &tearing_control_manager,
-               const std::map<struct wl_output *, std::unique_ptr<Output>> &outputs,
-               const char *name, const std::function<void(void *, const uint32_t)> &draw_frame_callback,
-               int width, int height, wl_output_transform buffer_transform, bool fullscreen,
-               bool maximized, bool fullscreen_ratio, bool tearing,
-               const int32_t *context_attribs, size_t context_attribs_size,
-               const int32_t *config_attribs, size_t config_attribs_size,
-               int buffer_bpp, int swap_interval) :
-        wm_(wm), buffer_transform_(buffer_transform), draw_frame_callback_(draw_frame_callback),
+Window::Window(WindowManager *wm,
+               const char *name, int buffer_count, uint32_t buffer_format,
+               const std::function<void(void *, const uint32_t)> &frame_callback, int width,
+               int height, bool fullscreen, bool maximized, bool fullscreen_ratio, bool tearing, int buffer_bpp,
+               int swap_interval, const int32_t *context_attribs, size_t context_attribs_size,
+               const int32_t *config_attribs, size_t config_attribs_size) :
+        wm_(wm), buffer_transform_(WL_OUTPUT_TRANSFORM_NORMAL), frame_callback_(frame_callback),
         name_(name), fullscreen_(fullscreen), maximized_(maximized), fullscreen_ratio_(fullscreen_ratio),
-        outputs_(outputs), logical_size_{.width=width, .height=height},
+        outputs_(wm->get_outputs()), valid_(true), logical_size_{.width=width, .height=height},
         buffer_bpp_(buffer_bpp), swap_interval_(swap_interval), buffer_size_{.width=width, .height=height},
-        window_size_{.width=buffer_size_.width, .height=buffer_size_.height}, needs_buffer_geometry_update_(false) {
+        window_size_{.width=buffer_size_.width, .height=buffer_size_.height}, init_buffers_(false),
+        needs_buffer_geometry_update_(false),
+        buffer_count_(buffer_count), buffer_format_(buffer_format) {
+    SPDLOG_DEBUG("[Window] Window()");
 
-    wl_surface_ = wl_compositor_create_surface(wl_compositor);
+    wl_surface_ = wl_compositor_create_surface(wm->get_compositor());
     wl_surface_add_listener(wl_surface_, &surface_listener_, this);
+
+    buffers_.reserve(static_cast<unsigned long>(buffer_count));
 
     if (context_attribs_size && config_attribs_size) {
 
@@ -32,24 +32,25 @@ Window::Window(WindowManager *wm, struct wl_compositor *wl_compositor,
         egl_->set_swap_interval(swap_interval);
     }
 
-    if (wl_viewporter.has_value()) {
+    if (wm->get_viewporter().has_value()) {
 #if defined(WAYLAND_PROTOCOL_HAS_VIEWPORTER)
-        viewport_ = wp_viewporter_get_viewport(wl_viewporter.value(), wl_surface_);
+        viewport_ = wp_viewporter_get_viewport(wm->get_viewporter().value(), wl_surface_);
 #endif
     }
 
-    if (fractional_scale_manager.has_value()) {
+    if (wm->get_fractional_scale_manager().has_value()) {
 #if defined(WAYLAND_PROTOCOL_HAS_FRACTIONAL_SCALE)
-        fractional_scale_ = wp_fractional_scale_manager_v1_get_fractional_scale(fractional_scale_manager.value(),
-                                                                                wl_surface_);
+        fractional_scale_ = wp_fractional_scale_manager_v1_get_fractional_scale(
+                wm->get_fractional_scale_manager().value(),
+                wl_surface_);
         wp_fractional_scale_v1_add_listener(fractional_scale_, &fractional_scale_listener_, this);
 #endif
     }
 
-    if (tearing_control_manager.has_value()) {
+    if (wm->get_tearing_control_manager().has_value()) {
 #if defined(WAYLAND_PROTOCOL_HAS_TEARING_CONTROL)
         tearing_control_ = wp_tearing_control_manager_v1_get_tearing_control(
-                tearing_control_manager.value(), wl_surface_);
+                wm->get_tearing_control_manager().value(), wl_surface_);
         if (tearing) {
             SPDLOG_DEBUG("[Surface] Set Presentation Hint: ASYNC");
             wp_tearing_control_v1_set_presentation_hint(tearing_control_,
@@ -66,6 +67,7 @@ Window::Window(WindowManager *wm, struct wl_compositor *wl_compositor,
 }
 
 Window::~Window() {
+    SPDLOG_DEBUG("[Window] ~Window()");
     if (viewport_) {
 #if defined(WAYLAND_PROTOCOL_HAS_VIEWPORTER)
         wp_viewport_destroy(viewport_);
@@ -85,6 +87,7 @@ Window::~Window() {
 }
 
 void Window::update_buffer_geometry() {
+    SPDLOG_DEBUG("[Window] update_buffer_geometry");
     if (!needs_buffer_geometry_update_) {
         return;
     }
@@ -180,6 +183,7 @@ void Window::update_buffer_geometry() {
 void Window::handle_preferred_scale(void *data,
                                     struct wp_fractional_scale_v1 *wp_fractional_scale_v1,
                                     uint32_t scale) {
+    SPDLOG_DEBUG("[Window] handle_preferred_scale()");
     auto *w = static_cast<Window *>(data);
     if (w->fractional_scale_ != wp_fractional_scale_v1) {
         return;
@@ -191,6 +195,7 @@ void Window::handle_preferred_scale(void *data,
 void Window::handle_surface_enter(void *data,
                                   struct wl_surface *wl_surface,
                                   struct wl_output *wl_output) {
+    SPDLOG_DEBUG("[Window] handle_surface_enter()");
     auto obj = static_cast<Window *>(data);
     if (obj->wl_surface_ != wl_surface) {
         return;
@@ -202,6 +207,7 @@ void Window::handle_surface_enter(void *data,
 void Window::handle_surface_leave(void *data,
                                   struct wl_surface *wl_surface,
                                   struct wl_output *output) {
+    SPDLOG_DEBUG("[Window] handle_surface_leave()");
     auto obj = static_cast<Window *>(data);
     if (obj->wl_surface_ != wl_surface) {
         return;
@@ -221,7 +227,8 @@ void Window::handle_surface_leave(void *data,
  *
  * @note This function assumes that the surface has been initialized properly.
  */
-void Window::start_frames() {
+void Window::start_frame_callbacks() {
+    SPDLOG_DEBUG("[Window] start_frame_callbacks");
     handle_frame_callback(this, nullptr, 0);
 }
 
@@ -229,9 +236,11 @@ void Window::start_frames() {
  * Stops the frame rendering by destroying the wl_callback object if it exists.
  * This function is intended to be called from outside the Window class.
  */
-void Window::stop_frames() {
+void Window::stop_frame_callbacks() {
+    SPDLOG_DEBUG("[Window] stop_frame_callbacks");
     if (wl_callback_) {
         wl_callback_destroy(wl_callback_);
+        wl_callback_ = nullptr;
     }
 }
 
@@ -257,8 +266,8 @@ void Window::handle_frame_callback(void *data,
         wl_callback_destroy(callback);
     }
 
-    if (obj->draw_frame_callback_) {
-        obj->draw_frame_callback_(data, time);
+    if (obj->frame_callback_) {
+        obj->frame_callback_(data, time);
     }
 
     if (obj->wl_surface_) {
@@ -273,6 +282,7 @@ void Window::handle_frame_callback(void *data,
 void Window::handle_preferred_buffer_scale(void *data,
                                            struct wl_surface *wl_surface,
                                            int32_t factor) {
+    SPDLOG_DEBUG("[Window] handle_preferred_buffer_scale()");
     auto w = static_cast<Window *>(data);
     if (w->wl_surface_ != wl_surface) {
         return;
@@ -284,6 +294,7 @@ void Window::handle_preferred_buffer_scale(void *data,
 void Window::handle_preferred_buffer_transform(void *data,
                                                struct wl_surface *wl_surface,
                                                uint32_t transform) {
+    SPDLOG_DEBUG("[Window] handle_preferred_buffer_transform()");
     auto w = static_cast<Window *>(data);
     if (w->wl_surface_ != wl_surface) {
         return;
@@ -315,4 +326,57 @@ void Window::swap_buffers() {
     if (egl_) {
         egl_->swap_buffers();
     }
+}
+
+Buffer *Window::pick_free_buffer() {
+    Buffer *res = nullptr;
+    for (auto &b: buffers_) {
+        if (!b->is_busy()) {
+            res = b.get();
+            break;
+        }
+    }
+    return res;
+}
+
+void Window::prune_old_released_buffers() {
+#if 0
+    long i = 0;
+    for (auto &b: buffers_) {
+        if (!b->is_busy() &&
+            b->get_width() != window_size_.width ||
+            b->get_height() != window_size_.height) {
+            b.reset();
+            buffers_.erase(buffers_.begin() + i);
+        }
+        i++;
+    }
+#endif
+}
+
+Buffer *Window::next_buffer() {
+    if (init_buffers_) {
+        for (int i = 0; i < buffer_count_; i++) {
+            buffers_.emplace_back(std::make_unique<Buffer>(wm_->get_shm().value(), buffer_format_));
+        }
+        init_buffers_ = false;
+    }
+
+    auto buffer = pick_free_buffer();
+
+    if (!buffer)
+        return nullptr;
+
+    int ret = 0;
+    if (!buffer->get_wl_buffer()) {
+        ret = buffer->create_shm_buffer(window_size_.width, window_size_.height);
+
+        if (ret < 0)
+            return nullptr;
+
+        /* paint the padding */
+        memset(buffer->get_shm_data(), 0xff, window_size_.width * window_size_.height * 4);
+    }
+
+    return buffer;
 }

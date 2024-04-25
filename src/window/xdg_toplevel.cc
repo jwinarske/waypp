@@ -8,30 +8,26 @@
        (const char*)pos < ((const char*)(array)->data + (array)->size); \
        (pos)++)
 
-XdgTopLevel::XdgTopLevel(WindowManager *wm,
-                         struct wl_compositor *wl_compositor,
-                         const std::optional<struct wp_viewporter *> &viewporter,
-                         const std::optional<struct wp_fractional_scale_manager_v1 *> &fractional_scale_manager,
-                         const std::optional<struct wp_tearing_control_manager_v1 *> &tearing_control_manager,
-                         const std::map<struct wl_output *, std::unique_ptr<Output>> &outputs,
-                         const char *name, int width, int height, wl_output_transform buffer_transform,
-                         bool fullscreen, bool maximized, bool fullscreen_ratio, bool tearing,
-                         const std::function<void(void *, const uint32_t)> &draw_frame_callback,
+XdgTopLevel::XdgTopLevel(WindowManager *wm, const char *name, int width, int height, int buffer_count,
+                         uint32_t buffer_format, bool fullscreen, bool maximized, bool fullscreen_ratio, bool tearing,
+                         const std::function<void(void *, const uint32_t)> &frame_callback,
+                         int buffer_bpp, int swap_interval,
                          const int32_t *context_attribs, size_t context_attribs_size,
-                         const int32_t *config_attribs, size_t config_attribs_size,
-                         int buffer_bpp, int swap_interval) : Window(
-        wm, wl_compositor, viewporter, fractional_scale_manager,
-        tearing_control_manager, outputs, name, draw_frame_callback, width, height, buffer_transform, fullscreen,
-        maximized, fullscreen_ratio, tearing, context_attribs, context_attribs_size, config_attribs,
-        config_attribs_size, buffer_bpp, swap_interval), wm_(wm) {
+                         const int32_t *config_attribs, size_t config_attribs_size) : Window(
+        wm, name, buffer_count, buffer_format, frame_callback, width, height, fullscreen,
+        maximized, fullscreen_ratio, tearing, buffer_bpp, swap_interval,
+        context_attribs, context_attribs_size, config_attribs, config_attribs_size), wm_(wm) {
     auto xwm = reinterpret_cast<XdgWindowManager *>(wm_);
     auto xdg_wm_base = xwm->get_xdg_wm_base();
     if (!xdg_wm_base.has_value()) {
         spdlog::critical("xdg_wm_base is not available");
         exit(EXIT_FAILURE);
     }
-    SPDLOG_DEBUG("XDG Toplevel Surface: {}", fmt::ptr(get_surface()));
-    xdg_surface_ = xdg_wm_base_get_xdg_surface(xdg_wm_base.value(), get_surface());
+
+    window_size_.width = width;
+    window_size_.height = height;
+
+    xdg_surface_ = xdg_wm_base_get_xdg_surface(xdg_wm_base.value(), wl_surface_);
     xdg_surface_add_listener(xdg_surface_, &xdg_surface_listener_, this);
 
     xdg_toplevel_ = xdg_surface_get_toplevel(xdg_surface_);
@@ -47,7 +43,8 @@ XdgTopLevel::XdgTopLevel(WindowManager *wm,
     }
 
     wait_for_configure_ = true;
-    wl_surface_commit(get_surface());
+    wl_surface_damage(wl_surface_, 0, 0, width, height);
+    wl_surface_commit(wl_surface_);
 
     // this makes the start-up from the beginning with the correct dimensions
     // like starting as maximized/fullscreen, rather than starting up as floating
@@ -108,65 +105,59 @@ void XdgTopLevel::handle_xdg_surface_configure(
  * @param height The height of the surface.
  * @param states An array of states associated with the surface.
  */
-void XdgTopLevel::handle_toplevel_configure(
+void XdgTopLevel::handle_xdg_toplevel_configure(
         void *data,
         struct xdg_toplevel *toplevel,
         int32_t width,
         int32_t height,
         struct wl_array *states) {
 
-    if (width == 0 && height == 0) {
+    auto *tl = static_cast<XdgTopLevel *>(data);
+    if (tl->xdg_toplevel_ != toplevel) {
         return;
     }
 
-    auto *w = static_cast<XdgTopLevel *>(data);
-    if (w->xdg_toplevel_ != toplevel) {
-        return;
-    }
-
-    w->fullscreen_ = false;
-    w->maximized_ = false;
-    w->resize_ = false;
-    w->activated_ = false;
+    tl->fullscreen_ = false;
+    tl->maximized_ = false;
+    tl->resize_ = false;
+    tl->activated_ = false;
 
     const uint32_t *state;
     WL_ARRAY_FOR_EACH(state, states, const uint32_t*) {
         switch (*state) {
             case XDG_TOPLEVEL_STATE_FULLSCREEN:
                 SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_FULLSCREEN");
-                w->fullscreen_ = true;
+                tl->fullscreen_ = true;
                 break;
             case XDG_TOPLEVEL_STATE_MAXIMIZED:
                 SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_MAXIMIZED");
-                w->maximized_ = true;
+                tl->maximized_ = true;
                 break;
             case XDG_TOPLEVEL_STATE_RESIZING:
                 SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_RESIZING");
-                w->resize_ = true;
+                tl->resize_ = true;
                 break;
             case XDG_TOPLEVEL_STATE_ACTIVATED:
                 SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_ACTIVATED");
-                w->activated_ = true;
+                tl->activated_ = true;
                 break;
         }
     }
 
     if (width > 0 && height > 0) {
-        if (!w->fullscreen_ && !w->maximized_) {
-            w->window_size_.width = width;
-            w->window_size_.height = height;
+        if (!tl->fullscreen_ && !tl->maximized_) {
+            tl->init_width_ = width;
+            tl->init_height_ = height;
         }
-        w->logical_size_.width = width;
-        w->logical_size_.height = height;
-    } else if (!w->fullscreen_ && !w->maximized_) {
-        w->logical_size_.width = w->window_size_.width;
-        w->logical_size_.height = w->window_size_.height;
+        tl->width_ = width;
+        tl->height_ = height;
+    } else if (!tl->fullscreen_ && !tl->maximized_) {
+        tl->width_ = tl->init_width_;
+        tl->height_ = tl->init_height_;
     }
 
-    w->set_needs_buffer_geometry_update();
-
-    SPDLOG_DEBUG("width: {}", width);
-    SPDLOG_DEBUG("height: {}", height);
+    tl->init_buffers_ = true;
+    tl->needs_buffer_geometry_update_ = true;
 }
 
 /**
@@ -179,7 +170,7 @@ void XdgTopLevel::handle_toplevel_configure(
  * @param data The user data associated with the XdgWm instance.
  * @param xdg_toplevel The xdg_toplevel object that received the close request.
  */
-void XdgTopLevel::handle_toplevel_close(
+void XdgTopLevel::handle_xdg_toplevel_close(
         void *data,
         struct xdg_toplevel *xdg_toplevel) {
     SPDLOG_DEBUG("XdgWm::handle_toplevel_close");
@@ -188,7 +179,7 @@ void XdgTopLevel::handle_toplevel_close(
     if (w->xdg_toplevel_ != xdg_toplevel) {
         return;
     }
-    w->running_ = false;
+    w->valid_ = false;
 }
 
 /**
@@ -200,17 +191,17 @@ void XdgTopLevel::handle_toplevel_close(
  */
 #if defined(XDG_TOPLEVEL_CONFIGURE_BOUNDS_SINCE_VERSION)
 
-void XdgTopLevel::handle_configure_bounds(void *data,
-                                          struct xdg_toplevel *xdg_toplevel,
-                                          int32_t width,
-                                          int32_t height) {
+void XdgTopLevel::handle_xdg_toplevel_configure_bounds(void *data,
+                                                       struct xdg_toplevel *xdg_toplevel,
+                                                       int32_t width,
+                                                       int32_t height) {
     auto *w = static_cast<XdgTopLevel *>(data);
     if (w->xdg_toplevel_ != xdg_toplevel) {
         return;
     }
     SPDLOG_DEBUG("Configure Bounds: {}x{}", width, height);
-    w->window_size_.width = width;
-    w->window_size_.height = height;
+    w->max_width_ = width;
+    w->max_height_ = height;
 }
 
 #endif
@@ -223,9 +214,9 @@ void XdgTopLevel::handle_configure_bounds(void *data,
  */
 #if defined(XDG_TOPLEVEL_WM_CAPABILITIES_SINCE_VERSION)
 
-void XdgTopLevel::handle_wm_capabilities(void *data,
-                                         struct xdg_toplevel *xdg_toplevel,
-                                         struct wl_array *capabilities) {
+void XdgTopLevel::handle_xdg_toplevel_wm_capabilities(void *data,
+                                                      struct xdg_toplevel *xdg_toplevel,
+                                                      struct wl_array *capabilities) {
     auto *w = static_cast<XdgTopLevel *>(data);
     if (w->xdg_toplevel_ != xdg_toplevel) {
         return;

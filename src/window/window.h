@@ -20,11 +20,15 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <vector>
 
 #include <wayland-client.h>
 
 #include "window_manager/xdg_window_manager.h"
 #include "egl.h"
+#include "buffer.h"
+
+class Buffer;
 
 class Egl;
 
@@ -50,51 +54,31 @@ public:
         WINDOW_STATE_RESIZING = 1 << 8,
     };
 
-    Window(WindowManager *wm, struct wl_compositor *wl_compositor,
-           const std::optional<struct wp_viewporter *> &viewporter,
-           const std::optional<struct wp_fractional_scale_manager_v1 *> &fractional_scale_manager,
-           const std::optional<struct wp_tearing_control_manager_v1 *> &tearing_control_manager,
-           const std::map<struct wl_output *, std::unique_ptr<Output>> &outputs,
-           const char *name, const std::function<void(void *, const uint32_t)> &draw_frame_callback,
-           int width, int height, wl_output_transform buffer_transform, bool fullscreen,
-           bool maximized, bool fullscreen_ratio, bool tearing,
-           const int32_t *context_attribs, size_t context_attribs_size,
-           const int32_t *config_attribs, size_t config_attribs_size,
-           int buffer_bpp, int swap_interval);
+    Window(WindowManager *wm,
+           const char *name, int buffer_count, uint32_t buffer_format, const std::function<void(void *, const uint32_t)> &draw_frame_callback,
+           int width, int height, bool fullscreen, bool maximized, bool fullscreen_ratio, bool tearing,
+           int buffer_bpp = 0, int swap_interval = 0, const int32_t *context_attribs = nullptr,
+           size_t context_attribs_size = 0, const int32_t *config_attribs = nullptr, size_t config_attribs_size = 0);
 
     ~Window();
+
+    [[nodiscard]] bool is_valid() const { return valid_; }
 
     void resize(int width, int height);
 
     void update_buffer_geometry();
 
-    void set_fullscreen(bool fullscreen) { fullscreen_ = fullscreen; }
-
-    [[nodiscard]] bool get_fullscreen() const { return fullscreen_; }
-
-    void set_maximized(bool maximized) { maximized_ = maximized; }
-
-    [[nodiscard]] bool get_maximized() const { return maximized_; }
-
-    void set_fullscreen_ratio(bool fullscreen_ratio) { fullscreen_ratio_ = fullscreen_ratio; }
-
-    [[nodiscard]] bool get_fullscreen_ratio() const { return maximized_; }
-
     [[nodiscard]] enum wl_output_transform get_buffer_transform() const { return buffer_transform_; }
 
-    [[nodiscard]] int32_t get_buffer_scale() const { return buffer_scale_; }
+    [[nodiscard]] struct wl_surface *get_surface() const { return wl_surface_; }
 
-    [[nodiscard]] double get_fractional_buffer_scale() const { return fractional_buffer_scale_; }
+    [[nodiscard]] int get_width() const { return logical_size_.width; }
 
-    [[nodiscard]] struct wl_surface* get_surface() const { return wl_surface_; }
+    [[nodiscard]] int get_height() const { return logical_size_.height; }
 
-    [[nodiscard]] int get_width() const { return buffer_size_.width; }
+    void start_frame_callbacks();
 
-    [[nodiscard]] int get_height() const { return buffer_size_.height; }
-
-    void start_frames();
-
-    void stop_frames();
+    void stop_frame_callbacks();
 
     void make_current();
 
@@ -102,7 +86,11 @@ public:
 
     void swap_buffers();
 
-    void set_needs_buffer_geometry_update() { needs_buffer_geometry_update_ = true; }
+    Buffer* pick_free_buffer();
+
+    void prune_old_released_buffers();
+
+    Buffer* next_buffer();
 
 private:
     friend XdgTopLevel;
@@ -116,13 +104,19 @@ private:
     std::string name_;
     struct wl_surface *wl_surface_;
     struct wl_callback *wl_callback_{};
-    std::function<void(void *userdata, const uint32_t time)> draw_frame_callback_;
+    std::function<void(void *userdata, const uint32_t time)> frame_callback_;
 
     std::unique_ptr<Egl> egl_;
+
+    std::vector<std::unique_ptr<Buffer>> buffers_;
 
     bool fullscreen_;
     bool maximized_;
     bool fullscreen_ratio_;
+    bool valid_{};
+
+    bool resize_{};
+    bool activated_{};
 
     int buffer_bpp_ = 0;
     int swap_interval_ = 1;
@@ -132,6 +126,18 @@ private:
     int32_t preferred_buffer_scale_ = 1;
     enum wl_output_transform preferred_buffer_transform_ = WL_OUTPUT_TRANSFORM_NORMAL;
     double fractional_buffer_scale_ = 1.0;
+
+    int buffer_count_;
+    uint32_t buffer_format_;
+
+    int init_width_;
+    int init_height_;
+
+    int width_;
+    int height_;
+
+    int max_width_;
+    int max_height_;
 
     struct {
         int width;
@@ -143,13 +149,12 @@ private:
         int height;
     } window_size_;
 
-
-
     struct {
         int width;
         int height;
     } logical_size_;
 
+    bool init_buffers_;
     bool needs_buffer_geometry_update_;
 
     static void handle_surface_enter(void *data,

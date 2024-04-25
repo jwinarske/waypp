@@ -20,6 +20,8 @@
 #include <cxxopts.hpp>
 #include <sys/time.h>
 
+#include <glm/ext/matrix_transform.hpp>
+
 #include "window_manager/registrar.h"
 #include "window_manager/xdg_window_manager.h"
 #include "window/window.h"
@@ -140,7 +142,6 @@ void initialize_scene(Window *window) {
     GLuint frag, vert;
     GLuint program;
     GLint status;
-    EGLBoolean ret;
 
     window->update_buffer_geometry();
 
@@ -256,8 +257,6 @@ static void draw_triangle(Window *window) {
             {0, 1, 0},
             {0, 0, 1}
     };
-    struct wl_region *region;
-    EGLint rect[4];
 
     glVertexAttribPointer(gl.pos, 2, GL_FLOAT, GL_FALSE, 0, verts);
     glVertexAttribPointer(gl.col, 3, GL_FLOAT, GL_FALSE, 0, colors);
@@ -272,6 +271,7 @@ static void draw_triangle(Window *window) {
     usleep(config.delay);
 
 #if 0
+    struct wl_region *region;
     if (config.opaque || config.fullscreen) {
         region = wl_compositor_create_region(window->display->compositor);
         wl_region_add(region, 0, 0, INT32_MAX, INT32_MAX);
@@ -281,6 +281,7 @@ static void draw_triangle(Window *window) {
         wl_surface_set_opaque_region(window->surface, NULL);
     }
 
+    EGLint rect[4];
     if (display->swap_buffers_with_damage && buffer_age > 0) {
         rect[0] = window->buffer_size.width / 4 - 1;
         rect[1] = window->buffer_size.height / 4 - 1;
@@ -313,13 +314,12 @@ static void draw_frame(void *userdata, uint32_t /* time */) {
     }
 
     GLfloat angle;
-    struct weston_matrix rotation;
     static const uint32_t speed_div = 5, benchmark_interval = 5;
-    struct timeval tv;
 
     window->update_buffer_geometry();
 
-    gettimeofday(&tv, NULL);
+    struct timeval tv{};
+    gettimeofday(&tv, nullptr);
     auto time = static_cast<uint32_t>(tv.tv_sec * 1000 + tv.tv_usec / 1000);
     if (frames == 0) {
         initial_frame_time = time;
@@ -334,13 +334,14 @@ static void draw_frame(void *userdata, uint32_t /* time */) {
         frames = 0;
     }
 
-    weston_matrix_init(&rotation);
     if (config.vertical_bar) {
         angle = 0;
     } else {
         angle = static_cast<GLfloat>(((time - initial_frame_time) / speed_div)
                                      % 360 * M_PI / 180.0);
     }
+    struct weston_matrix rotation{};
+    weston_matrix_init(&rotation);
     rotation.d[0] = cos(angle);
     rotation.d[2] = sin(angle);
     rotation.d[8] = -sin(angle);

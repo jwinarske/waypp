@@ -17,7 +17,7 @@
 #include "xdg_window_manager.h"
 
 #include "logging.h"
-#include "xdg_toplevel.h"
+#include "window/xdg_toplevel.h"
 
 
 /**
@@ -36,6 +36,8 @@ XdgWindowManager::XdgWindowManager(GMainContext *context,
         spdlog::critical("XDG Window Manager is not supported.");
         exit(EXIT_FAILURE);
     }
+    xdg_wm_base_ = xdg_wm_base.value();
+
     xdg_wm_base_add_listener(xdg_wm_base.value(), &xdg_wm_base_listener_, this);
     SPDLOG_TRACE("--XdgWindowManager::XdgWindowManager()");
 }
@@ -71,23 +73,19 @@ void XdgWindowManager::xdg_wm_base_ping(void *data,
 }
 
 XdgTopLevel *
-XdgWindowManager::CreateTopLevel(const char *name, int width, int height, enum wl_output_transform buffer_transform,
-                                 bool fullscreen, bool maximized, bool fullscreen_ratio, bool tearing,
-                                 const std::function<void(void *, const uint32_t)> &draw_frame_callback,
+XdgWindowManager::CreateTopLevel(const char *name, int width, int height, int buffer_count, uint32_t buffer_format,
+                                 bool fullscreen, bool maximized,
+                                 bool fullscreen_ratio, bool tearing,
+                                 const std::function<void(void *, const uint32_t)> &frame_callback,
                                  const int32_t *context_attribs, size_t context_attribs_size,
                                  const int32_t *config_attribs, size_t config_attribs_size,
                                  int buffer_bpp, int swap_interval) {
     auto wm = reinterpret_cast<WindowManager *>(this);
-    xdg_top_level_ = std::make_unique<XdgTopLevel>(wm, wm->get_compositor(),
-                                                   wm->get_viewporter(),
-                                                   wm->get_fractional_scale_manager(),
-                                                   wm->get_tearing_control_manager(),
-                                                   wm->get_outputs(),
-                                                   name, width, height, buffer_transform, fullscreen, maximized,
-                                                   fullscreen_ratio, tearing,
-                                                   draw_frame_callback,
+    xdg_top_level_ = std::make_unique<XdgTopLevel>(wm, name, width, height, buffer_count, buffer_format,
+                                                   fullscreen, maximized, fullscreen_ratio, tearing,
+                                                   frame_callback,
+                                                   buffer_bpp, swap_interval,
                                                    context_attribs, context_attribs_size,
-                                                   config_attribs, config_attribs_size,
-                                                   buffer_bpp, swap_interval);
+                                                   config_attribs, config_attribs_size);
     return xdg_top_level_.get();
 }
