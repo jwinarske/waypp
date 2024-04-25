@@ -126,7 +126,7 @@ void draw_frame(void *data, const uint32_t time) {
 
 int main(int argc, char **argv) {
 
-    auto gLogging = std::make_unique<Logging>();
+    auto logging = std::make_unique<Logging>();
 
     std::signal(SIGINT, handle_signal);
 

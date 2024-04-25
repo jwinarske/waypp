@@ -34,10 +34,7 @@
 
 static volatile bool running = true;
 
-GLuint programObject_{};
 volatile bool scene_initialized = false;
-
-std::unique_ptr<Logging> gLogging;
 
 /// EGL Context Attribute configuration
 static constexpr std::array<EGLint, 3> kEglContextAttribs = {
@@ -61,18 +58,18 @@ std::array<EGLint, 13> kEglConfigAttribs = {
 };
 
 typedef struct {
-    int delay;
-    bool fullscreen;
-    bool fullscreen_ratio;
-    int maximized;
-    bool opaque;
-    int buffer_bpp;
-    bool tearing;
-    bool toggled_tearing;
-    bool vertical_bar;
-    int interval;
     int width;
     int height;
+    bool fullscreen;
+    int maximized;
+    bool fullscreen_ratio;
+    bool tearing;
+    bool toggled_tearing;
+    int delay;
+    bool opaque;
+    int buffer_bpp;
+    bool vertical_bar;
+    int interval;
 } CONFIGURATION_T;
 
 CONFIGURATION_T config;
@@ -100,7 +97,7 @@ void handle_signal(int signal) {
     }
 }
 
-GLuint LoadShader(const GLchar *shaderSrc, const GLenum type) {
+GLuint load_shader(const GLchar *shaderSrc, const GLenum type) {
     // Create the shader object
     const GLuint shader = glCreateShader(type);
     if (shader == 0)
@@ -150,8 +147,8 @@ void initialize_scene(Window *window) {
 
     window->make_current();
 
-    frag = LoadShader(frag_shader_text, GL_FRAGMENT_SHADER);
-    vert = LoadShader(vert_shader_text, GL_VERTEX_SHADER);
+    frag = load_shader(frag_shader_text, GL_FRAGMENT_SHADER);
+    vert = load_shader(vert_shader_text, GL_VERTEX_SHADER);
 
     program = glCreateProgram();
     glAttachShader(program, frag);
@@ -271,7 +268,7 @@ static void draw_triangle(Window *window) {
     glDisableVertexAttribArray(gl.pos);
     glDisableVertexAttribArray(gl.col);
 
-    usleep(config.delay);
+    usleep(static_cast<__useconds_t>(config.delay));
 
 #if 0
     struct wl_region *region;
@@ -407,7 +404,7 @@ static void draw_frame(void *userdata, uint32_t /* time */) {
  */
 int main(int argc, char **argv) {
 
-    gLogging = std::make_unique<Logging>();
+    auto logging = std::make_unique<Logging>();
 
     std::signal(SIGINT, handle_signal);
 
@@ -415,47 +412,46 @@ int main(int argc, char **argv) {
     options.add_options()
             ("w,width", "Set width", cxxopts::value<int>()->default_value("250"))
             ("h,height", "Set height", cxxopts::value<int>()->default_value("250"))
-            ("d,delay", "Buffer swap delay in microseconds", cxxopts::value<int>()->default_value("0"))
             ("f,fullscreen", "Run in fullscreen mode")
-            ("r,fullscreen-ratio", "Use fixed width/height ratio when run in fullscreen mode")
             ("m,maximized", "Run in maximized mode")
+            ("r,fullscreen-ratio", "Use fixed width/height ratio when run in fullscreen mode")
+            ("t,tearing", "Enable tearing via the tearing_control protocol")
+            ("d,delay", "Buffer swap delay in microseconds", cxxopts::value<int>()->default_value("0"))
             ("o,opaque", "Create an opaque surface")
             ("s,buffer-bpp", "Use a 16 bpp EGL config")
-            ("b,non-blocking", "Don't sync to compositor redraw (eglSwapInterval 0)")
-            ("t,tearing", "Enable tearing via the tearing_control protocol")
             ("v,vertical-bar", "Draw a moving vertical bar instead of a triangle")
-            ("i,interval", "Set eglSwapInterval to interval", cxxopts::value<int>()->default_value("1"));
+            ("i,interval", "Set eglSwapInterval to interval", cxxopts::value<int>()->default_value("1"))
+            ("b,non-blocking", "Don't sync to compositor redraw (eglSwapInterval 0)");
     auto result = options.parse(argc, argv);
 
-    config.delay = result["delay"].as<int>();
-    config.fullscreen = result["fullscreen"].as<bool>();
-    config.fullscreen_ratio = result["fullscreen-ratio"].as<bool>();
-    config.maximized = result["maximized"].as<bool>() ? 1 : 0;
-    config.opaque = result["opaque"].as<bool>();
-    config.buffer_bpp = result["buffer-bpp"].as<bool>() ? 16 : 0;
-    config.tearing = result["tearing"].as<bool>();
-    config.toggled_tearing = false;
+    config = {
+            .width = result["width"].as<int>(),
+            .height = result["height"].as<int>(),
+            .fullscreen = result["fullscreen"].as<bool>(),
+            .maximized = result["maximized"].as<bool>(),
+            .fullscreen_ratio = result["fullscreen-ratio"].as<bool>(),
+            .tearing = result["tearing"].as<bool>(),
+            .toggled_tearing = false,
+            .delay = result["delay"].as<int>(),
+            .opaque = result["opaque"].as<bool>(),
+            .buffer_bpp = result["buffer-bpp"].as<bool>() ? 16 : 0,
+            .vertical_bar = result["vertical-bar"].as<bool>(),
+            .interval = result["interval"].as<int>(),
+    };
+
     if (result["tearing"].as<bool>()) {
         config.tearing = true;
         config.toggled_tearing = true;
     }
-    config.vertical_bar = result["vertical-bar"].as<bool>();
-    config.interval = result["interval"].as<int>();
+
     if (result["non-blocking"].as<bool>()) {
         config.interval = 0;
     }
-    config.width = result["width"].as<int>();
-    config.height = result["height"].as<int>();
 
     // Control EGL_ALPHA_SIZE value
     if (config.opaque || config.buffer_bpp == 16) {
         kEglConfigAttribs[9] = 0;
     }
-
-    spdlog::info("delay: {}", config.delay);
-    spdlog::info("fullscreen_ratio: {}", config.fullscreen_ratio);
-    spdlog::info("toggled_tearing: {}", config.toggled_tearing);
-    spdlog::info("vertical_bar: {}", config.vertical_bar);
 
     XdgWindowManager wm;
     auto top_level = wm.CreateTopLevel("simple-egl",
