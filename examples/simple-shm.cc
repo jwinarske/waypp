@@ -2,11 +2,8 @@
 
 #include <cxxopts.hpp>
 
-#include "window_manager/registrar.h"
-#include "window_manager/xdg_window_manager.h"
 #include "window/xdg_toplevel.h"
 
-#include "config.h"
 #include "logging.h"
 
 typedef struct {
@@ -17,8 +14,6 @@ typedef struct {
     bool fullscreen_ratio;
     bool tearing;
 } CONFIGURATION_T;
-
-std::unique_ptr<Logging> gLogging;
 
 static volatile bool running = true;
 
@@ -106,7 +101,7 @@ void draw_frame(void *data, const uint32_t time) {
 
 int main(int argc, char **argv) {
 
-    gLogging = std::make_unique<Logging>();
+    auto gLogging = std::make_unique<Logging>();
 
     std::signal(SIGINT, handle_signal);
 

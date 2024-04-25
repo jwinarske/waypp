@@ -20,13 +20,8 @@
 #include <cxxopts.hpp>
 #include <sys/time.h>
 
-#include <glm/ext/matrix_transform.hpp>
+#include "window/xdg_toplevel.h"
 
-#include "window_manager/registrar.h"
-#include "window_manager/xdg_window_manager.h"
-#include "window/window.h"
-
-#include "config.h"
 #include "logging.h"
 
 static volatile bool running = true;
@@ -455,17 +450,26 @@ int main(int argc, char **argv) {
     spdlog::info("vertical_bar: {}", config.vertical_bar);
 
     XdgWindowManager wm;
-    auto window = wm.CreateTopLevel("simple-egl", config.width, config.height, WL_OUTPUT_TRANSFORM_NORMAL,
-                                    config.fullscreen,
-                                    config.maximized,
-                                    config.fullscreen_ratio, config.tearing, draw_frame,
-                                    kEglContextAttribs.data(), kEglContextAttribs.size(),
-                                    kEglConfigAttribs.data(), kEglConfigAttribs.size(),
-                                    config.buffer_bpp, config.interval);
+    auto top_level = wm.CreateTopLevel("simple-egl",
+                                       config.width,
+                                       config.height,
+                                       0,
+                                       0,
+                                       config.fullscreen,
+                                       config.maximized,
+                                       config.fullscreen_ratio,
+                                       config.tearing,
+                                       draw_frame,
+                                       kEglContextAttribs.data(), kEglContextAttribs.size(),
+                                       kEglConfigAttribs.data(), kEglConfigAttribs.size(),
+                                       config.buffer_bpp, config.interval);
 
-    while (running && wm.dispatch_pending() != -1) {
-        draw_frame(window, 0);
-    }
+    top_level->update_buffer_geometry();
+    top_level->start_frame_callbacks();
+
+    while (running && top_level->is_valid() && wm.display_dispatch() != -1) {}
+
+    top_level->stop_frame_callbacks();
 
     return EXIT_SUCCESS;
 }

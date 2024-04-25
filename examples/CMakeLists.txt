@@ -20,20 +20,18 @@ pkg_check_modules(GLESv2 IMPORTED_TARGET glesv2)
 #
 # simple-egl
 #
-if (OFF)
-    add_executable(simple-egl simple-egl.cc)
-    target_include_directories(simple-egl PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_executable(simple-egl simple-egl.cc)
+target_include_directories(simple-egl PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
-    target_compile_definitions(simple-egl PRIVATE EGL_NO_X11 MESA_EGL_NO_X11_HEADERS)
+target_compile_definitions(simple-egl PRIVATE EGL_NO_X11 MESA_EGL_NO_X11_HEADERS)
 
-    target_link_libraries(simple-egl PRIVATE waypp PkgConfig::GLESv2 cxxopts::cxxopts)
+target_link_libraries(simple-egl PRIVATE waypp PkgConfig::GLESv2 cxxopts::cxxopts)
 
-    if (IPO_SUPPORT_RESULT)
-        set_property(TARGET simple-egl PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-    endif ()
-
-    add_sanitizers(simple-egl)
+if (IPO_SUPPORT_RESULT)
+    set_property(TARGET simple-egl PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 endif ()
+
+add_sanitizers(simple-egl)
 
 #
 # simple-shm
