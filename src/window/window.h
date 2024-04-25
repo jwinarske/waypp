@@ -139,11 +139,11 @@ private:
     int buffer_count_;
     uint32_t buffer_format_;
 
-    int init_width_;
-    int init_height_;
+    int init_width_{};
+    int init_height_{};
 
-    int width_;
-    int height_;
+    int width_{};
+    int height_{};
 
     int max_width_ = INT32_MAX;
     int max_height_ = INT32_MAX;

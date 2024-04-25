@@ -389,15 +389,15 @@ Buffer *Window::next_buffer() {
     if (!buffer)
         return nullptr;
 
-    int ret = 0;
     if (!buffer->get_wl_buffer()) {
-        ret = buffer->create_shm_buffer(window_size_.width, window_size_.height);
+        auto ret = buffer->create_shm_buffer(window_size_.width, window_size_.height);
 
         if (ret < 0)
             return nullptr;
 
         /* paint the padding */
-        memset(buffer->get_shm_data(), 0xff, window_size_.width * window_size_.height * 4);
+        memset(buffer->get_shm_data(), 0xff,
+               static_cast<size_t>(window_size_.width) * static_cast<size_t>(window_size_.height) * 4);
     }
 
     return buffer;
