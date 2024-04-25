@@ -402,3 +402,14 @@ Buffer *Window::next_buffer() {
 
     return buffer;
 }
+
+void Window::opaque_region_add(int32_t x, int32_t y, int32_t width, int32_t height) {
+    auto region = wl_compositor_create_region(wm_->get_compositor());
+    wl_region_add(region, x, y, width, height);
+    wl_surface_set_opaque_region(wl_surface_, region);
+    wl_region_destroy(region);
+}
+
+void Window::opaque_region_clear() {
+    wl_surface_set_opaque_region(wl_surface_, nullptr);
+}

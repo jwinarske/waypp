@@ -77,6 +77,10 @@ public:
 
     [[nodiscard]] int get_height() const { return logical_size_.height; }
 
+    [[nodiscard]] int32_t get_max_width() const { return max_width_; }
+
+    [[nodiscard]] int32_t get_max_height() const { return max_height_; }
+
     void start_frame_callbacks();
 
     void stop_frame_callbacks();
@@ -92,6 +96,10 @@ public:
     void prune_old_released_buffers();
 
     Buffer *next_buffer();
+
+    void opaque_region_add(int32_t x, int32_t y, int32_t width, int32_t height);
+
+    void opaque_region_clear();
 
 private:
     friend XdgTopLevel;
@@ -137,8 +145,8 @@ private:
     int width_;
     int height_;
 
-    int max_width_;
-    int max_height_;
+    int max_width_ = INT32_MAX;
+    int max_height_ = INT32_MAX;
 
     struct {
         int width;

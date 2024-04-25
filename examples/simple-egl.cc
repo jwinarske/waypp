@@ -265,17 +265,13 @@ static void draw_triangle(Window *window) {
 
     usleep(static_cast<__useconds_t>(config.delay));
 
-#if 0
-    struct wl_region *region;
     if (config.opaque || config.fullscreen) {
-        region = wl_compositor_create_region(window->display->compositor);
-        wl_region_add(region, 0, 0, INT32_MAX, INT32_MAX);
-        wl_surface_set_opaque_region(window->surface, region);
-        wl_region_destroy(region);
+        window->opaque_region_add(0, 0, window->get_max_width(), window->get_max_height());
     } else {
-        wl_surface_set_opaque_region(window->surface, NULL);
+        window->opaque_region_clear();
     }
 
+#if 0
     EGLint rect[4];
     if (display->swap_buffers_with_damage && buffer_age > 0) {
         rect[0] = window->buffer_size.width / 4 - 1;
