@@ -92,7 +92,7 @@ void draw_frame(void *data, const uint32_t time) {
 
     auto buffer = window->next_buffer();
     if (!buffer) {
-        spdlog::error("Both buffers busy at redraw(). Server bug?");
+        spdlog::error("Failed to acquire a buffer");
         abort();
     }
 

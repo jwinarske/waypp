@@ -23,7 +23,14 @@ Window::Window(WindowManager *wm,
     wl_surface_ = wl_compositor_create_surface(wm->get_compositor());
     wl_surface_add_listener(wl_surface_, &surface_listener_, this);
 
-    buffers_.reserve(static_cast<unsigned long>(buffer_count));
+    if (buffer_count) {
+        if (!wm->shm_has_format(static_cast<wl_shm_format>(buffer_format))) {
+            spdlog::critical("{} is not supported.", WindowManager::shm_format_to_text(
+                    static_cast<wl_shm_format>(buffer_format)));
+            abort();
+        }
+        buffers_.reserve(static_cast<unsigned long>(buffer_count));
+    }
 
     if (context_attribs_size && config_attribs_size) {
 

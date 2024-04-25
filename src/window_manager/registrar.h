@@ -62,6 +62,9 @@ public:
         return false;
     }
 
+    // Returns text representation of wl_shm_format
+    static const char* shm_format_to_text(enum wl_shm_format format);
+
     // Returns the compositor.
     [[nodiscard]] struct wl_compositor *get_compositor() const { return compositor_.wl_compositor; }
 
