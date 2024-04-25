@@ -63,7 +63,7 @@ public:
     }
 
     // Returns text representation of wl_shm_format
-    static const char* shm_format_to_text(enum wl_shm_format format);
+    static const char *shm_format_to_text(enum wl_shm_format format);
 
     // Returns the compositor.
     [[nodiscard]] struct wl_compositor *get_compositor() const { return compositor_.wl_compositor; }
@@ -165,8 +165,8 @@ private:
 
     struct {
         uint32_t min_version = kXdgDecorationManagerMinVersion;
-        std::optional<struct zxdg_decoration_manager_v1*> zxdg_decoration_manager_v1;
-        std::optional<struct zxdg_toplevel_decoration_v1*> zxdg_toplevel_decoration_v1;
+        std::optional<struct zxdg_decoration_manager_v1 *> zxdg_decoration_manager_v1;
+        std::optional<struct zxdg_toplevel_decoration_v1 *> zxdg_toplevel_decoration_v1;
     } xdg_decoration_manager_;
 
     struct {

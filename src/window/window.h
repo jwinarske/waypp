@@ -55,7 +55,8 @@ public:
     };
 
     Window(WindowManager *wm,
-           const char *name, int buffer_count, uint32_t buffer_format, const std::function<void(void *, const uint32_t)> &draw_frame_callback,
+           const char *name, int buffer_count, uint32_t buffer_format,
+           const std::function<void(void *, const uint32_t)> &draw_frame_callback,
            int width, int height, bool fullscreen, bool maximized, bool fullscreen_ratio, bool tearing,
            int buffer_bpp = 0, int swap_interval = 0, const int32_t *context_attribs = nullptr,
            size_t context_attribs_size = 0, const int32_t *config_attribs = nullptr, size_t config_attribs_size = 0);
@@ -86,11 +87,11 @@ public:
 
     void swap_buffers();
 
-    Buffer* pick_free_buffer();
+    Buffer *pick_free_buffer();
 
     void prune_old_released_buffers();
 
-    Buffer* next_buffer();
+    Buffer *next_buffer();
 
 private:
     friend XdgTopLevel;

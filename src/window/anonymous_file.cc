@@ -1,3 +1,28 @@
+/*
+ * Copyright © 2024 Joel Winarske
+ * Copyright © 2012 Collabora, Ltd.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice (including the
+ * next paragraph) shall be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT.  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 
 #include "anonymous_file.h"
 
@@ -11,6 +36,7 @@
 
 #include "logging.h"
 
+#if !defined(HAVE_MKOSTEMP)
 int
 os_fd_set_cloexec(int fd) {
     int flags;
@@ -36,11 +62,12 @@ set_cloexec_or_close(int fd) {
     }
     return fd;
 }
+#endif
 
 static int create_tmpfile_cloexec(char *tmpname) {
     int fd;
 
-#ifdef HAVE_MKOSTEMP
+#if defined(HAVE_MKOSTEMP)
     fd = mkostemp(tmpname, O_CLOEXEC);
     if (fd >= 0)
         unlink(tmpname);
@@ -87,7 +114,7 @@ int AnonymousFile::create(off_t size) {
     int fd;
     int ret;
 
-#ifdef HAVE_MEMFD_CREATE
+#if defined(HAVE_MEMFD_CREATE)
     fd = memfd_create("waypp-shared", MFD_CLOEXEC | MFD_ALLOW_SEALING);
     if (fd >= 0) {
         /* We can add this seal before calling posix_fallocate(), as
@@ -115,7 +142,7 @@ int AnonymousFile::create(off_t size) {
             return -1;
     }
 
-#ifdef HAVE_POSIX_FALLOCATE
+#if defined(HAVE_POSIX_FALLOCATE)
     do {
         ret = posix_fallocate(fd, 0, size);
     } while (ret == EINTR);
