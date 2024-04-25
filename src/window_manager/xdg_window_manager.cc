@@ -73,13 +73,13 @@ void XdgWindowManager::xdg_wm_base_ping(void *data,
 }
 
 XdgTopLevel *
-XdgWindowManager::CreateTopLevel(const char *name, int width, int height, int buffer_count, uint32_t buffer_format,
-                                 bool fullscreen, bool maximized,
-                                 bool fullscreen_ratio, bool tearing,
-                                 const std::function<void(void *, const uint32_t)> &frame_callback,
-                                 const int32_t *context_attribs, size_t context_attribs_size,
-                                 const int32_t *config_attribs, size_t config_attribs_size,
-                                 int buffer_bpp, int swap_interval) {
+XdgWindowManager::create_top_level(const char *name, int width, int height, int buffer_count, uint32_t buffer_format,
+                                   bool fullscreen, bool maximized,
+                                   bool fullscreen_ratio, bool tearing,
+                                   const std::function<void(void *, const uint32_t)> &frame_callback,
+                                   const int32_t *context_attribs, size_t context_attribs_size,
+                                   const int32_t *config_attribs, size_t config_attribs_size,
+                                   int buffer_bpp, int swap_interval) {
     auto wm = reinterpret_cast<WindowManager *>(this);
     xdg_top_level_ = std::make_unique<XdgTopLevel>(wm, name, width, height, buffer_count, buffer_format,
                                                    fullscreen, maximized, fullscreen_ratio, tearing,

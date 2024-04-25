@@ -151,16 +151,16 @@ int main(int argc, char **argv) {
 
     XdgWindowManager wm = XdgWindowManager();
     spdlog::info("XDG Window Manager Version: {}", wm.get_version());
-    auto top_level = wm.CreateTopLevel("simple-shm",
-                                       config.width,
-                                       config.height,
-                                       2,
-                                       WL_SHM_FORMAT_XRGB8888,
-                                       config.fullscreen,
-                                       config.maximized,
-                                       config.fullscreen_ratio,
-                                       config.tearing,
-                                       draw_frame
+    auto top_level = wm.create_top_level("simple-shm",
+                                         config.width,
+                                         config.height,
+                                         2,
+                                         WL_SHM_FORMAT_XRGB8888,
+                                         config.fullscreen,
+                                         config.maximized,
+                                         config.fullscreen_ratio,
+                                         config.tearing,
+                                         draw_frame
     );
     spdlog::info("XDG Window Version: {}", top_level->get_version());
 

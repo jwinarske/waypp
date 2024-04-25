@@ -139,22 +139,19 @@ void initialize_scene(Window *window) {
             "void main() {\n"
             "  gl_FragColor = v_color;\n"
             "}\n";
-    GLuint frag, vert;
-    GLuint program;
-    GLint status;
-
     window->update_buffer_geometry();
 
     window->make_current();
 
-    frag = load_shader(frag_shader_text, GL_FRAGMENT_SHADER);
-    vert = load_shader(vert_shader_text, GL_VERTEX_SHADER);
+    auto frag = load_shader(frag_shader_text, GL_FRAGMENT_SHADER);
+    auto vert = load_shader(vert_shader_text, GL_VERTEX_SHADER);
 
-    program = glCreateProgram();
+    auto program = glCreateProgram();
     glAttachShader(program, frag);
     glAttachShader(program, vert);
     glLinkProgram(program);
 
+    GLint status;
     glGetProgramiv(program, GL_LINK_STATUS, &status);
     if (!status) {
         char log[1000];
@@ -177,10 +174,8 @@ void initialize_scene(Window *window) {
 }
 
 enum weston_matrix_transform_type {
-    WESTON_MATRIX_TRANSFORM_TRANSLATE = (1 << 0),
     WESTON_MATRIX_TRANSFORM_SCALE = (1 << 1),
     WESTON_MATRIX_TRANSFORM_ROTATE = (1 << 2),
-    WESTON_MATRIX_TRANSFORM_OTHER = (1 << 3),
 };
 
 struct weston_matrix {
@@ -207,7 +202,7 @@ void weston_matrix_init(struct weston_matrix *matrix) {
 
 /* m <- n * m, that is, m is multiplied on the LEFT. */
 void weston_matrix_multiply(struct weston_matrix *m, const struct weston_matrix *n) {
-    struct weston_matrix tmp;
+    struct weston_matrix tmp{};
     const float *row, *column;
     int i, j, k;
 
@@ -454,19 +449,19 @@ int main(int argc, char **argv) {
     }
 
     XdgWindowManager wm;
-    auto top_level = wm.CreateTopLevel("simple-egl",
-                                       config.width,
-                                       config.height,
-                                       0,
-                                       0,
-                                       config.fullscreen,
-                                       config.maximized,
-                                       config.fullscreen_ratio,
-                                       config.tearing,
-                                       draw_frame,
-                                       kEglContextAttribs.data(), kEglContextAttribs.size(),
-                                       kEglConfigAttribs.data(), kEglConfigAttribs.size(),
-                                       config.buffer_bpp, config.interval);
+    auto top_level = wm.create_top_level("simple-egl",
+                                         config.width,
+                                         config.height,
+                                         0,
+                                         0,
+                                         config.fullscreen,
+                                         config.maximized,
+                                         config.fullscreen_ratio,
+                                         config.tearing,
+                                         draw_frame,
+                                         kEglContextAttribs.data(), kEglContextAttribs.size(),
+                                         kEglConfigAttribs.data(), kEglConfigAttribs.size(),
+                                         config.buffer_bpp, config.interval);
 
     top_level->update_buffer_geometry();
     top_level->start_frame_callbacks();

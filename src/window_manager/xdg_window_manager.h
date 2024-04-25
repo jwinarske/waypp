@@ -37,12 +37,12 @@ public:
     [[nodiscard]] uint32_t get_version() const { return xdg_wm_base_get_version(xdg_wm_base_); }
 
     XdgTopLevel *
-    CreateTopLevel(const char *name, int width, int height, int buffer_count, uint32_t buffer_format, bool fullscreen,
-                   bool maximized, bool fullscreen_ratio,
-                   bool tearing, const std::function<void(void *, const uint32_t)> &frame_callback,
-                   const int32_t *context_attribs = nullptr, size_t context_attribs_size = 0,
-                   const int32_t *config_attribs = nullptr, size_t config_attribs_size = 0,
-                   int buffer_bpp = 0, int swap_interval = 0);
+    create_top_level(const char *name, int width, int height, int buffer_count, uint32_t buffer_format, bool fullscreen,
+                     bool maximized, bool fullscreen_ratio,
+                     bool tearing, const std::function<void(void *, const uint32_t)> &frame_callback,
+                     const int32_t *context_attribs = nullptr, size_t context_attribs_size = 0,
+                     const int32_t *config_attribs = nullptr, size_t config_attribs_size = 0,
+                     int buffer_bpp = 0, int swap_interval = 0);
 
     // Disallow copy and assign.
     XdgWindowManager(const XdgWindowManager &) = delete;
