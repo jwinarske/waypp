@@ -34,13 +34,9 @@ if (HAVE_MKOSTEMP)
 endif ()
 
 set(WINDOW_MANAGER_SRC
-        window_manager/agl_shell.cc
-        window_manager/ivi_window_manager.cc
         window_manager/output.cc
         window_manager/registrar.cc
         window_manager/window_manager.cc
-        window/xdg_toplevel.cc
-        window_manager/xdg_window_manager.cc
 )
 
 set(SEAT_SRC
@@ -63,6 +59,24 @@ add_library(waypp
         ${WINDOW_MANAGER_SRC}
         ${SEAT_SRC}
         ${WINDOW_SRC})
+
+if (ENABLE_XDG_CLIENT)
+    target_sources(waypp PRIVATE
+            window/xdg_toplevel.cc
+            window_manager/xdg_window_manager.cc)
+endif ()
+if (ENABLE_AGL_CLIENT)
+    target_sources(waypp PRIVATE
+            window_manager/agl_shell.cc)
+endif ()
+if (ENABLE_IVI_SHELL_CLIENT)
+    target_sources(waypp PRIVATE
+            window_manager/ivi_window_manager.cc)
+endif ()
+if (ENABLE_DRM_LEASE_CLIENT)
+    target_sources(waypp PRIVATE
+            window_manager/drm_lease_device_v1.cc)
+endif ()
 
 target_include_directories(waypp PUBLIC .)
 

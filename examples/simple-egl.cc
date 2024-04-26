@@ -57,7 +57,7 @@ std::array<EGLint, 13> kEglConfigAttribs = {
         }
 };
 
-typedef struct {
+struct Configuration {
     int width;
     int height;
     bool fullscreen;
@@ -70,9 +70,7 @@ typedef struct {
     int buffer_bpp;
     bool vertical_bar;
     int interval;
-} CONFIGURATION_T;
-
-CONFIGURATION_T config;
+} config;
 
 struct {
     GLint rotation_uniform;
@@ -446,6 +444,7 @@ int main(int argc, char **argv) {
 
     XdgWindowManager wm;
     auto top_level = wm.create_top_level("simple-egl",
+                                         "org.freedesktop.gitlab.jwinarske.waypp.simple_egl",
                                          config.width,
                                          config.height,
                                          0,

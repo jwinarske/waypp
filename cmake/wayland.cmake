@@ -21,12 +21,13 @@
 option(ENABLE_XDG_CLIENT "Enable XDG Client" ON)
 option(ENABLE_AGL_SHELL_CLIENT "Enable AGL shell Client" OFF)
 option(ENABLE_IVI_SHELL_CLIENT "Enable ivi-shell Client" OFF)
+option(ENABLE_DRM_LEASE_CLIENT "Enable DRM Lease Client" OFF)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(WAYLAND REQUIRED IMPORTED_TARGET wayland-client wayland-egl wayland-cursor xkbcommon)
 
 set(MIN_PROTOCOL_VER 1.13)
-if (BUILD_BACKEND_WAYLAND_DRM)
+if (ENABLE_DRM_LEASE)
     set(MIN_PROTOCOL_VER 1.22)
 endif ()
 pkg_check_modules(WAYLAND_PROTOCOLS REQUIRED wayland-protocols>=${MIN_PROTOCOL_VER})
@@ -68,12 +69,21 @@ set(LIST_WAYLAND_PROTOCOLS)
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/protocols)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/protocols)
 
-add_protocol(${WAYLAND_PROTOCOLS_BASE}/stable/xdg-shell/xdg-shell.xml)
-add_protocol(${CMAKE_SOURCE_DIR}/third_party/agl/protocol/agl-shell.xml)
-add_protocol(${CMAKE_SOURCE_DIR}/third_party/agl/protocol/agl-shell-desktop.xml)
-add_protocol(${CMAKE_SOURCE_DIR}/third_party/agl/protocol/agl-screenshooter.xml)
-add_protocol(${CMAKE_SOURCE_DIR}/third_party/weston/protocol/ivi-application.xml)
-add_protocol(${CMAKE_SOURCE_DIR}/third_party/weston/protocol/ivi-wm.xml)
+if (ENABLE_XDG_CLIENT)
+    add_protocol(${WAYLAND_PROTOCOLS_BASE}/stable/xdg-shell/xdg-shell.xml)
+endif ()
+if (ENABLE_AGL_SHELL_CLIENT)
+    add_protocol(${CMAKE_SOURCE_DIR}/third_party/agl/protocol/agl-shell.xml)
+    add_protocol(${CMAKE_SOURCE_DIR}/third_party/agl/protocol/agl-shell-desktop.xml)
+    add_protocol(${CMAKE_SOURCE_DIR}/third_party/agl/protocol/agl-screenshooter.xml)
+endif ()
+if (ENABLE_IVI_SHELL_CLIENT)
+    add_protocol(${CMAKE_SOURCE_DIR}/third_party/weston/protocol/ivi-application.xml)
+    add_protocol(${CMAKE_SOURCE_DIR}/third_party/weston/protocol/ivi-wm.xml)
+endif ()
+if (ENABLE_DRM_LEASE_CLIENT)
+    add_protocol(${WAYLAND_PROTOCOLS_BASE}/staging/drm-lease/drm-lease-v1.xml)
+endif ()
 
 #
 # Optional
@@ -93,17 +103,14 @@ message(STATUS "Tearing Control ....... ${HAS_WAYLAND_PROTOCOL_TEARING_CONTROL_V
 add_protocol(${WAYLAND_PROTOCOLS_BASE}/stable/presentation-time/presentation-time.xml)
 message(STATUS "Presentation Time ..... ${HAS_WAYLAND_PROTOCOL_PRESENTATION_TIME}")
 
-add_protocol(${WAYLAND_PROTOCOLS_BASE}/staging/drm-lease/drm-lease-v1.xml)
-message(STATUS "DRM Lease ............. ${HAS_WAYLAND_PROTOCOL_DRM_LEASE_V1}")
-
 #
 # External
 #
 if (EXT_PROTOCOL)
-    foreach(EXT ${EXT_PROTOCOL})
+    foreach (EXT ${EXT_PROTOCOL})
         add_protocol(${EXT})
     endforeach ()
-endif()
+endif ()
 
 message(STATUS "WAYLAND_PROTOCOL_SOURCES: ${WAYLAND_PROTOCOL_SOURCES}")
 add_library(wayland-gen STATIC ${WAYLAND_PROTOCOL_SOURCES})
@@ -117,6 +124,9 @@ if (ENABLE_AGL_SHELL_CLIENT)
 endif ()
 if (ENABLE_IVI_SHELL_CLIENT)
     target_compile_definitions(wayland-gen PUBLIC ENABLE_IVI_SHELL_CLIENT)
+endif ()
+if (ENABLE_DRM_LEASE_CLIENT)
+    target_compile_definitions(wayland-gen PUBLIC ENABLE_DRM_LEASE_CLIENT)
 endif ()
 
 string(REPLACE ";" " " WAYLAND_PROTOCOLS "${LIST_WAYLAND_PROTOCOLS}")

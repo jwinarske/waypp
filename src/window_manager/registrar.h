@@ -28,8 +28,11 @@
 #include "output.h"
 #include "wayland-protocols.h"
 #include "seat/seat.h"
+#include "drm_lease_device_v1.h"
 
+#if defined(ENABLE_AGL_SHELL_CLIENT)
 class AglShell;
+#endif
 
 class WindowManager;
 
@@ -120,7 +123,9 @@ public:
     Registrar &operator=(const Registrar &) = delete;
 
 private:
+#if defined(ENABLE_AGL_SHELL_CLIENT)
     friend AglShell;
+#endif
     friend WindowManager;
 
     std::unique_ptr<std::map<std::string, RegistrarGlobalCallback>> registrar_global_;
@@ -164,6 +169,11 @@ private:
         uint32_t min_version = kIviWmMinVersion;
         std::optional<struct ivi_wm *> ivi_wm;
     } ivi_wm_;
+
+    struct {
+        uint32_t min_version = kDrmLeaseDeviceV1MinVersion;
+        std::unique_ptr<DrmLeaseDevice_v1> drm_lease_device_v1;
+    } drm_lease_device_v1_;
 
     struct {
         uint32_t min_version = kXdgDecorationManagerMinVersion;
@@ -250,26 +260,39 @@ private:
                                         const char *interface,
                                         uint32_t version);
 
+#if defined(ENABLE_XDG_CLIENT)
     static void handle_interface_xdg_wm_base(void *data,
                                              struct wl_registry *registry,
                                              uint32_t name,
                                              const char *interface,
                                              uint32_t version);
+#endif
 
+#if defined(ENABLE_AGL_SHELL_CLIENT)
     static void handle_interface_agl_shell(void *data,
                                            struct wl_registry *registry,
                                            uint32_t name,
                                            const char *interface,
                                            uint32_t version);
+#endif
 
+#if defined(ENABLE_IVI_SHELL_CLIENT)
     static void handle_interface_ivi_wm(void *data,
                                         struct wl_registry *registry,
                                         uint32_t name,
                                         const char *interface,
                                         uint32_t version);
+#endif
+
+#if defined(ENABLE_DRM_LEASE_CLIENT)
+    static void handle_interface_drm_lease_device_v1(void *data,
+                                    struct wl_registry *registry,
+                                    uint32_t name,
+                                    const char *interface,
+                                    uint32_t version);
+#endif
 
 #if defined(HAS_WAYLAND_PROTOCOL_XDG_DECORATION_UNSTABLE_V1)
-
     static void handle_interface_zxdg_decoration(void *data,
                                                  struct wl_registry *registry,
                                                  uint32_t name,
@@ -281,47 +304,38 @@ private:
                                                           uint32_t name,
                                                           const char *interface,
                                                           uint32_t version);
-
 #endif
 
 #if defined(HAS_WAYLAND_PROTOCOL_PRESENTATION_TIME)
-
     static void handle_interface_presentation(void *data,
                                               struct wl_registry *registry,
                                               uint32_t name,
                                               const char *interface,
                                               uint32_t version);
-
 #endif
 
 #if defined(HAS_WAYLAND_PROTOCOL_TEARING_CONTROL_V1)
-
     static void handle_interface_tearing_control_manager(void *data,
                                                          struct wl_registry *registry,
                                                          uint32_t name,
                                                          const char *interface,
                                                          uint32_t version);
-
 #endif
 
 #if defined(HAS_WAYLAND_PROTOCOL_VIEWPORTER)
-
     static void handle_interface_viewporter(void *data,
                                             struct wl_registry *registry,
                                             uint32_t name,
                                             const char *interface,
                                             uint32_t version);
-
 #endif
 
 #if defined(HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1)
-
     static void handle_interface_fractional_scale_manager(void *data,
                                                           struct wl_registry *registry,
                                                           uint32_t name,
                                                           const char *interface,
                                                           uint32_t version);
-
 #endif
 
 protected:

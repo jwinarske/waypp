@@ -36,8 +36,8 @@ class XdgTopLevel : public Window {
 public:
 
     XdgTopLevel(WindowManager *wm,
-                const char *name, int width, int height, int buffer_count, uint32_t buffer_format, bool fullscreen,
-                bool maximized, bool fullscreen_ratio, bool tearing,
+                const char *title, const char *app_id, int width, int height, int buffer_count, uint32_t buffer_format,
+                bool fullscreen, bool maximized, bool fullscreen_ratio, bool tearing,
                 const std::function<void(void *, const uint32_t)> &frame_callback,
                 int buffer_bpp = 0, int swap_interval = 0,
                 const int32_t *context_attribs = nullptr, size_t context_attribs_size = 0,

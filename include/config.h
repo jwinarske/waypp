@@ -27,6 +27,7 @@ static constexpr uint32_t kWlSubcompositorMinVersion = UINT32_C(1);
 static constexpr uint32_t kXdgWmBaseMinVersion = UINT32_C(6);
 static constexpr uint32_t kIviWmMinVersion = UINT32_C(1);
 static constexpr uint32_t kAglShellMinVersion = UINT32_C(10);
+static constexpr uint32_t kDrmLeaseDeviceV1MinVersion = UINT32_C(1);
 
 static constexpr uint32_t kXdgDecorationManagerMinVersion = UINT32_C(1);
 static constexpr uint32_t kPresentationTimeMinVersion = UINT32_C(1);

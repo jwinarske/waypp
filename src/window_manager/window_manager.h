@@ -45,6 +45,8 @@ public:
 
     [[nodiscard]] int display_dispatch() const { return wl_display_dispatch(wl_display_); }
 
+    [[nodiscard]] bool has_subcompositor() const { return sub_compositor_.wl_subcompositor.has_value(); }
+
     // Disallow copy and assign.
     WindowManager(const WindowManager &) = delete;
 
