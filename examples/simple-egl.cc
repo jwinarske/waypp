@@ -381,6 +381,15 @@ static void draw_frame(void *userdata, uint32_t /* time */) {
     frames++;
 }
 
+static void keyboard_handler(
+        void * /*data*/,
+        bool released,
+        xkb_keysym_t /*keysym*/,
+        uint32_t xkb_scancode,
+        uint32_t modifiers) {
+    spdlog::info("KeyEvent: released: {}, scancode: {}, modifiers: {}", released, xkb_scancode, modifiers);
+}
+
 /**
  * @brief Main function for the program.
  *
@@ -442,7 +451,7 @@ int main(int argc, char **argv) {
         kEglConfigAttribs[9] = 0;
     }
 
-    XdgWindowManager wm;
+    XdgWindowManager wm(keyboard_handler);
     auto top_level = wm.create_top_level("simple-egl",
                                          "org.freedesktop.gitlab.jwinarske.waypp.simple_egl",
                                          config.width,
@@ -458,7 +467,6 @@ int main(int argc, char **argv) {
                                          kEglConfigAttribs.data(), kEglConfigAttribs.size(),
                                          config.buffer_bpp, config.interval);
 
-    top_level->update_buffer_geometry();
     top_level->start_frame_callbacks();
 
     while (running && top_level->is_valid() && wm.display_dispatch() != -1) {}

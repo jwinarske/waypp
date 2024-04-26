@@ -107,7 +107,6 @@ Window::~Window() {
 }
 
 void Window::update_buffer_geometry() {
-    SPDLOG_DEBUG("[Window] update_buffer_geometry");
     if (!needs_buffer_geometry_update_) {
         return;
     }
@@ -363,7 +362,7 @@ void Window::get_buffer_age(EGLint &buffer_age) {
 
 void Window::swap_buffers_with_damage(const EGLint *rects, EGLint n_rects) {
     if (egl_) {
-        egl_->swap_buffers_with_damage( rects, n_rects);
+        egl_->swap_buffers_with_damage(rects, n_rects);
     }
 }
 

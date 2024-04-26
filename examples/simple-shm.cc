@@ -23,7 +23,6 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include <array>
 #include <csignal>
 
 #include <cxxopts.hpp>
