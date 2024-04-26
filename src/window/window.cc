@@ -33,7 +33,6 @@ Window::Window(WindowManager *wm,
         window_size_{.width=buffer_size_.width, .height=buffer_size_.height}, init_buffers_(false),
         needs_buffer_geometry_update_(false),
         buffer_count_(buffer_count), buffer_format_(buffer_format) {
-    SPDLOG_DEBUG("[Window] Window()");
 
     wl_surface_ = wl_compositor_create_surface(wm->get_compositor());
     wl_surface_add_listener(wl_surface_, &surface_listener_, this);
@@ -55,13 +54,13 @@ Window::Window(WindowManager *wm,
     }
 
     if (wm->get_viewporter().has_value()) {
-#if defined(WAYLAND_PROTOCOL_HAS_VIEWPORTER)
+#if defined(HAS_WAYLAND_PROTOCOL_VIEWPORTER)
         viewport_ = wp_viewporter_get_viewport(wm->get_viewporter().value(), wl_surface_);
 #endif
     }
 
     if (wm->get_fractional_scale_manager().has_value()) {
-#if defined(WAYLAND_PROTOCOL_HAS_FRACTIONAL_SCALE)
+#if defined(HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1)
         fractional_scale_ = wp_fractional_scale_manager_v1_get_fractional_scale(
                 wm->get_fractional_scale_manager().value(),
                 wl_surface_);
@@ -70,7 +69,7 @@ Window::Window(WindowManager *wm,
     }
 
     if (wm->get_tearing_control_manager().has_value()) {
-#if defined(WAYLAND_PROTOCOL_HAS_TEARING_CONTROL)
+#if defined(HAS_WAYLAND_PROTOCOL_TEARING_CONTROL_V1)
         tearing_control_ = wp_tearing_control_manager_v1_get_tearing_control(
                 wm->get_tearing_control_manager().value(), wl_surface_);
         if (tearing) {
@@ -89,14 +88,13 @@ Window::Window(WindowManager *wm,
 }
 
 Window::~Window() {
-    SPDLOG_DEBUG("[Window] ~Window()");
     if (viewport_) {
-#if defined(WAYLAND_PROTOCOL_HAS_VIEWPORTER)
+#if defined(HAS_WAYLAND_PROTOCOL_VIEWPORTER)
         wp_viewport_destroy(viewport_);
 #endif
     }
     if (fractional_scale_) {
-#if defined(WAYLAND_PROTOCOL_HAS_FRACTIONAL_SCALE)
+#if defined(HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1)
         wp_fractional_scale_v1_destroy(fractional_scale_);
 #endif
     }

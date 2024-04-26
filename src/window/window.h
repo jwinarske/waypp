@@ -203,7 +203,7 @@ private:
                                        struct wp_fractional_scale_v1 *wp_fractional_scale_v1,
                                        uint32_t scale);
 
-#if defined(WAYLAND_PROTOCOL_HAS_FRACTIONAL_SCALE)
+#if defined(HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1)
     static constexpr struct wp_fractional_scale_v1_listener fractional_scale_listener_ = {
             .preferred_scale = handle_preferred_scale,
     };

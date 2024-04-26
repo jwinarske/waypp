@@ -35,6 +35,8 @@ public:
                       const char *app_id,
                       bool fullscreen,
                       bool maximized,
+                      unsigned long ext_interface_count = 0,
+                      const Registrar::RegistrarCallback *ext_interface_data = nullptr,
                       GMainContext *context = nullptr,
                       bool enable_cursor = true,
                       const char *name = nullptr);
@@ -64,7 +66,7 @@ private:
     std::list<std::string> apps_stack_;
     std::list<std::pair<const std::string, const std::string>> pending_app_list_;
 
-    volatile bool wait_for_configure_;
+    volatile bool wait_for_configure_{};
 
     struct {
         int32_t width;

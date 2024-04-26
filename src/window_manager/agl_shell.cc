@@ -27,9 +27,14 @@
  * The AglShell class is responsible for managing application windows using the XDG Shell protocol.
  */
 AglShell::AglShell(const char * /* title */, const char * /* app_id */, bool /* fullscreen */, bool /* maximized */,
-                   GMainContext *context, bool enable_cursor, const char *name) : XdgWindowManager(context,
-                                                                                                   enable_cursor,
-                                                                                                   name),
+                   const unsigned long ext_interface_count,
+                   const Registrar::RegistrarCallback *ext_interface_data,
+                   GMainContext *context, bool enable_cursor, const char *name) : XdgWindowManager(
+        ext_interface_count,
+        ext_interface_data,
+        context,
+        enable_cursor,
+        name),
                                                                                   wait_for_bound_(true),
                                                                                   bound_ok_(false) {
     auto agl_shell = get_agl_shell();

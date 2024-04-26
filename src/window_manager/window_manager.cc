@@ -35,16 +35,20 @@ class Registrar;
  * @see Window
  * @see XdgWm
  */
-WindowManager::WindowManager(GMainContext *context,
+WindowManager::WindowManager(const unsigned long ext_interface_count,
+                             const Registrar::RegistrarCallback *ext_interface_data,
+                             GMainContext *context,
                              bool enable_cursor,
-                             const char *display_name) : Registrar(get_display(display_name)),
+                             const char *display_name) : Registrar(get_display(display_name),
+                                                                   ext_interface_count,
+                                                                   ext_interface_data),
                                                          context_(context),
                                                          outputs_(get_outputs()),
                                                          cursor_{.enable = enable_cursor} {
     SPDLOG_TRACE("++WindowManager::WindowManager()");
-    if (enable_cursor) {
+    if (enable_cursor && get_shm().has_value()) {
         if (!shm_has_format(WL_SHM_FORMAT_XRGB8888)) {
-            spdlog::warn("XRGB is not supported. Disabling cursor");
+            spdlog::warn("Format {} is not supported. Disabling cursor", shm_format_to_text(WL_SHM_FORMAT_XRGB8888));
             cursor_.enable = false;
             return;
         }

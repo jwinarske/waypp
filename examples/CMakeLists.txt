@@ -21,11 +21,11 @@ pkg_check_modules(GLESv2 IMPORTED_TARGET glesv2)
 # simple-egl
 #
 add_executable(simple-egl simple-egl.cc)
-target_include_directories(simple-egl PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(simple-egl PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
 
 target_compile_definitions(simple-egl PRIVATE EGL_NO_X11 MESA_EGL_NO_X11_HEADERS)
 
-target_link_libraries(simple-egl PRIVATE waypp PkgConfig::GLESv2 cxxopts::cxxopts)
+target_link_libraries(simple-egl PRIVATE waypp wayland-gen PkgConfig::GLESv2 cxxopts::cxxopts)
 
 if (IPO_SUPPORT_RESULT)
     set_property(TARGET simple-egl PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
@@ -37,9 +37,9 @@ add_sanitizers(simple-egl)
 # simple-shm
 #
 add_executable(simple-shm simple-shm.cc)
-target_include_directories(simple-shm PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(simple-shm PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
 
-target_link_libraries(simple-shm PRIVATE waypp cxxopts::cxxopts)
+target_link_libraries(simple-shm PRIVATE waypp wayland-gen cxxopts::cxxopts)
 
 if (IPO_SUPPORT_RESULT)
     set_property(TARGET simple-shm PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)

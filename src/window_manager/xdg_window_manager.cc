@@ -27,9 +27,12 @@
  *
  * The XdgWm class is responsible for managing application windows using the XDG Shell protocol.
  */
-XdgWindowManager::XdgWindowManager(GMainContext *context,
+XdgWindowManager::XdgWindowManager(const unsigned long ext_interface_count,
+                                   const Registrar::RegistrarCallback *ext_interface_data,
+                                   GMainContext *context,
                                    bool enable_cursor,
-                                   const char *display_name) : WindowManager(context, enable_cursor, display_name) {
+                                   const char *display_name) : WindowManager(ext_interface_count, ext_interface_data,
+                                                                             context, enable_cursor, display_name) {
     SPDLOG_TRACE("++XdgWindowManager::XdgWindowManager()");
     auto xdg_wm_base = get_xdg_wm_base();
     if (!xdg_wm_base.has_value()) {

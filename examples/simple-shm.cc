@@ -27,9 +27,13 @@
 
 #include <cxxopts.hpp>
 
+#include "xdg-output-unstable-v1-client-protocol.h"
+
 #include "window/xdg_toplevel.h"
 
 #include "logging.h"
+
+#include <array>
 
 typedef struct {
     int width;
@@ -124,6 +128,48 @@ void draw_frame(void *data, const uint32_t time) {
     buffer->set_busy();
 }
 
+static void handle_interface1_add(void */* data */,
+                                  struct wl_registry */* registry */,
+                                  uint32_t name,
+                                  const char *interface,
+                                  uint32_t version) {
+    SPDLOG_DEBUG("handle_interface1_add: name: {}, interface: {}, version: {}", name, interface, version);
+}
+
+static void handle_interface1_remove(void */* data */,
+                                     struct wl_registry */* registry */,
+                                     uint32_t id) {
+    SPDLOG_DEBUG("handle_interface1_remove: id: {}", id);
+}
+
+static void handle_interface2_add(void */* data */,
+                                  struct wl_registry */* registry */,
+                                  uint32_t name,
+                                  const char *interface,
+                                  uint32_t version) {
+    SPDLOG_DEBUG("handle_interface2_add: name: {}, interface: {}, version: {}", name, interface, version);
+}
+
+static void handle_interface2_remove(void */* data */,
+                                     struct wl_registry */* registry */,
+                                     uint32_t id) {
+    SPDLOG_DEBUG("handle_interface2_remove: id: {}", id);
+}
+
+static constexpr
+std::array<Registrar::RegistrarCallback, 2> ext_interfaces{{
+                                                                   {
+                                                                           "zxdg_output_manager_v1",
+                                                                           handle_interface1_add,
+                                                                           handle_interface1_remove,
+                                                                   },
+                                                                   {
+                                                                           "wl_drm",
+                                                                           handle_interface2_add,
+                                                                           handle_interface2_remove,
+                                                                   }
+                                                           }};
+
 int main(int argc, char **argv) {
 
     auto logging = std::make_unique<Logging>();
@@ -149,7 +195,9 @@ int main(int argc, char **argv) {
             .tearing = result["tearing"].as<bool>(),
     };
 
-    XdgWindowManager wm = XdgWindowManager();
+    XdgWindowManager wm = XdgWindowManager(ext_interfaces.size(),
+                                           ext_interfaces.data()
+    );
     spdlog::info("XDG Window Manager Version: {}", wm.get_version());
     auto top_level = wm.create_top_level("simple-shm",
                                          config.width,

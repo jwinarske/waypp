@@ -47,13 +47,21 @@ public:
             struct wl_registry *registry,
             uint32_t id);
 
-    explicit Registrar(struct wl_display *wl_display);
+    struct RegistrarCallback {
+        const char *interface;
+        RegistrarGlobalCallback global_callback;
+        RegistrarGlobalRemoveCallback global_remove_callback;
+    };
+
+    explicit Registrar(struct wl_display *wl_display,
+                       unsigned long ext_interface_count = 0,
+                       const RegistrarCallback *ext_interface_data = nullptr);
 
     ~Registrar();
 
-    // Returns whether the shared memory has a specific format.
+    // Returns if shared memory has a specific format.
     [[nodiscard]] std::optional<bool> shm_has_format(enum wl_shm_format format) const {
-        if (shm_.wl_shm == nullptr) {
+        if (!shm_.wl_shm.has_value()) {
             return {};
         }
         if (std::find(shm_.formats.begin(), shm_.formats.end(), format) != shm_.formats.end()) {
@@ -65,27 +73,18 @@ public:
     // Returns text representation of wl_shm_format
     static const char *shm_format_to_text(enum wl_shm_format format);
 
+    // Returns the registry.
+    [[nodiscard]] struct wl_registry *get_registry() const { return wl_registry_; }
+
     // Returns the compositor.
     [[nodiscard]] struct wl_compositor *get_compositor() const { return compositor_.wl_compositor; }
 
     // Returns the subcompositor if available.
-    [[nodiscard]] std::optional<struct wl_subcompositor *> get_subcompositor() const {
-        if (sub_compositor_.wl_subcompositor == nullptr) {
-            return {};
-        }
-        return sub_compositor_.wl_subcompositor;
-    }
+    [[nodiscard]] std::optional<struct wl_subcompositor *>
+    get_subcompositor() const { return sub_compositor_.wl_subcompositor; }
 
-    // Returns the shared memory if it is not null.
-    [[nodiscard]] std::optional<struct wl_shm *> get_shm() const {
-        if (shm_.wl_shm == nullptr) {
-            return {};
-        }
-        return shm_.wl_shm;
-    }
-
-    // Returns the registry.
-    [[nodiscard]] struct wl_registry *get_registry() const { return wl_registry_; }
+    // Returns the shm if it exists.
+    [[nodiscard]] std::optional<struct wl_shm *> get_shm() const { return shm_.wl_shm; }
 
     // Returns the xdg surface manager base if it exists.
     [[nodiscard]] std::optional<struct xdg_wm_base *> get_xdg_wm_base() const { return xdg_wm_base_.xdg_wm_base; }
@@ -124,6 +123,9 @@ private:
     friend AglShell;
     friend WindowManager;
 
+    std::unique_ptr<std::map<std::string, RegistrarGlobalCallback>> registrar_global_;
+    std::unique_ptr<std::map<uint32_t, RegistrarGlobalRemoveCallback>> registrar_global_remove_;
+
     struct wl_display *wl_display_;
     struct wl_registry *wl_registry_;
 
@@ -134,7 +136,7 @@ private:
 
     struct {
         uint32_t min_version = kWlShmMinVersion;
-        struct wl_shm *wl_shm;
+        std::optional<struct wl_shm *> wl_shm;
         std::vector<uint32_t> formats;
     } shm_;
 
@@ -145,7 +147,7 @@ private:
 
     struct {
         uint32_t min_version = kWlSubcompositorMinVersion;
-        struct wl_subcompositor *wl_subcompositor{};
+        std::optional<struct wl_subcompositor *> wl_subcompositor;
     } sub_compositor_;
 
     struct {
@@ -191,8 +193,6 @@ private:
 
     std::mutex registrar_global_mutex_;
     std::mutex registrar_global_remove_mutex_;
-    std::map<const char *, std::pair<RegistrarGlobalCallback, void *>> registrar_add_;
-    std::map<uint32_t, std::pair<RegistrarGlobalRemoveCallback, void *>> registrar_remove_;
 
     // Handles global registry events.
     static void registry_handle_global(void *data,
@@ -219,6 +219,110 @@ private:
     static constexpr wl_shm_listener shm_listener_ = {
             .format = shm_format,
     };
+
+    static void handle_interface_compositor(void *data,
+                                            struct wl_registry *registry,
+                                            uint32_t name,
+                                            const char *interface,
+                                            uint32_t version);
+
+    static void handle_interface_subcompositor(void *data,
+                                               struct wl_registry *registry,
+                                               uint32_t name,
+                                               const char *interface,
+                                               uint32_t version);
+
+    static void handle_interface_shm(void *data,
+                                     struct wl_registry *registry,
+                                     uint32_t name,
+                                     const char *interface,
+                                     uint32_t version);
+
+    static void handle_interface_seat(void *data,
+                                      struct wl_registry *registry,
+                                      uint32_t name,
+                                      const char *interface,
+                                      uint32_t version);
+
+    static void handle_interface_output(void *data,
+                                        struct wl_registry *registry,
+                                        uint32_t name,
+                                        const char *interface,
+                                        uint32_t version);
+
+    static void handle_interface_xdg_wm_base(void *data,
+                                             struct wl_registry *registry,
+                                             uint32_t name,
+                                             const char *interface,
+                                             uint32_t version);
+
+    static void handle_interface_agl_shell(void *data,
+                                           struct wl_registry *registry,
+                                           uint32_t name,
+                                           const char *interface,
+                                           uint32_t version);
+
+    static void handle_interface_ivi_wm(void *data,
+                                        struct wl_registry *registry,
+                                        uint32_t name,
+                                        const char *interface,
+                                        uint32_t version);
+
+#if defined(HAS_WAYLAND_PROTOCOL_XDG_DECORATION_UNSTABLE_V1)
+
+    static void handle_interface_zxdg_decoration(void *data,
+                                                 struct wl_registry *registry,
+                                                 uint32_t name,
+                                                 const char *interface,
+                                                 uint32_t version);
+
+    static void handle_interface_zxdg_toplevel_decoration(void *data,
+                                                          struct wl_registry *registry,
+                                                          uint32_t name,
+                                                          const char *interface,
+                                                          uint32_t version);
+
+#endif
+
+#if defined(HAS_WAYLAND_PROTOCOL_PRESENTATION_TIME)
+
+    static void handle_interface_presentation(void *data,
+                                              struct wl_registry *registry,
+                                              uint32_t name,
+                                              const char *interface,
+                                              uint32_t version);
+
+#endif
+
+#if defined(HAS_WAYLAND_PROTOCOL_TEARING_CONTROL_V1)
+
+    static void handle_interface_tearing_control_manager(void *data,
+                                                         struct wl_registry *registry,
+                                                         uint32_t name,
+                                                         const char *interface,
+                                                         uint32_t version);
+
+#endif
+
+#if defined(HAS_WAYLAND_PROTOCOL_VIEWPORTER)
+
+    static void handle_interface_viewporter(void *data,
+                                            struct wl_registry *registry,
+                                            uint32_t name,
+                                            const char *interface,
+                                            uint32_t version);
+
+#endif
+
+#if defined(HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1)
+
+    static void handle_interface_fractional_scale_manager(void *data,
+                                                          struct wl_registry *registry,
+                                                          uint32_t name,
+                                                          const char *interface,
+                                                          uint32_t version);
+
+#endif
 
 protected:
     struct {
