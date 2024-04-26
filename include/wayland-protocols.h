@@ -17,14 +17,30 @@
 #ifndef INCLUDE_PROTOCOLS_H_
 #define INCLUDE_PROTOCOLS_H_
 
+#include <wayland-client-protocol.h>
+
+#if defined(ENABLE_XDG_CLIENT)
+
+#include "xdg-shell-client-protocol.h"
+
+#endif
+
+#if defined(ENABLE_AGL_SHELL_CLIENT)
 #include "agl-shell-client-protocol.h"
 #include "agl-shell-desktop-client-protocol.h"
 #include "agl-screenshooter-client-protocol.h"
+#endif
 
+#if defined(ENABLE_IVI_SHELL_CLIENT)
 #include "ivi-wm-client-protocol.h"
 #include "ivi-application-client-protocol.h"
+#endif
 
-#include "xdg-shell-client-protocol.h"
+#if defined(HAS_WAYLAND_PROTOCOL_DRM_LEASE_V1)
+
+#include "drm-lease-v1-client-protocol.h"
+
+#endif
 
 #if defined(HAS_WAYLAND_PROTOCOL_XDG_DECORATION_UNSTABLE_V1)
 
@@ -68,20 +84,5 @@ struct wp_tearing_control_manager_v1;
 struct wp_viewporter;
 struct wp_viewport;
 #endif
-
-#if defined(HAS_WAYLAND_PROTOCOL_DRM_LEASE_V1)
-
-#include "drm-lease-v1-client-protocol.h"
-
-#else
-struct wp_drm_lease_connector_v1;
-struct wp_drm_lease_device_v1;
-struct wp_drm_lease_request_v1;
-struct wp_drm_lease_v1;
-#endif
-
-#include <wayland-client-protocol.h>
-
-#include "xdg-shell-client-protocol.h"
 
 #endif //INCLUDE_PROTOCOLS_H_

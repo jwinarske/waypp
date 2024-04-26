@@ -28,7 +28,10 @@
 #include "output.h"
 #include "wayland-protocols.h"
 #include "seat/seat.h"
+
+#if defined(ENABLE_DRM_LEASE_CLIENT)
 #include "drm_lease_device_v1.h"
+#endif
 
 #if defined(ENABLE_AGL_SHELL_CLIENT)
 class AglShell;
@@ -172,10 +175,12 @@ private:
         std::optional<struct ivi_wm *> ivi_wm;
     } ivi_wm_;
 
+#if defined(ENABLE_DRM_LEASE_CLIENT)
     struct {
         uint32_t min_version = kDrmLeaseDeviceV1MinVersion;
         std::unique_ptr<DrmLeaseDevice_v1> drm_lease_device_v1;
     } drm_lease_device_v1_;
+#endif
 
     struct {
         uint32_t min_version = kXdgDecorationManagerMinVersion;

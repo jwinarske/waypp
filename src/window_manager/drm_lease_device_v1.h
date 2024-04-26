@@ -49,7 +49,7 @@ private:
     static void handle_lease_finished(void *data,
                                       struct wp_drm_lease_v1 *wp_drm_lease_v1);
 
-    static constexpr struct wp_drm_lease_v1_listener lease_listener_{
+    static constexpr struct wp_drm_lease_v1_listener lease_listener_ = {
             .lease_fd = handle_lease_fd,
             .finished = handle_lease_finished,
     };

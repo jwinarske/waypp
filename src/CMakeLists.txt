@@ -16,7 +16,6 @@
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GLIB REQUIRED IMPORTED_TARGET glib-2.0)
-pkg_check_modules(CAIRO REQUIRED IMPORTED_TARGET cairo)
 find_package(OpenGL REQUIRED COMPONENTS EGL)
 
 include(CheckFunctionExists)
@@ -84,7 +83,6 @@ target_include_directories(waypp PUBLIC .)
 target_link_libraries(waypp PUBLIC
         wayland-gen
         PkgConfig::GLIB
-        PkgConfig::CAIRO
         OpenGL::EGL
         spdlog
 )
