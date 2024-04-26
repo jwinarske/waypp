@@ -82,7 +82,7 @@ Window::Window(WindowManager *wm,
                                                         WP_TEARING_CONTROL_V1_PRESENTATION_HINT_VSYNC);
         }
 #else
-        (void)tearing;
+        (void) tearing;
 #endif
     }
 }

@@ -43,6 +43,7 @@ set(SEAT_SRC
         seat/cursor.cc
         seat/seat.cc
         seat/keyboard.cc
+        seat/timer.cc
         seat/pointer.cc
         seat/touch.cc
 )

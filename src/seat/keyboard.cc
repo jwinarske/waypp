@@ -16,11 +16,14 @@
 
 #include "keyboard.h"
 
+#include <memory>
+
 #include <wayland-client.h>
 #include <sys/mman.h>
 #include <unistd.h>
 #include <xkbcommon/xkbcommon.h>
 
+#include "timer.h"
 #include "logging.h"
 
 /**
@@ -30,9 +33,16 @@
  * The Keyboard class provides a wrapper for a keyboard device,
  * which interacts with the Wayland compositor.
  */
-Keyboard::Keyboard(struct wl_keyboard *keyboard) : keyboard_(keyboard),
-                                                   xkb_context_(xkb_context_new(XKB_CONTEXT_NO_FLAGS)) {
+Keyboard::Keyboard(struct wl_keyboard *keyboard, KeyCallback key_callback) : keyboard_(keyboard),
+                                                                             xkb_context_(xkb_context_new(
+                                                                                     XKB_CONTEXT_NO_FLAGS)),
+                                                                             key_callback_(key_callback),
+                                                                             repeat_timer_(
+                                                                                     std::make_unique<EventTimer>(
+                                                                                             CLOCK_MONOTONIC,
+                                                                                             repeat_callback, this)) {
     SPDLOG_DEBUG("Keyboard");
+    repeat_timer_->set_timerspec(40, 400);
     wl_keyboard_add_listener(keyboard_, &keyboard_listener_, this);
 }
 
@@ -43,7 +53,17 @@ Keyboard::Keyboard(struct wl_keyboard *keyboard) : keyboard_(keyboard),
  * The Keyboard class manages the interaction with a Wayland keyboard input device.
  */
 Keyboard::~Keyboard() {
+    repeat_timer_.reset();
     wl_keyboard_release(keyboard_);
+}
+
+void Keyboard::repeat_callback(void *data) {
+    auto obj = static_cast<Keyboard *>(data);
+    if (XKB_KEY_NoSymbol != obj->repeat_code_) {
+        if (obj->key_callback_) {
+            obj->key_callback_(data, false, obj->keysym_pressed_, obj->repeat_code_, 0);
+        }
+    }
 }
 
 gboolean Keyboard::handle_repeat(Keyboard *keyboard) {
@@ -70,8 +90,6 @@ void Keyboard::handle_keymap(void *data,
     if (obj->keyboard_ != keyboard) {
         return;
     }
-    SPDLOG_DEBUG("handle_keymap");
-
     char *keymap_string = static_cast<char *>(mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0));
     xkb_keymap_unref(obj->keymap_);
     obj->keymap_ = xkb_keymap_new_from_string(obj->xkb_context_, keymap_string,
@@ -118,7 +136,6 @@ void Keyboard::handle_key(void *data,
     if (obj->keyboard_ != keyboard) {
         return;
     }
-    SPDLOG_DEBUG("[Keyboard] handle_key");
 
     if (!obj->xkb_state_)
         return;
@@ -144,10 +161,25 @@ void Keyboard::handle_key(void *data,
         }
     }
 
+    if (obj->key_callback_) {
+        obj->key_callback_(obj, state == WL_KEYBOARD_KEY_STATE_RELEASED, keysym, xkb_scancode, 0);
+    }
+
     if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
         if (xkb_keymap_key_repeats(obj->keymap_, xkb_scancode)) {
+            SPDLOG_DEBUG("xkb_keymap_key_repeats: {}", xkb_scancode);
+            obj->keysym_pressed_ = keysym;
+            Keyboard::set_repeat_code(obj, xkb_scancode);
+            obj->repeat_timer_->arm();
+        } else {
+            SPDLOG_DEBUG("key does not repeat: 0x{:x}", xkb_scancode);
         }
+
     } else if (state == WL_KEYBOARD_KEY_STATE_RELEASED) {
+        if (obj->repeat_code_ == xkb_scancode) {
+            obj->repeat_timer_->disarm();
+            Keyboard::set_repeat_code(obj, XKB_KEY_NoSymbol);
+        }
     }
 }
 

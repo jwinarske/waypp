@@ -57,6 +57,7 @@ public:
     };
 
     explicit Registrar(struct wl_display *wl_display,
+                       Keyboard::KeyCallback keyboard_callback = nullptr,
                        unsigned long ext_interface_count = 0,
                        const RegistrarCallback *ext_interface_data = nullptr);
 
@@ -133,6 +134,7 @@ private:
 
     struct wl_display *wl_display_;
     struct wl_registry *wl_registry_;
+    Keyboard::KeyCallback keyboard_callback_;
 
     struct {
         uint32_t min_version = kWlSeatMinVersion;
@@ -261,11 +263,13 @@ private:
                                         uint32_t version);
 
 #if defined(ENABLE_XDG_CLIENT)
+
     static void handle_interface_xdg_wm_base(void *data,
                                              struct wl_registry *registry,
                                              uint32_t name,
                                              const char *interface,
                                              uint32_t version);
+
 #endif
 
 #if defined(ENABLE_AGL_SHELL_CLIENT)
@@ -285,11 +289,13 @@ private:
 #endif
 
 #if defined(ENABLE_DRM_LEASE_CLIENT)
+
     static void handle_interface_drm_lease_device_v1(void *data,
-                                    struct wl_registry *registry,
-                                    uint32_t name,
-                                    const char *interface,
-                                    uint32_t version);
+                                                     struct wl_registry *registry,
+                                                     uint32_t name,
+                                                     const char *interface,
+                                                     uint32_t version);
+
 #endif
 
 #if defined(HAS_WAYLAND_PROTOCOL_XDG_DECORATION_UNSTABLE_V1)

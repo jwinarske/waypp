@@ -35,11 +35,13 @@ class Registrar;
  * @see Window
  * @see XdgWm
  */
-WindowManager::WindowManager(const unsigned long ext_interface_count,
+WindowManager::WindowManager(Keyboard::KeyCallback keyboard_callback,
+                             const unsigned long ext_interface_count,
                              const Registrar::RegistrarCallback *ext_interface_data,
                              GMainContext *context,
                              bool enable_cursor,
                              const char *display_name) : Registrar(get_display(display_name),
+                                                                   keyboard_callback,
                                                                    ext_interface_count,
                                                                    ext_interface_data),
                                                          context_(context),
@@ -54,7 +56,6 @@ WindowManager::WindowManager(const unsigned long ext_interface_count,
         }
         cursor_.cursor = std::make_unique<Cursor>(get_shm().value(), get_compositor());
     }
-    //    start_frame_callbacks();
     SPDLOG_TRACE("--WindowManager::WindowManager()");
 }
 

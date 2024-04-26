@@ -25,9 +25,10 @@
  * The Seat class provides a representation of a seat in a Wayland compositor. It is used to handle input events from
  * devices such as keyboards, pointers, and touchscreens.
  */
-Seat::Seat(struct wl_seat *seat) :
+Seat::Seat(struct wl_seat *seat, Keyboard::KeyCallback keyboard_callback) :
         wl_seat_(seat),
-        capabilities_() {
+        capabilities_(),
+        keyboard_callback_(keyboard_callback) {
     wl_seat_add_listener(seat, &listener_, this);
 }
 
@@ -51,7 +52,7 @@ void Seat::handle_capabilities(void *data,
     }
 
     if ((caps & WL_SEAT_CAPABILITY_KEYBOARD) && !obj->keyboard_) {
-        obj->keyboard_ = std::make_unique<Keyboard>(wl_seat_get_keyboard(seat));
+        obj->keyboard_ = std::make_unique<Keyboard>(wl_seat_get_keyboard(seat), obj->keyboard_callback_);
     } else if (!(caps & WL_SEAT_CAPABILITY_KEYBOARD) && obj->keyboard_) {
         obj->keyboard_.reset();
     }

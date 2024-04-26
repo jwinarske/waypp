@@ -22,10 +22,12 @@
 #include "logging.h"
 
 Registrar::Registrar(struct wl_display *wl_display,
+                     Keyboard::KeyCallback keyboard_callback,
                      const unsigned long ext_interface_count,
                      const RegistrarCallback *ext_interface_data)
         : wl_display_(wl_display),
-          wl_registry_(wl_display_get_registry(wl_display)) {
+          wl_registry_(wl_display_get_registry(wl_display)),
+          keyboard_callback_(keyboard_callback) {
     SPDLOG_TRACE("++Registrar::Registrar()");
 
     registrar_global_ = std::make_unique<std::map<std::string, RegistrarGlobalCallback>>();
@@ -485,7 +487,7 @@ void Registrar::handle_interface_seat(void *data,
     auto wl_seat = static_cast<struct wl_seat *>(
             wl_registry_bind(registry, name, &wl_seat_interface,
                              std::min(static_cast<uint32_t>(r->seat_.min_version), version)));
-    r->seat_.seats[wl_seat] = std::make_unique<Seat>(wl_seat);
+    r->seat_.seats[wl_seat] = std::make_unique<Seat>(wl_seat, r->keyboard_callback_);
     spdlog::debug("{}: {}", interface, wl_seat_get_version(wl_seat));
 }
 

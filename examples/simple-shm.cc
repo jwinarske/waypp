@@ -125,6 +125,15 @@ void draw_frame(void *data, const uint32_t time) {
     buffer->set_busy();
 }
 
+static void keyboard_handler(
+        void * /*data*/,
+        bool released,
+        xkb_keysym_t /*keysym*/,
+        uint32_t xkb_scancode,
+        uint32_t modifiers) {
+    spdlog::info("KeyEvent: released: {}, scancode: {}, modifiers: {}", released, xkb_scancode, modifiers);
+}
+
 int main(int argc, char **argv) {
 
     auto logging = std::make_unique<Logging>();
@@ -150,7 +159,7 @@ int main(int argc, char **argv) {
             .tearing = result["tearing"].as<bool>(),
     };
 
-    XdgWindowManager wm = XdgWindowManager();
+    XdgWindowManager wm = XdgWindowManager(keyboard_handler);
     spdlog::info("XDG Window Manager Version: {}", wm.get_version());
     auto top_level = wm.create_top_level("simple-shm",
                                          "org.freedesktop.gitlab.jwinarske.waypp.simple_shm",

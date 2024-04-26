@@ -126,30 +126,30 @@ void draw_frame(void *data, const uint32_t time) {
     buffer->set_busy();
 }
 
-static void handle_interface1_add(void */* data */,
-                                  struct wl_registry */* registry */,
+static void handle_interface1_add(void * /* data */,
+                                  struct wl_registry * /* registry */,
                                   uint32_t name,
                                   const char *interface,
                                   uint32_t version) {
     spdlog::info("handle_interface1_add: name: {}, interface: {}, version: {}", name, interface, version);
 }
 
-static void handle_interface1_remove(void */* data */,
-                                     struct wl_registry */* registry */,
+static void handle_interface1_remove(void * /* data */,
+                                     struct wl_registry * /* registry */,
                                      uint32_t id) {
     spdlog::info("handle_interface1_remove: id: {}", id);
 }
 
-static void handle_interface2_add(void */* data */,
-                                  struct wl_registry */* registry */,
+static void handle_interface2_add(void * /* data */,
+                                  struct wl_registry * /* registry */,
                                   uint32_t name,
                                   const char *interface,
                                   uint32_t version) {
     spdlog::info("handle_interface2_add: name: {}, interface: {}, version: {}", name, interface, version);
 }
 
-static void handle_interface2_remove(void */* data */,
-                                     struct wl_registry */* registry */,
+static void handle_interface2_remove(void * /* data */,
+                                     struct wl_registry * /* registry */,
                                      uint32_t id) {
     spdlog::info("handle_interface2_remove: id: {}", id);
 }

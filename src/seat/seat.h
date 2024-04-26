@@ -33,13 +33,15 @@ class Touch;
 
 class Seat {
 public:
-    explicit Seat(struct wl_seat *seat);
+    explicit Seat(struct wl_seat *seat, Keyboard::KeyCallback keyboard_callback);
 
     [[nodiscard]] struct wl_seat *get_seat() const { return wl_seat_; };
 
     [[nodiscard]] uint32_t get_capabilities() const { return capabilities_; };
 
     [[nodiscard]] const std::string &get_name() const { return name_; };
+
+    void set_key_callback(Keyboard::KeyCallback key_callback) { keyboard_callback_ = key_callback; }
 
 private:
     struct wl_seat *wl_seat_;
@@ -49,6 +51,8 @@ private:
     std::unique_ptr<Keyboard> keyboard_;
     std::unique_ptr<Pointer> pointer_;
     std::unique_ptr<Touch> touch_;
+
+    Keyboard::KeyCallback keyboard_callback_{};
 
     static void handle_capabilities(void *data,
                                     struct wl_seat *seat,

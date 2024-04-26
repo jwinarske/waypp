@@ -17,13 +17,26 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
+#include <mutex>
 
 #include <glib-2.0/glib.h>
 #include <xkbcommon/xkbcommon.h>
+#include "timer.h"
 
 class Keyboard {
 public:
-    explicit Keyboard(struct wl_keyboard *keyboard);
+
+    typedef void (*KeyCallback)(
+            void *data,
+            bool released,
+            xkb_keysym_t keysym,
+            uint32_t xkb_scancode,
+            uint32_t modifiers);
+
+    void set_key_callback(KeyCallback key_callback) { key_callback_ = key_callback; }
+
+    Keyboard(struct wl_keyboard *keyboard, KeyCallback key_callback);
 
     ~Keyboard();
 
@@ -38,6 +51,14 @@ private:
     guint key_timeout_id_{};
 
     int32_t key_repeat_rate_{};
+
+    std::mutex lock_;
+    uint32_t repeat_code_{};
+
+    KeyCallback key_callback_{};
+    std::unique_ptr<EventTimer> repeat_timer_;
+
+    static void repeat_callback(void *data);
 
     /**
      * @brief Handles the repeated key events for the Keyboard.
@@ -179,4 +200,9 @@ private:
      * @struct wl_keyboard_listener
      */
     static const struct wl_keyboard_listener keyboard_listener_;
+
+    static inline void set_repeat_code(Keyboard *keyboard, const uint32_t repeat_code) {
+        std::lock_guard lock(keyboard->lock_);
+        keyboard->repeat_code_ = repeat_code;
+    }
 };
