@@ -348,6 +348,26 @@ void Window::swap_buffers() {
     }
 }
 
+bool Window::have_swap_buffers_width_damage() {
+    if (egl_) {
+        return egl_->have_swap_buffers_width_damage();
+    }
+    return false;
+}
+
+void Window::get_buffer_age(EGLint &buffer_age) {
+    if (egl_) {
+        egl_->get_buffer_age(buffer_age);
+    }
+}
+
+void Window::swap_buffers_with_damage(const EGLint *rects, EGLint n_rects) {
+    if (egl_) {
+        egl_->swap_buffers_with_damage( rects, n_rects);
+    }
+}
+
+
 Buffer *Window::pick_free_buffer() {
     Buffer *res = nullptr;
     for (auto &b: buffers_) {

@@ -34,12 +34,17 @@ public:
 
     void set_swap_interval(int interval);
 
-
     void make_current();
 
     void clear_current();
 
     void swap_buffers();
+
+    void get_buffer_age(EGLint &age);
+
+    bool have_swap_buffers_width_damage() const { return pfSwapBufferWithDamage_ != nullptr; }
+
+    void swap_buffers_with_damage(const EGLint *rects, EGLint n_rects);
 
     void resize(int width, int height, int dx, int dy);
 

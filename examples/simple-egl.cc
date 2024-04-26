@@ -239,7 +239,7 @@ uint32_t frames;
 uint32_t initial_frame_time;
 uint32_t benchmark_time;
 
-static void draw_triangle(Window *window) {
+static void draw_triangle(Window *window, EGLint buffer_age) {
     static const GLfloat verts[3][2] = {
             {-0.5, -0.5},
             {0.5,  -0.5},
@@ -269,20 +269,16 @@ static void draw_triangle(Window *window) {
         window->opaque_region_clear();
     }
 
-#if 0
     EGLint rect[4];
-    if (display->swap_buffers_with_damage && buffer_age > 0) {
-        rect[0] = window->buffer_size.width / 4 - 1;
-        rect[1] = window->buffer_size.height / 4 - 1;
-        rect[2] = window->buffer_size.width / 2 + 2;
-        rect[3] = window->buffer_size.height / 2 + 2;
-        display->swap_buffers_with_damage(display->egl.dpy,
-                                          window->egl_surface,
-                                          rect, 1);
+    if (window->have_swap_buffers_width_damage() && buffer_age > 0) {
+        rect[0] = window->get_width() / 4 - 1;
+        rect[1] = window->get_height() / 4 - 1;
+        rect[2] = window->get_width() / 2 + 2;
+        rect[3] = window->get_height() / 2 + 2;
+        window->swap_buffers_with_damage(rect, 1);
     } else {
-#endif
-    window->swap_buffers();
-//TODO    }
+        window->swap_buffers();
+    }
 }
 
 /**
@@ -366,6 +362,10 @@ static void draw_frame(void *userdata, uint32_t /* time */) {
             break;
     }
 
+    EGLint buffer_age = 0;
+    if (window->have_swap_buffers_width_damage())
+        window->get_buffer_age(buffer_age);
+
     glViewport(0, 0, window->get_width(), window->get_height());
 
     glUniformMatrix4fv(gl.rotation_uniform, 1, GL_FALSE, (GLfloat *) rotation.d);
@@ -376,7 +376,7 @@ static void draw_frame(void *userdata, uint32_t /* time */) {
         glClearColor(0.0, 0.0, 0.0, 0.5);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    draw_triangle(window);
+    draw_triangle(window, buffer_age);
 
     frames++;
 }

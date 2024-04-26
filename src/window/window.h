@@ -91,6 +91,12 @@ public:
 
     void swap_buffers();
 
+    bool have_swap_buffers_width_damage();
+
+    void get_buffer_age(EGLint &age);
+
+    void swap_buffers_with_damage(const EGLint *rects, EGLint n_rects);
+
     Buffer *pick_free_buffer();
 
     void prune_old_released_buffers();
