@@ -124,23 +124,14 @@ void draw_frame(void *data, const uint32_t time) {
     buffer->set_busy();
 }
 
-class App : public PointerObserver, public KeyboardObserver {
+class App : public PointerObserver, public KeyboardObserver, public SeatObserver {
 public:
     explicit App(Configuration config) : logging_(std::make_unique<Logging>()) {
 
         wm_ = std::make_unique<XdgWindowManager>();
-
         auto seat = wm_->get_seat();
         if (seat.has_value()) {
-            auto keyboard = seat.value()->get_keyboard();
-            if (keyboard.has_value()) {
-                keyboard.value()->register_observer(this);
-            }
-
-            auto pointer = seat.value()->get_pointer();
-            if (pointer.has_value()) {
-                pointer.value()->register_observer(this);
-            }
+            seat.value()->register_observer(this);
         }
 
         spdlog::info("XDG Window Manager Version: {}", wm_->get_version());
@@ -173,61 +164,80 @@ public:
         return (top_level_->is_valid() && wm_->display_dispatch() != -1);
     }
 
+    void notify_seat_capabilities(void *data, struct wl_seat * /* seat */, uint32_t /* caps */) override {
+        auto seat = static_cast<Seat *>(data);
+        if (seat) {
+            auto keyboard = seat->get_keyboard();
+            if (keyboard.has_value()) {
+                keyboard.value()->register_observer(this);
+            }
+
+            auto pointer = seat->get_pointer();
+            if (pointer.has_value()) {
+                pointer.value()->register_observer(this);
+            }
+        }
+    }
+
+    void notify_seat_name(void * /* data */, struct wl_seat * /* seat */, const char *name) override {
+        spdlog::info("Seat: {}", name);
+    }
+
     void notify_key(void * /* data */, bool released, xkb_keysym_t /* keysym */, uint32_t xkb_scancode,
                     uint32_t modifiers) override {
         spdlog::info("KeyEvent: released: {}, scancode: {}, modifiers: {}", released, xkb_scancode, modifiers);
     }
 
-    void notify_enter(void * /* data */,
-                      struct wl_pointer * /* pointer */,
-                      uint32_t /* serial */,
-                      struct wl_surface * /* surface */,
-                      double /* sx */,
-                      double /* sy */) override {}
+    void notify_pointer_enter(void * /* data */,
+                              struct wl_pointer * /* pointer */,
+                              uint32_t /* serial */,
+                              struct wl_surface * /* surface */,
+                              double /* sx */,
+                              double /* sy */) override {}
 
-    void notify_leave(void * /* data */,
-                      struct wl_pointer * /* pointer */,
-                      uint32_t /* serial */,
-                      struct wl_surface * /* surface */) override {}
+    void notify_pointer_leave(void * /* data */,
+                              struct wl_pointer * /* pointer */,
+                              uint32_t /* serial */,
+                              struct wl_surface * /* surface */) override {}
 
-    void notify_motion(void *  /* data  */,
-                       struct wl_pointer * /* pointer */,
-                       uint32_t time,
-                       double sx,
-                       double sy) override {
+    void notify_pointer_motion(void *  /* data  */,
+                               struct wl_pointer * /* pointer */,
+                               uint32_t time,
+                               double sx,
+                               double sy) override {
         spdlog::info("Pointer: time: {}, x: {}, y: {}", time, sx, sy);
     }
 
-    void notify_button(void * /* data */,
-                       struct wl_pointer * /* pointer  */,
-                       uint32_t /* serial  */,
-                       uint32_t time,
-                       uint32_t button,
-                       uint32_t state) override {
+    void notify_pointer_button(void * /* data */,
+                               struct wl_pointer * /* pointer  */,
+                               uint32_t /* serial  */,
+                               uint32_t time,
+                               uint32_t button,
+                               uint32_t state) override {
         spdlog::info("Pointer Button: time: {}, button: {}, state: {}", time, button, state);
     }
 
-    void notify_axis(void * /* data */,
-                     struct wl_pointer * /* pointer */,
-                     uint32_t /* time */,
-                     uint32_t /* axis */,
-                     wl_fixed_t /* value */) override {}
+    void notify_pointer_axis(void * /* data */,
+                             struct wl_pointer * /* pointer */,
+                             uint32_t /* time */,
+                             uint32_t /* axis */,
+                             wl_fixed_t /* value */) override {}
 
-    void notify_frame(void * /* data */, struct wl_pointer * /* pointer */) override {};
+    void notify_pointer_frame(void * /* data */, struct wl_pointer * /* pointer */) override {};
 
-    void notify_axis_source(void * /* data */,
-                            struct wl_pointer * /* pointer */,
-                            uint32_t /* axis_source */) override {};
+    void notify_pointer_axis_source(void * /* data */,
+                                    struct wl_pointer * /* pointer */,
+                                    uint32_t /* axis_source */) override {};
 
-    void notify_axis_stop(void * /* data */,
-                          struct wl_pointer * /* pointer */,
-                          uint32_t /* time */,
-                          uint32_t /* axis */) override {};
+    void notify_pointer_axis_stop(void * /* data */,
+                                  struct wl_pointer * /* pointer */,
+                                  uint32_t /* time */,
+                                  uint32_t /* axis */) override {};
 
-    void notify_axis_discrete(void * /* data */,
-                              struct wl_pointer * /*pointer */,
-                              uint32_t /* axis */,
-                              int32_t /* discrete */) override {}
+    void notify_pointer_axis_discrete(void * /* data */,
+                                      struct wl_pointer * /*pointer */,
+                                      uint32_t /* axis */,
+                                      int32_t /* discrete */) override {}
 
 private:
     std::unique_ptr<Logging> logging_;
@@ -258,7 +268,7 @@ int main(int argc, char **argv) {
                     .tearing = result["tearing"].as<bool>(),
             });
 
-    while (running && app.run() != -1) {}
+    while (running && app.run()) {}
 
     return EXIT_SUCCESS;
 }

@@ -44,7 +44,6 @@ XdgWindowManager::XdgWindowManager(const unsigned long ext_interface_count,
     xdg_wm_base_ = xdg_wm_base.value();
 
     xdg_wm_base_add_listener(xdg_wm_base.value(), &xdg_wm_base_listener_, this);
-    wl_display_roundtrip(wl_display_);
     SPDLOG_TRACE("--XdgWindowManager::XdgWindowManager()");
 }
 

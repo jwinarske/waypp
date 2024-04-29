@@ -32,9 +32,30 @@ class Pointer;
 
 class Touch;
 
+class SeatObserver {
+public:
+    virtual ~SeatObserver() = default;
+
+    virtual void notify_seat_name(void *data,
+                                  struct wl_seat *seat,
+                                  const char *name) = 0;
+
+    virtual void notify_seat_capabilities(void *data,
+                                          struct wl_seat *seat,
+                                          uint32_t caps) = 0;
+};
+
 class Seat {
 public:
     explicit Seat(struct wl_seat *seat);
+
+    void register_observer(SeatObserver *observer) {
+        observers_.push_back(observer);
+    }
+
+    void unregister_observer(SeatObserver *observer) {
+        observers_.remove(observer);
+    }
 
     [[nodiscard]] struct wl_seat *get_seat() const { return wl_seat_; }
 
@@ -53,6 +74,9 @@ private:
     uint32_t capabilities_;
     std::string name_;
     bool ready_{};
+
+    std::list<SeatObserver *> observers_;
+
 
     std::unique_ptr<Keyboard> keyboard_;
     std::unique_ptr<Pointer> pointer_;

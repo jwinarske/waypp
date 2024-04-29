@@ -24,53 +24,53 @@ class PointerObserver {
 public:
     virtual ~PointerObserver() = default;
 
-    virtual void notify_enter(void *data,
-                              struct wl_pointer *pointer,
-                              uint32_t serial,
-                              struct wl_surface *surface,
-                              double sx,
-                              double sy) = 0;
-
-    virtual void notify_leave(void *data,
-                              struct wl_pointer *pointer,
-                              uint32_t serial,
-                              struct wl_surface *surface) = 0;
-
-    virtual void notify_motion(void *data,
-                               struct wl_pointer *pointer,
-                               uint32_t time,
-                               double sx,
-                               double sy) = 0;
-
-    virtual void notify_button(void *data,
-                               struct wl_pointer *pointer,
-                               uint32_t serial,
-                               uint32_t time,
-                               uint32_t button,
-                               uint32_t state) = 0;
-
-    virtual void notify_axis(void *data,
-                             struct wl_pointer *pointer,
-                             uint32_t time,
-                             uint32_t axis,
-                             wl_fixed_t value) = 0;
-
-    virtual void notify_frame(void *data, struct wl_pointer *pointer) = 0;
-
-    virtual void notify_axis_source(void *data,
-                                    struct wl_pointer *pointer,
-                                    uint32_t axis_source) = 0;
-
-    virtual void notify_axis_stop(void *data,
-                                  struct wl_pointer *pointer,
-                                  uint32_t
-                                  time,
-                                  uint32_t axis) = 0;
-
-    virtual void notify_axis_discrete(void *data,
+    virtual void notify_pointer_enter(void *data,
                                       struct wl_pointer *pointer,
-                                      uint32_t axis,
-                                      int32_t discrete) = 0;
+                                      uint32_t serial,
+                                      struct wl_surface *surface,
+                                      double sx,
+                                      double sy) = 0;
+
+    virtual void notify_pointer_leave(void *data,
+                                      struct wl_pointer *pointer,
+                                      uint32_t serial,
+                                      struct wl_surface *surface) = 0;
+
+    virtual void notify_pointer_motion(void *data,
+                                       struct wl_pointer *pointer,
+                                       uint32_t time,
+                                       double sx,
+                                       double sy) = 0;
+
+    virtual void notify_pointer_button(void *data,
+                                       struct wl_pointer *pointer,
+                                       uint32_t serial,
+                                       uint32_t time,
+                                       uint32_t button,
+                                       uint32_t state) = 0;
+
+    virtual void notify_pointer_axis(void *data,
+                                     struct wl_pointer *pointer,
+                                     uint32_t time,
+                                     uint32_t axis,
+                                     wl_fixed_t value) = 0;
+
+    virtual void notify_pointer_frame(void *data, struct wl_pointer *pointer) = 0;
+
+    virtual void notify_pointer_axis_source(void *data,
+                                            struct wl_pointer *pointer,
+                                            uint32_t axis_source) = 0;
+
+    virtual void notify_pointer_axis_stop(void *data,
+                                          struct wl_pointer *pointer,
+                                          uint32_t
+                                          time,
+                                          uint32_t axis) = 0;
+
+    virtual void notify_pointer_axis_discrete(void *data,
+                                              struct wl_pointer *pointer,
+                                              uint32_t axis,
+                                              int32_t discrete) = 0;
 };
 
 class Pointer {

@@ -42,6 +42,12 @@ void Seat::handle_capabilities(void *data,
                                struct wl_seat *seat,
                                uint32_t caps) {
     const auto obj = static_cast<Seat *>(data);
+    if (obj->wl_seat_ != seat) {
+        return;
+    }
+
+    SPDLOG_TRACE("Seat::handle_capabilities: {}", caps);
+
     obj->capabilities_ = caps;
 
     if (caps & WL_SEAT_CAPABILITY_POINTER && !obj->pointer_) {
@@ -60,6 +66,10 @@ void Seat::handle_capabilities(void *data,
         obj->touch_ = std::make_unique<Touch>(wl_seat_get_touch(seat));
     } else if (!(caps & WL_SEAT_CAPABILITY_TOUCH) && obj->touch_) {
         obj->touch_.reset();
+    }
+
+    for (auto observer: obj->observers_) {
+        observer->notify_seat_capabilities(data, seat, caps);
     }
 }
 
@@ -81,9 +91,14 @@ void Seat::handle_name(void *data,
     if (obj->wl_seat_ != seat) {
         return;
     }
+
+    SPDLOG_TRACE("Seat::handle_name: {}", obj->name_);
+
     obj->name_ = name;
-    obj->ready_ = true;
-    SPDLOG_DEBUG("Seat: {}", obj->name_);
+
+    for (auto observer: obj->observers_) {
+        observer->notify_seat_name(data, seat, name);
+    }
 }
 
 std::optional<Keyboard *> Seat::get_keyboard() const {

@@ -68,7 +68,7 @@ void Pointer::handle_enter(void *data,
     SPDLOG_TRACE("Pointer::handle_enter");
 
     for (auto observer: obj->observers_)
-        observer->notify_enter(
+        observer->notify_pointer_enter(
                 data, pointer, serial, surface, wl_fixed_to_double(sx), wl_fixed_to_double(sy)
         );
 }
@@ -96,7 +96,7 @@ void Pointer::handle_leave(void *data,
     SPDLOG_TRACE("Pointer::handle_leave");
 
     for (auto observer: obj->observers_)
-        observer->notify_leave(
+        observer->notify_pointer_leave(
                 data, pointer, serial, surface
         );
 }
@@ -126,7 +126,7 @@ void Pointer::handle_motion(void *data,
     SPDLOG_TRACE("Pointer::handle_motion");
 
     for (auto observer: obj->observers_)
-        observer->notify_motion(
+        observer->notify_pointer_motion(
                 data, pointer, time, sx, sy
         );
 }
@@ -154,7 +154,7 @@ void Pointer::handle_button(void *data,
     SPDLOG_TRACE("Pointer::handle_button");
 
     for (auto observer: obj->observers_)
-        observer->notify_button(
+        observer->notify_pointer_button(
                 data, pointer, serial, time, button, state
         );
 }
@@ -185,7 +185,7 @@ void Pointer::handle_axis(void *data,
     SPDLOG_TRACE("Pointer::handle_axis");
 
     for (auto observer: obj->observers_)
-        observer->notify_axis(
+        observer->notify_pointer_axis(
                 data, pointer, time, axis, value
         );
 }
@@ -208,7 +208,7 @@ void Pointer::handle_frame(void *data,
     SPDLOG_TRACE("Pointer::handle_frame");
 
     for (auto observer: obj->observers_)
-        observer->notify_frame(
+        observer->notify_pointer_frame(
                 data, pointer
         );
 }
@@ -234,7 +234,7 @@ void Pointer::handle_axis_source(void *data,
     SPDLOG_TRACE("Pointer::handle_axis_source");
 
     for (auto observer: obj->observers_)
-        observer->notify_axis_source(
+        observer->notify_pointer_axis_source(
                 data, pointer, axis_source
         );
 }
@@ -261,7 +261,7 @@ void Pointer::handle_axis_stop(void *data,
     SPDLOG_TRACE("Pointer::handle_axis_stop");
 
     for (auto observer: obj->observers_)
-        observer->notify_axis_stop(
+        observer->notify_pointer_axis_stop(
                 data, pointer, time, axis
         );
 }
@@ -288,7 +288,7 @@ void Pointer::handle_axis_discrete(void *data,
     SPDLOG_TRACE("Pointer::handle_axis_discrete");
 
     for (auto observer: obj->observers_)
-        observer->notify_axis_discrete(
+        observer->notify_pointer_axis_discrete(
                 data, pointer, axis, discrete
         );
 }
