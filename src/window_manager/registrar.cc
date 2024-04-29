@@ -163,7 +163,6 @@ void Registrar::registry_handle_global(void *data,
                                        const char *interface,
                                        uint32_t version) {
     SPDLOG_TRACE("++Registrar::registry_handle_global()\t\n\t{}: {}", interface, version);
-    SPDLOG_DEBUG("interface: {}", interface);
     auto r = static_cast<Registrar *>(data);
     auto found = (*r->registrar_global_).find(interface);
     if (found != (*r->registrar_global_).end()) {
