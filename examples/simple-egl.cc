@@ -381,14 +381,13 @@ static void draw_frame(void *userdata, uint32_t /* time */) {
     frames++;
 }
 
-static void keyboard_handler(
-        void * /*data*/,
-        bool released,
-        xkb_keysym_t /*keysym*/,
-        uint32_t xkb_scancode,
-        uint32_t modifiers) {
-    spdlog::info("KeyEvent: released: {}, scancode: {}, modifiers: {}", released, xkb_scancode, modifiers);
-}
+class KeyboardHandler : public KeyboardObserver {
+public:
+    void notify_key(void * /* data */, bool released, xkb_keysym_t /* keysym */, uint32_t xkb_scancode,
+                    uint32_t modifiers) override {
+        spdlog::info("KeyEvent: released: {}, scancode: {}, modifiers: {}", released, xkb_scancode, modifiers);
+    }
+};
 
 /**
  * @brief Main function for the program.
@@ -451,7 +450,17 @@ int main(int argc, char **argv) {
         kEglConfigAttribs[9] = 0;
     }
 
-    XdgWindowManager wm(keyboard_handler);
+    XdgWindowManager wm;
+    auto keyboard_handler = std::make_unique<KeyboardHandler>();
+
+    auto seat = wm.get_seat();
+    if (seat.has_value()) {
+        auto keyboard = seat.value()->get_keyboard();
+        if (keyboard.has_value()) {
+            keyboard.value()->register_observer(keyboard_handler.get());
+        }
+    }
+
     auto top_level = wm.create_top_level("simple-egl",
                                          "org.freedesktop.gitlab.jwinarske.waypp.simple_egl",
                                          config.width,
