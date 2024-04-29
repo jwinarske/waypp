@@ -18,7 +18,7 @@
 
 #include <cstdint>
 #include <sys/types.h>
-
+#include <wayland-client-core.h>
 
 class Buffer {
 public:
@@ -39,6 +39,10 @@ public:
     void *get_shm_data() { return shm_data_; }
 
     [[nodiscard]] struct wl_buffer *get_wl_buffer() const { return buffer_; }
+
+    [[nodiscard]] uint32_t get_id() const {
+        return wl_proxy_get_id(reinterpret_cast<struct wl_proxy *>(buffer_));
+    }
 
     void set_busy() { busy_ = true; }
 

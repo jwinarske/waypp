@@ -33,14 +33,13 @@
  * The Keyboard class provides a wrapper for a keyboard device,
  * which interacts with the Wayland compositor.
  */
-Keyboard::Keyboard(struct wl_keyboard *keyboard, KeyCallback key_callback) : keyboard_(keyboard),
-                                                                             xkb_context_(xkb_context_new(
-                                                                                     XKB_CONTEXT_NO_FLAGS)),
-                                                                             key_callback_(key_callback),
-                                                                             repeat_timer_(
-                                                                                     std::make_unique<EventTimer>(
-                                                                                             CLOCK_MONOTONIC,
-                                                                                             repeat_callback, this)) {
+Keyboard::Keyboard(struct wl_keyboard *keyboard) : keyboard_(keyboard),
+                                                   xkb_context_(xkb_context_new(
+                                                           XKB_CONTEXT_NO_FLAGS)),
+                                                   repeat_timer_(
+                                                           std::make_unique<EventTimer>(
+                                                                   CLOCK_MONOTONIC,
+                                                                   repeat_callback, this)) {
     SPDLOG_DEBUG("Keyboard");
     repeat_timer_->set_timerspec(40, 400);
     wl_keyboard_add_listener(keyboard_, &keyboard_listener_, this);
@@ -60,8 +59,8 @@ Keyboard::~Keyboard() {
 void Keyboard::repeat_callback(void *data) {
     auto obj = static_cast<Keyboard *>(data);
     if (XKB_KEY_NoSymbol != obj->repeat_code_) {
-        if (obj->key_callback_) {
-            obj->key_callback_(data, false, obj->keysym_pressed_, obj->repeat_code_, 0);
+        for (auto observer: obj->observers_) {
+            observer->notify_key(data, false, obj->keysym_pressed_, obj->repeat_code_, 0);
         }
     }
 }
@@ -161,8 +160,10 @@ void Keyboard::handle_key(void *data,
         }
     }
 
-    if (obj->key_callback_) {
-        obj->key_callback_(obj, state == WL_KEYBOARD_KEY_STATE_RELEASED, keysym, xkb_scancode, 0);
+    for (auto observer: obj->observers_) {
+        observer->notify_key(
+                obj, state == WL_KEYBOARD_KEY_STATE_RELEASED, keysym, xkb_scancode, 0
+        );
     }
 
     if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {

@@ -81,6 +81,10 @@ public:
 
     [[nodiscard]] int32_t get_max_height() const { return max_height_; }
 
+    [[nodiscard]] void *get_user_data() const { return user_data_; }
+
+    void set_user_data(void *user_data) { user_data_ = user_data; }
+
     void start_frame_callbacks();
 
     void stop_frame_callbacks();
@@ -101,11 +105,17 @@ public:
 
     void prune_old_released_buffers();
 
+    [[nodiscard]] size_t get_num_buffers() const { return buffers_.size(); }
+
+    [[nodiscard]] const std::vector<std::unique_ptr<Buffer>>& get_buffers() const { return buffers_; }
+
     Buffer *next_buffer();
 
     void opaque_region_add(int32_t x, int32_t y, int32_t width, int32_t height);
 
     void opaque_region_clear();
+
+    void presentation_feedback_add_callbacks();
 
 private:
     friend XdgTopLevel;
@@ -120,6 +130,7 @@ private:
     struct wl_surface *wl_surface_;
     struct wl_callback *wl_callback_{};
     std::function<void(void *userdata, const uint32_t time)> frame_callback_;
+    void *user_data_{};
 
     std::unique_ptr<Egl> egl_;
 

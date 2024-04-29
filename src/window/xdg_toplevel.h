@@ -65,6 +65,10 @@ public:
 
     void set_minimize() { xdg_toplevel_set_minimized(xdg_toplevel_); }
 
+    void set_min_size(int width, int height) { xdg_toplevel_set_min_size(xdg_toplevel_, width, height); }
+
+    void set_max_size(int width, int height) { xdg_toplevel_set_max_size(xdg_toplevel_, width, height); }
+
     void resize(int width, int height);
 
     void set_surface_damage(int x, int y, int width, int height) {
@@ -80,6 +84,7 @@ private:
     std::string title_;
     std::string app_id_;
 
+    uint32_t configure_serial_;
     volatile bool wait_for_configure_;
 
     static void handle_xdg_surface_configure(

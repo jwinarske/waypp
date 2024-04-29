@@ -17,6 +17,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <wayland-client.h>
@@ -33,26 +34,29 @@ class Touch;
 
 class Seat {
 public:
-    explicit Seat(struct wl_seat *seat, Keyboard::KeyCallback keyboard_callback);
+    explicit Seat(struct wl_seat *seat);
 
-    [[nodiscard]] struct wl_seat *get_seat() const { return wl_seat_; };
+    [[nodiscard]] struct wl_seat *get_seat() const { return wl_seat_; }
 
-    [[nodiscard]] uint32_t get_capabilities() const { return capabilities_; };
+    [[nodiscard]] uint32_t get_capabilities() const { return capabilities_; }
 
-    [[nodiscard]] const std::string &get_name() const { return name_; };
+    [[nodiscard]] const std::string &get_name() const { return name_; }
 
-    void set_key_callback(Keyboard::KeyCallback key_callback) { keyboard_callback_ = key_callback; }
+    [[nodiscard]] std::optional<Keyboard *> get_keyboard() const;
+
+    [[nodiscard]] std::optional<Pointer *> get_pointer() const;
+
+    bool is_ready() const { return ready_; }
 
 private:
     struct wl_seat *wl_seat_;
     uint32_t capabilities_;
     std::string name_;
+    bool ready_{};
 
     std::unique_ptr<Keyboard> keyboard_;
     std::unique_ptr<Pointer> pointer_;
     std::unique_ptr<Touch> touch_;
-
-    Keyboard::KeyCallback keyboard_callback_{};
 
     static void handle_capabilities(void *data,
                                     struct wl_seat *seat,

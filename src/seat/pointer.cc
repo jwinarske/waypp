@@ -15,9 +15,7 @@
  */
 
 #include "pointer.h"
-#include "wayland-protocols.h"
 
-#include <linux/input-event-codes.h>
 #include <wayland-client.h>
 
 #include "logging.h"
@@ -27,8 +25,8 @@
  *
  * The Pointer class is responsible for handling Wayland pointer events and managing the cursor.
  */
-Pointer::Pointer(struct wl_pointer *pointer) :
-        pointer_(pointer) {
+Pointer::Pointer(wl_pointer *pointer) :
+        wl_pointer_(pointer) {
     SPDLOG_DEBUG("Pointer");
     wl_pointer_add_listener(pointer, &pointer_listener_, this);
 }
@@ -45,7 +43,7 @@ Pointer::Pointer(struct wl_pointer *pointer) :
  * @param enable_cursor A boolean flag indicating whether to enable cursor.
  */
 Pointer::~Pointer() {
-    wl_pointer_release(pointer_);
+    wl_pointer_release(wl_pointer_);
 }
 
 /**
@@ -58,15 +56,21 @@ Pointer::~Pointer() {
  */
 void Pointer::handle_enter(void *data,
                            struct wl_pointer *pointer,
-                           uint32_t /* serial */,
-                           struct wl_surface * /* surface */,
-                           wl_fixed_t /* sx */,
-                           wl_fixed_t /* sy */) {
+                           uint32_t serial,
+                           struct wl_surface *surface,
+                           wl_fixed_t sx,
+                           wl_fixed_t sy) {
     auto obj = static_cast<Pointer *>(data);
-    if (obj->pointer_ != pointer) {
+    if (obj->wl_pointer_ != pointer) {
         return;
     }
-    SPDLOG_DEBUG("Pointer::handle_enter");
+
+    SPDLOG_TRACE("Pointer::handle_enter");
+
+    for (auto observer: obj->observers_)
+        observer->notify_enter(
+                data, pointer, serial, surface, wl_fixed_to_double(sx), wl_fixed_to_double(sy)
+        );
 }
 
 /**
@@ -82,13 +86,19 @@ void Pointer::handle_enter(void *data,
  */
 void Pointer::handle_leave(void *data,
                            struct wl_pointer *pointer,
-                           uint32_t /* serial */,
-                           struct wl_surface * /* surface */) {
+                           uint32_t serial,
+                           struct wl_surface *surface) {
     auto obj = static_cast<Pointer *>(data);
-    if (obj->pointer_ != pointer) {
+    if (obj->wl_pointer_ != pointer) {
         return;
     }
-    SPDLOG_DEBUG("Pointer::handle_leave");
+
+    SPDLOG_TRACE("Pointer::handle_leave");
+
+    for (auto observer: obj->observers_)
+        observer->notify_leave(
+                data, pointer, serial, surface
+        );
 }
 
 /**
@@ -105,56 +115,20 @@ void Pointer::handle_leave(void *data,
  */
 void Pointer::handle_motion(void *data,
                             struct wl_pointer *pointer,
-                            uint32_t /* time */,
-                            wl_fixed_t /* sx */,
-                            wl_fixed_t /* sy */) {
+                            uint32_t time,
+                            wl_fixed_t sx,
+                            wl_fixed_t sy) {
     auto obj = static_cast<Pointer *>(data);
-    if (obj->pointer_ != pointer) {
+    if (obj->wl_pointer_ != pointer) {
         return;
     }
-    SPDLOG_DEBUG("Pointer::handle_motion");
-}
 
-/**
- * @brief Determines the resize edge of a component based on the given parameters.
- *
- * @param width The width of the component.
- * @param height The height of the component.
- * @param pointer_x The x-coordinate of the pointer.
- * @param pointer_y The y-coordinate of the pointer.
- * @param margin The margin around the component.
- *
- * @return The resize edge of the component.
- */
-enum xdg_toplevel_resize_edge component_edge(const int width, const int height,
-                                             const int pointer_x,
-                                             const int pointer_y,
-                                             const int margin) {
-    const bool top = pointer_y < margin;
-    const bool bottom = pointer_y > (height - margin);
-    const bool left = pointer_x < margin;
-    const bool right = pointer_x > (width - margin);
+    SPDLOG_TRACE("Pointer::handle_motion");
 
-    if (top)
-        if (left)
-            return XDG_TOPLEVEL_RESIZE_EDGE_TOP_LEFT;
-        else if (right)
-            return XDG_TOPLEVEL_RESIZE_EDGE_TOP_RIGHT;
-        else
-            return XDG_TOPLEVEL_RESIZE_EDGE_TOP;
-    else if (bottom)
-        if (left)
-            return XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_LEFT;
-        else if (right)
-            return XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_RIGHT;
-        else
-            return XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM;
-    else if (left)
-        return XDG_TOPLEVEL_RESIZE_EDGE_LEFT;
-    else if (right)
-        return XDG_TOPLEVEL_RESIZE_EDGE_RIGHT;
-    else
-        return XDG_TOPLEVEL_RESIZE_EDGE_NONE;
+    for (auto observer: obj->observers_)
+        observer->notify_motion(
+                data, pointer, time, sx, sy
+        );
 }
 
 /**
@@ -168,19 +142,21 @@ enum xdg_toplevel_resize_edge component_edge(const int width, const int height,
  */
 void Pointer::handle_button(void *data,
                             struct wl_pointer *pointer,
-                            uint32_t /* serial */,
-                            uint32_t /* time */,
+                            uint32_t serial,
+                            uint32_t time,
                             uint32_t button,
                             uint32_t state) {
     auto obj = static_cast<Pointer *>(data);
-    if (obj->pointer_ != pointer) {
+    if (obj->wl_pointer_ != pointer) {
         return;
     }
-    SPDLOG_DEBUG("Pointer::handle_button");
-    if (button == BTN_LEFT) {
-        if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
-        }
-    }
+
+    SPDLOG_TRACE("Pointer::handle_button");
+
+    for (auto observer: obj->observers_)
+        observer->notify_button(
+                data, pointer, serial, time, button, state
+        );
 }
 
 /**
@@ -198,14 +174,20 @@ void Pointer::handle_button(void *data,
  */
 void Pointer::handle_axis(void *data,
                           struct wl_pointer *pointer,
-                          uint32_t /* time */,
-                          uint32_t /* axis */,
-                          wl_fixed_t /* value */) {
+                          uint32_t time,
+                          uint32_t axis,
+                          wl_fixed_t value) {
     auto obj = static_cast<Pointer *>(data);
-    if (obj->pointer_ != pointer) {
+    if (obj->wl_pointer_ != pointer) {
         return;
     }
-    SPDLOG_DEBUG("Pointer::handle_axis");
+
+    SPDLOG_TRACE("Pointer::handle_axis");
+
+    for (auto observer: obj->observers_)
+        observer->notify_axis(
+                data, pointer, time, axis, value
+        );
 }
 
 /**
@@ -219,10 +201,16 @@ void Pointer::handle_axis(void *data,
 void Pointer::handle_frame(void *data,
                            struct wl_pointer *pointer) {
     auto obj = static_cast<Pointer *>(data);
-    if (obj->pointer_ != pointer) {
+    if (obj->wl_pointer_ != pointer) {
         return;
     }
-    SPDLOG_DEBUG("Pointer::handle_frame");
+
+    SPDLOG_TRACE("Pointer::handle_frame");
+
+    for (auto observer: obj->observers_)
+        observer->notify_frame(
+                data, pointer
+        );
 }
 
 /**
@@ -237,12 +225,18 @@ void Pointer::handle_frame(void *data,
  */
 void Pointer::handle_axis_source(void *data,
                                  struct wl_pointer *pointer,
-                                 uint32_t /* axis_source */) {
+                                 uint32_t axis_source) {
     auto obj = static_cast<Pointer *>(data);
-    if (obj->pointer_ != pointer) {
+    if (obj->wl_pointer_ != pointer) {
         return;
     }
-    SPDLOG_DEBUG("Pointer::handle_axis_source");
+
+    SPDLOG_TRACE("Pointer::handle_axis_source");
+
+    for (auto observer: obj->observers_)
+        observer->notify_axis_source(
+                data, pointer, axis_source
+        );
 }
 
 /**
@@ -257,13 +251,19 @@ void Pointer::handle_axis_source(void *data,
  */
 void Pointer::handle_axis_stop(void *data,
                                struct wl_pointer *pointer,
-                               uint32_t /* time */,
-                               uint32_t /* axis */) {
+                               uint32_t time,
+                               uint32_t axis) {
     auto obj = static_cast<Pointer *>(data);
-    if (obj->pointer_ != pointer) {
+    if (obj->wl_pointer_ != pointer) {
         return;
     }
-    SPDLOG_DEBUG("Pointer::handle_axis_stop");
+
+    SPDLOG_TRACE("Pointer::handle_axis_stop");
+
+    for (auto observer: obj->observers_)
+        observer->notify_axis_stop(
+                data, pointer, time, axis
+        );
 }
 
 /**
@@ -278,11 +278,17 @@ void Pointer::handle_axis_stop(void *data,
  */
 void Pointer::handle_axis_discrete(void *data,
                                    struct wl_pointer *pointer,
-                                   uint32_t /* axis */,
-                                   int32_t /* discrete */) {
+                                   uint32_t axis,
+                                   int32_t discrete) {
     auto obj = static_cast<Pointer *>(data);
-    if (obj->pointer_ != pointer) {
+    if (obj->wl_pointer_ != pointer) {
         return;
     }
-    SPDLOG_DEBUG("Pointer::handle_axis_discrete");
+
+    SPDLOG_TRACE("Pointer::handle_axis_discrete");
+
+    for (auto observer: obj->observers_)
+        observer->notify_axis_discrete(
+                data, pointer, axis, discrete
+        );
 }

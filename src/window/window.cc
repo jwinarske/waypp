@@ -30,8 +30,7 @@ Window::Window(WindowManager *wm,
         name_(name), fullscreen_(fullscreen), maximized_(maximized), fullscreen_ratio_(fullscreen_ratio),
         outputs_(wm->get_outputs()), valid_(true), logical_size_{.width=width, .height=height},
         buffer_bpp_(buffer_bpp), swap_interval_(swap_interval), buffer_size_{.width=width, .height=height},
-        window_size_{.width=buffer_size_.width, .height=buffer_size_.height}, init_buffers_(false),
-        needs_buffer_geometry_update_(false),
+        window_size_{.width=buffer_size_.width, .height=buffer_size_.height}, needs_buffer_geometry_update_(false),
         buffer_count_(buffer_count), buffer_format_(buffer_format) {
 
     wl_surface_ = wl_compositor_create_surface(wm->get_compositor());
@@ -44,6 +43,11 @@ Window::Window(WindowManager *wm,
             abort();
         }
         buffers_.reserve(static_cast<unsigned long>(buffer_count));
+        for (int i = 0; i < buffer_count_; i++) {
+            auto buffer = std::make_unique<Buffer>(wm_->get_shm().value(), buffer_format_);
+            buffer->create_shm_buffer(width, height);
+            buffers_.push_back(std::move(buffer));
+        }
     }
 
     if (context_attribs_size && config_attribs_size) {
@@ -103,6 +107,12 @@ Window::~Window() {
     }
     if (wl_surface_) {
         wl_surface_destroy(wl_surface_);
+    }
+
+    if (buffer_count_) {
+        for(auto &buffer: buffers_) {
+            buffer.reset();
+        }
     }
 }
 
@@ -394,13 +404,6 @@ void Window::prune_old_released_buffers() {
 }
 
 Buffer *Window::next_buffer() {
-    if (init_buffers_) {
-        for (int i = 0; i < buffer_count_; i++) {
-            buffers_.emplace_back(std::make_unique<Buffer>(wm_->get_shm().value(), buffer_format_));
-        }
-        init_buffers_ = false;
-    }
-
     auto buffer = pick_free_buffer();
 
     if (!buffer)
@@ -429,4 +432,8 @@ void Window::opaque_region_add(int32_t x, int32_t y, int32_t width, int32_t heig
 
 void Window::opaque_region_clear() {
     wl_surface_set_opaque_region(wl_surface_, nullptr);
+}
+
+void Window::presentation_feedback_add_callbacks() {
+
 }

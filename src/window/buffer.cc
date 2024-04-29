@@ -44,6 +44,14 @@ const struct wl_buffer_listener Buffer::listener_ = {
 };
 
 int Buffer::create_shm_buffer(int width, int height) {
+    if (buffer_) {
+        spdlog::error("shm_buffer already exists");
+        return -1;
+    }
+
+    width_ = width;
+    height_ = height;
+
     auto pitch = width * 4;
     size_ = pitch * height;
 

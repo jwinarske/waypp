@@ -22,12 +22,10 @@
 #include "logging.h"
 
 Registrar::Registrar(struct wl_display *wl_display,
-                     Keyboard::KeyCallback keyboard_callback,
                      const unsigned long ext_interface_count,
                      const RegistrarCallback *ext_interface_data)
         : wl_display_(wl_display),
-          wl_registry_(wl_display_get_registry(wl_display)),
-          keyboard_callback_(keyboard_callback) {
+          wl_registry_(wl_display_get_registry(wl_display)) {
     SPDLOG_TRACE("++Registrar::Registrar()");
 
     registrar_global_ = std::make_unique<std::map<std::string, RegistrarGlobalCallback>>();
@@ -164,7 +162,8 @@ void Registrar::registry_handle_global(void *data,
                                        uint32_t name,
                                        const char *interface,
                                        uint32_t version) {
-    SPDLOG_DEBUG("++Registrar::registry_handle_global()\t\n\t{}: {}", interface, version);
+    SPDLOG_TRACE("++Registrar::registry_handle_global()\t\n\t{}: {}", interface, version);
+    SPDLOG_DEBUG("interface: {}", interface);
     auto r = static_cast<Registrar *>(data);
     auto found = (*r->registrar_global_).find(interface);
     if (found != (*r->registrar_global_).end()) {
@@ -487,7 +486,7 @@ void Registrar::handle_interface_seat(void *data,
     auto wl_seat = static_cast<struct wl_seat *>(
             wl_registry_bind(registry, name, &wl_seat_interface,
                              std::min(static_cast<uint32_t>(r->seat_.min_version), version)));
-    r->seat_.seats[wl_seat] = std::make_unique<Seat>(wl_seat, r->keyboard_callback_);
+    r->seat_.seats[wl_seat] = std::make_unique<Seat>(wl_seat);
     spdlog::debug("{}: {}", interface, wl_seat_get_version(wl_seat));
 }
 
@@ -579,20 +578,44 @@ void Registrar::handle_interface_zxdg_toplevel_decoration(void *data,
 }
 #endif
 
-#if defined(HAS_WAYLAND_PROTOCOL_PRESENTATION_TIME)
+void Registrar::handle_presentation_clock_id(void *data,
+                                             struct wp_presentation *wp_presentation,
+                                             uint32_t clk_id) {
+    auto r = static_cast<Registrar *>(data);
+    if (r->presentation_time_.wp_presentation != wp_presentation) {
+        return;
+    }
+    r->presentation_time_.clk_id = static_cast<clockid_t>(clk_id);
+}
+
 void Registrar::handle_interface_presentation(void *data,
                                               struct wl_registry *registry,
                                               uint32_t name,
                                               const char *interface,
                                               uint32_t version) {
     auto r = static_cast<Registrar *>(data);
-    r->presentation_time_.wp_presentation_time = static_cast<struct wp_presentation *>(
+    r->presentation_time_.wp_presentation = static_cast<struct wp_presentation *>(
             wl_registry_bind(registry, name, &wp_presentation_interface,
-                             std::min(static_cast<uint32_t>(r->presentation_time_.min_version),
-                                      version)));
-    spdlog::debug("{}: {}", interface, wp_presentation_get_version(r->presentation_time_.wp_presentation_time.value()));
+                             std::min(static_cast<uint32_t>(r->presentation_time_.min_version), version)));
+    wp_presentation_add_listener(r->presentation_time_.wp_presentation, &presentation_listener_, data);
+    spdlog::debug("{}: {}", interface, wp_presentation_get_version(r->presentation_time_.wp_presentation));
 }
-#endif
+
+std::optional<Seat *> Registrar::get_seat(wl_seat *seat) const {
+
+    if (seat) {
+        auto it = seat_.seats.find(seat);
+        if (it != seat_.seats.end()) {
+            return it->second.get();
+        }
+    } else {
+        /// If seat is nullptr, return first available
+        for (auto const &it: seat_.seats) {
+            return it.second.get();
+        }
+    }
+    return {};
+}
 
 #if defined(HAS_WAYLAND_PROTOCOL_TEARING_CONTROL_V1)
 void Registrar::handle_interface_tearing_control_manager(void *data,
@@ -605,7 +628,7 @@ void Registrar::handle_interface_tearing_control_manager(void *data,
             wl_registry_bind(registry, name, &wp_tearing_control_manager_v1_interface,
                              std::min(static_cast<uint32_t>(r->tearing_manager_.min_version),
                                       version)));
-    SPDLOG_DEBUG("{}: {}", interface, wp_tearing_control_manager_v1_get_version(
+    spdlog::debug("{}: {}", interface, wp_tearing_control_manager_v1_get_version(
             r->tearing_manager_.wp_tearing_control_manager.value()));
 }
 #endif

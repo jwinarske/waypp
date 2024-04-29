@@ -124,18 +124,118 @@ void draw_frame(void *data, const uint32_t time) {
     buffer->set_busy();
 }
 
-static void keyboard_handler(
-        void * /*data*/,
-        bool released,
-        xkb_keysym_t /*keysym*/,
-        uint32_t xkb_scancode,
-        uint32_t modifiers) {
-    spdlog::info("KeyEvent: released: {}, scancode: {}, modifiers: {}", released, xkb_scancode, modifiers);
-}
+class App : public PointerObserver, public KeyboardObserver {
+public:
+    explicit App(Configuration config) : logging_(std::make_unique<Logging>()) {
+
+        wm_ = std::make_unique<XdgWindowManager>();
+
+        auto seat = wm_->get_seat();
+        if (seat.has_value()) {
+            auto keyboard = seat.value()->get_keyboard();
+            if (keyboard.has_value()) {
+                keyboard.value()->register_observer(this);
+            }
+
+            auto pointer = seat.value()->get_pointer();
+            if (pointer.has_value()) {
+                pointer.value()->register_observer(this);
+            }
+        }
+
+        spdlog::info("XDG Window Manager Version: {}", wm_->get_version());
+
+        top_level_ = wm_->create_top_level("simple-shm",
+                                           "org.freedesktop.gitlab.jwinarske.waypp.simple_shm",
+                                           config.width,
+                                           config.height,
+                                           2,
+                                           WL_SHM_FORMAT_XRGB8888,
+                                           config.fullscreen,
+                                           config.maximized,
+                                           config.fullscreen_ratio,
+                                           config.tearing,
+                                           draw_frame
+        );
+        spdlog::info("XDG Window Version: {}", top_level_->get_version());
+
+        /// paint padding
+        top_level_->set_surface_damage(0, 0, config.width, config.height);
+        top_level_->update_buffer_geometry();
+        top_level_->start_frame_callbacks();
+    }
+
+    ~App() override {
+        top_level_->stop_frame_callbacks();
+    }
+
+    bool run() {
+        return (top_level_->is_valid() && wm_->display_dispatch() != -1);
+    }
+
+    void notify_key(void * /* data */, bool released, xkb_keysym_t /* keysym */, uint32_t xkb_scancode,
+                    uint32_t modifiers) override {
+        spdlog::info("KeyEvent: released: {}, scancode: {}, modifiers: {}", released, xkb_scancode, modifiers);
+    }
+
+    void notify_enter(void * /* data */,
+                      struct wl_pointer * /* pointer */,
+                      uint32_t /* serial */,
+                      struct wl_surface * /* surface */,
+                      double /* sx */,
+                      double /* sy */) override {}
+
+    void notify_leave(void * /* data */,
+                      struct wl_pointer * /* pointer */,
+                      uint32_t /* serial */,
+                      struct wl_surface * /* surface */) override {}
+
+    void notify_motion(void *  /* data  */,
+                       struct wl_pointer * /* pointer */,
+                       uint32_t time,
+                       double sx,
+                       double sy) override {
+        spdlog::info("Pointer: time: {}, x: {}, y: {}", time, sx, sy);
+    }
+
+    void notify_button(void * /* data */,
+                       struct wl_pointer * /* pointer  */,
+                       uint32_t /* serial  */,
+                       uint32_t time,
+                       uint32_t button,
+                       uint32_t state) override {
+        spdlog::info("Pointer Button: time: {}, button: {}, state: {}", time, button, state);
+    }
+
+    void notify_axis(void * /* data */,
+                     struct wl_pointer * /* pointer */,
+                     uint32_t /* time */,
+                     uint32_t /* axis */,
+                     wl_fixed_t /* value */) override {}
+
+    void notify_frame(void * /* data */, struct wl_pointer * /* pointer */) override {};
+
+    void notify_axis_source(void * /* data */,
+                            struct wl_pointer * /* pointer */,
+                            uint32_t /* axis_source */) override {};
+
+    void notify_axis_stop(void * /* data */,
+                          struct wl_pointer * /* pointer */,
+                          uint32_t /* time */,
+                          uint32_t /* axis */) override {};
+
+    void notify_axis_discrete(void * /* data */,
+                              struct wl_pointer * /*pointer */,
+                              uint32_t /* axis */,
+                              int32_t /* discrete */) override {}
+
+private:
+    std::unique_ptr<Logging> logging_;
+    std::unique_ptr<XdgWindowManager> wm_;
+    XdgTopLevel *top_level_;
+};
 
 int main(int argc, char **argv) {
-
-    auto logging = std::make_unique<Logging>();
 
     std::signal(SIGINT, handle_signal);
 
@@ -149,39 +249,16 @@ int main(int argc, char **argv) {
             ("t,tearing", "Enable tearing via the tearing_control protocol");
     auto result = options.parse(argc, argv);
 
-    Configuration config = {
-            .width = result["width"].as<int>(),
-            .height = result["height"].as<int>(),
-            .fullscreen = result["fullscreen"].as<bool>(),
-            .maximized = result["maximized"].as<bool>() ? 1 : 0,
-            .fullscreen_ratio = result["fullscreen-ratio"].as<bool>(),
-            .tearing = result["tearing"].as<bool>(),
-    };
+    App app({
+                    .width = result["width"].as<int>(),
+                    .height = result["height"].as<int>(),
+                    .fullscreen = result["fullscreen"].as<bool>(),
+                    .maximized = result["maximized"].as<bool>() ? 1 : 0,
+                    .fullscreen_ratio = result["fullscreen-ratio"].as<bool>(),
+                    .tearing = result["tearing"].as<bool>(),
+            });
 
-    XdgWindowManager wm = XdgWindowManager(keyboard_handler);
-    spdlog::info("XDG Window Manager Version: {}", wm.get_version());
-    auto top_level = wm.create_top_level("simple-shm",
-                                         "org.freedesktop.gitlab.jwinarske.waypp.simple_shm",
-                                         config.width,
-                                         config.height,
-                                         2,
-                                         WL_SHM_FORMAT_XRGB8888,
-                                         config.fullscreen,
-                                         config.maximized,
-                                         config.fullscreen_ratio,
-                                         config.tearing,
-                                         draw_frame
-    );
-    spdlog::info("XDG Window Version: {}", top_level->get_version());
-
-    /// paint padding
-    top_level->set_surface_damage(0, 0, config.width, config.height);
-    top_level->update_buffer_geometry();
-    top_level->start_frame_callbacks();
-
-    while (running && top_level->is_valid() && wm.display_dispatch() != -1) {}
-
-    top_level->stop_frame_callbacks();
+    while (running && app.run() != -1) {}
 
     return EXIT_SUCCESS;
 }

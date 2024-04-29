@@ -27,8 +27,7 @@ class XdgWindowManager;
 
 class WindowManager : public Registrar {
 public:
-    explicit WindowManager(Keyboard::KeyCallback keyboard_callback = nullptr,
-                           unsigned long ext_interface_count = 0,
+    explicit WindowManager(unsigned long ext_interface_count = 0,
                            const Registrar::RegistrarCallback *ext_interface_data = nullptr,
                            GMainContext *context = nullptr,
                            bool enable_cursor = true,
@@ -54,7 +53,6 @@ public:
     WindowManager &operator=(const WindowManager &) = delete;
 
 private:
-
     friend XdgWindowManager;
 
     GMainContext *context_;

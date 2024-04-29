@@ -106,6 +106,7 @@ void XdgTopLevel::handle_xdg_surface_configure(
     if (w->xdg_surface_ != xdg_surface) {
         return;
     }
+    w->configure_serial_ = serial;
     xdg_surface_ack_configure(xdg_surface, serial);
     w->wait_for_configure_ = false;
 }
@@ -174,7 +175,6 @@ void XdgTopLevel::handle_xdg_toplevel_configure(
         tl->height_ = tl->init_height_;
     }
 
-    tl->init_buffers_ = true;
     tl->needs_buffer_geometry_update_ = true;
 }
 

@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cstdint>
+#include <list>
 #include <memory>
 #include <mutex>
 
@@ -24,21 +25,35 @@
 #include <xkbcommon/xkbcommon.h>
 #include "timer.h"
 
+class KeyboardObserver {
+public:
+    virtual ~KeyboardObserver() = default;
+
+    virtual void notify_key(void *data,
+                        bool released,
+                        xkb_keysym_t keysym,
+                        uint32_t xkb_scancode,
+                        uint32_t modifiers) = 0;
+};
+
 class Keyboard {
 public:
-
-    typedef void (*KeyCallback)(
-            void *data,
-            bool released,
-            xkb_keysym_t keysym,
-            uint32_t xkb_scancode,
-            uint32_t modifiers);
-
-    void set_key_callback(KeyCallback key_callback) { key_callback_ = key_callback; }
-
-    Keyboard(struct wl_keyboard *keyboard, KeyCallback key_callback);
+    explicit Keyboard(struct wl_keyboard *keyboard);
 
     ~Keyboard();
+
+    void register_observer(KeyboardObserver *observer) {
+        observers_.push_back(observer);
+    }
+
+    void unregister_observer(KeyboardObserver *observer) {
+        observers_.remove(observer);
+    }
+
+    // Disallow copy and assign.
+    Keyboard(const Keyboard &) = delete;
+
+    Keyboard &operator=(const Keyboard &) = delete;
 
 private:
     struct wl_keyboard *keyboard_;
@@ -46,6 +61,7 @@ private:
     struct xkb_context *xkb_context_;
     struct xkb_keymap *keymap_{};
     struct xkb_state *xkb_state_{};
+    std::list<KeyboardObserver *> observers_;
 
     xkb_keysym_t keysym_pressed_{};
     guint key_timeout_id_{};
@@ -55,7 +71,6 @@ private:
     std::mutex lock_;
     uint32_t repeat_code_{};
 
-    KeyCallback key_callback_{};
     std::unique_ptr<EventTimer> repeat_timer_;
 
     static void repeat_callback(void *data);

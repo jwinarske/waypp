@@ -27,12 +27,12 @@
  *
  * The XdgWm class is responsible for managing application windows using the XDG Shell protocol.
  */
-XdgWindowManager::XdgWindowManager(Keyboard::KeyCallback keyboard_callback,
-                                   const unsigned long ext_interface_count,
+
+XdgWindowManager::XdgWindowManager(const unsigned long ext_interface_count,
                                    const Registrar::RegistrarCallback *ext_interface_data,
                                    GMainContext *context,
                                    bool enable_cursor,
-                                   const char *display_name) : WindowManager(keyboard_callback, ext_interface_count,
+                                   const char *display_name) : WindowManager(ext_interface_count,
                                                                              ext_interface_data,
                                                                              context, enable_cursor, display_name) {
     SPDLOG_TRACE("++XdgWindowManager::XdgWindowManager()");
@@ -44,6 +44,7 @@ XdgWindowManager::XdgWindowManager(Keyboard::KeyCallback keyboard_callback,
     xdg_wm_base_ = xdg_wm_base.value();
 
     xdg_wm_base_add_listener(xdg_wm_base.value(), &xdg_wm_base_listener_, this);
+    wl_display_roundtrip(wl_display_);
     SPDLOG_TRACE("--XdgWindowManager::XdgWindowManager()");
 }
 
@@ -73,7 +74,7 @@ void XdgWindowManager::xdg_wm_base_ping(void *data,
         SPDLOG_CRITICAL("wm->get_xdg_wm_base().value() != xdg_wm_base");
         return;
     }
-    SPDLOG_DEBUG("xdg_wm_base_ping");
+    SPDLOG_TRACE("xdg_wm_base_ping");
     xdg_wm_base_pong(xdg_wm_base, serial);
 }
 

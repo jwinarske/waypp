@@ -60,7 +60,6 @@ public:
     };
 
     explicit Registrar(struct wl_display *wl_display,
-                       Keyboard::KeyCallback keyboard_callback = nullptr,
                        unsigned long ext_interface_count = 0,
                        const RegistrarCallback *ext_interface_data = nullptr);
 
@@ -102,8 +101,7 @@ public:
     // Returns the ivi surface manager if it exists.
     [[nodiscard]] std::optional<struct ivi_wm *> get_ivi_wm() const { return ivi_wm_.ivi_wm; }
 
-    [[nodiscard]] std::optional<struct wp_presentation *>
-    get_presentation_time() const { return presentation_time_.wp_presentation_time; }
+    [[nodiscard]] struct wp_presentation *get_wp_presentation() const { return presentation_time_.wp_presentation; }
 
     [[nodiscard]] std::optional<struct wp_tearing_control_manager_v1 *>
     get_tearing_control_manager() const { return tearing_manager_.wp_tearing_control_manager; }
@@ -121,6 +119,10 @@ public:
 
     int32_t get_output_buffer_scale(struct wl_output *wl_output);
 
+    [[nodiscard]] clockid_t get_clk_id() const { return presentation_time_.clk_id; }
+
+    std::optional<Seat *> get_seat(wl_seat *seat = nullptr) const;
+
     // Disallow copy and assign.
     Registrar(const Registrar &) = delete;
 
@@ -137,7 +139,6 @@ private:
 
     struct wl_display *wl_display_;
     struct wl_registry *wl_registry_;
-    Keyboard::KeyCallback keyboard_callback_;
 
     struct {
         uint32_t min_version = kWlSeatMinVersion;
@@ -190,7 +191,8 @@ private:
 
     struct {
         uint32_t min_version = kPresentationTimeMinVersion;
-        std::optional<struct wp_presentation *> wp_presentation_time;
+        struct wp_presentation *wp_presentation;
+        clockid_t clk_id;
     } presentation_time_;
 
     struct {
@@ -317,13 +319,17 @@ private:
                                                           uint32_t version);
 #endif
 
-#if defined(HAS_WAYLAND_PROTOCOL_PRESENTATION_TIME)
+    static void handle_presentation_clock_id(void *data, struct wp_presentation *presentation, uint32_t clk_id);
+
+    static constexpr struct wp_presentation_listener presentation_listener_ = {
+            handle_presentation_clock_id
+    };
+
     static void handle_interface_presentation(void *data,
                                               struct wl_registry *registry,
                                               uint32_t name,
                                               const char *interface,
                                               uint32_t version);
-#endif
 
 #if defined(HAS_WAYLAND_PROTOCOL_TEARING_CONTROL_V1)
     static void handle_interface_tearing_control_manager(void *data,

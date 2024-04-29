@@ -51,13 +51,7 @@ struct zxdg_decoration_manager_v1;
 struct zxdg_toplevel_decoration_v1;
 #endif
 
-#if defined(HAS_WAYLAND_PROTOCOL_PRESENTATION_TIME)
-
 #include "presentation-time-client-protocol.h"
-
-#else
-struct wp_presentation;
-#endif
 
 #if defined(HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1)
 
