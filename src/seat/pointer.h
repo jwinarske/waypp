@@ -94,7 +94,7 @@ public:
 
 private:
     struct wl_pointer *wl_pointer_;
-    std::list<PointerObserver *> observers_;
+    std::list<PointerObserver *> observers_{};
 
     static void handle_enter(void *data,
                              struct wl_pointer *pointer,

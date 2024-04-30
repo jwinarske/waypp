@@ -23,17 +23,16 @@
 
 #include <glib-2.0/glib.h>
 #include <xkbcommon/xkbcommon.h>
-#include "timer.h"
 
 class KeyboardObserver {
 public:
     virtual ~KeyboardObserver() = default;
 
     virtual void notify_key(void *data,
-                        bool released,
-                        xkb_keysym_t keysym,
-                        uint32_t xkb_scancode,
-                        uint32_t modifiers) = 0;
+                            bool released,
+                            xkb_keysym_t keysym,
+                            uint32_t xkb_scancode,
+                            uint32_t modifiers) = 0;
 };
 
 class Keyboard {
@@ -61,30 +60,40 @@ private:
     struct xkb_context *xkb_context_;
     struct xkb_keymap *keymap_{};
     struct xkb_state *xkb_state_{};
-    std::list<KeyboardObserver *> observers_;
+    std::list<KeyboardObserver *> observers_{};
+
+    struct {
+        int32_t rate;
+        int32_t delay;
+        timer_t timer;
+        uint32_t code;
+        struct sigevent sev;
+        struct sigaction sa;
+    } repeat_{};
 
     xkb_keysym_t keysym_pressed_{};
-    guint key_timeout_id_{};
-
-    int32_t key_repeat_rate_{};
-
-    std::mutex lock_;
-    uint32_t repeat_code_{};
-
-    std::unique_ptr<EventTimer> repeat_timer_;
-
-    static void repeat_callback(void *data);
 
     /**
      * @brief Handles the repeated key events for the Keyboard.
      *
-     * This function is called when a key is being held down and needs to be repeated.
+     * This function is called by the kernel.
      *
-     * @param keyboard A pointer to the Keyboard instance.
-     *
-     * @return TRUE if the key repeat rate is set, FALSE otherwise.
      */
-    static gboolean handle_repeat(Keyboard *keyboard);
+    static void repeat_callback(int sig, siginfo_t *si, void *uc);
+
+    /**
+     * @brief Starts key repeat logic.
+     *
+     * @param repeat_code
+     */
+    void start_repeat(uint32_t repeat_code);
+
+    /**
+     * @brief Stops key repeat logic.
+     *
+     * @param repeat_code
+     */
+    void stop_repeat();
 
     /**
      * keyboard mapping
@@ -215,9 +224,4 @@ private:
      * @struct wl_keyboard_listener
      */
     static const struct wl_keyboard_listener keyboard_listener_;
-
-    static inline void set_repeat_code(Keyboard *keyboard, const uint32_t repeat_code) {
-        std::lock_guard lock(keyboard->lock_);
-        keyboard->repeat_code_ = repeat_code;
-    }
 };

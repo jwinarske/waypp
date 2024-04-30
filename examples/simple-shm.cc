@@ -191,14 +191,18 @@ public:
     void notify_pointer_enter(void * /* data */,
                               struct wl_pointer * /* pointer */,
                               uint32_t /* serial */,
-                              struct wl_surface * /* surface */,
-                              double /* sx */,
-                              double /* sy */) override {}
+                              struct wl_surface *surface,
+                              double sx,
+                              double sy) override {
+        spdlog::info("Pointer Enter: surface: {}, x: {}, y: {}", fmt::ptr(surface), sx, sy);
+    }
 
     void notify_pointer_leave(void * /* data */,
                               struct wl_pointer * /* pointer */,
                               uint32_t /* serial */,
-                              struct wl_surface * /* surface */) override {}
+                              struct wl_surface *surface) override {
+        spdlog::info("Pointer Leave: surface: {}", fmt::ptr(surface));
+    }
 
     void notify_pointer_motion(void *  /* data  */,
                                struct wl_pointer * /* pointer */,
@@ -220,24 +224,34 @@ public:
     void notify_pointer_axis(void * /* data */,
                              struct wl_pointer * /* pointer */,
                              uint32_t /* time */,
-                             uint32_t /* axis */,
-                             wl_fixed_t /* value */) override {}
+                             uint32_t axis,
+                             wl_fixed_t value) override {
+        spdlog::info("Pointer Axis: axis: {}, value: {}", axis, value);
+    }
 
-    void notify_pointer_frame(void * /* data */, struct wl_pointer * /* pointer */) override {};
+    void notify_pointer_frame(void * /* data */, struct wl_pointer * /* pointer */) override {
+        spdlog::info("Pointer Frame");
+    };
 
     void notify_pointer_axis_source(void * /* data */,
                                     struct wl_pointer * /* pointer */,
-                                    uint32_t /* axis_source */) override {};
+                                    uint32_t axis_source) override {
+        spdlog::info("Pointer Axis Source: axis_source: {}", axis_source);
+    };
 
     void notify_pointer_axis_stop(void * /* data */,
                                   struct wl_pointer * /* pointer */,
                                   uint32_t /* time */,
-                                  uint32_t /* axis */) override {};
+                                  uint32_t axis) override {
+        spdlog::info("Pointer Axis Stop: axis: {}", axis);
+    };
 
     void notify_pointer_axis_discrete(void * /* data */,
                                       struct wl_pointer * /*pointer */,
-                                      uint32_t /* axis */,
-                                      int32_t /* discrete */) override {}
+                                      uint32_t axis,
+                                      int32_t discrete) override {
+        spdlog::info("Pointer Axis Discrete: axis: {}, discrete: {}", axis, discrete);
+    }
 
 private:
     std::unique_ptr<Logging> logging_;

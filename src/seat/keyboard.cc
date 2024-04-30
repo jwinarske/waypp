@@ -16,14 +16,11 @@
 
 #include "keyboard.h"
 
-#include <memory>
-
-#include <wayland-client.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <wayland-client.h>
 #include <xkbcommon/xkbcommon.h>
 
-#include "timer.h"
 #include "logging.h"
 
 /**
@@ -35,13 +32,8 @@
  */
 Keyboard::Keyboard(struct wl_keyboard *keyboard) : keyboard_(keyboard),
                                                    xkb_context_(xkb_context_new(
-                                                           XKB_CONTEXT_NO_FLAGS)),
-                                                   repeat_timer_(
-                                                           std::make_unique<EventTimer>(
-                                                                   CLOCK_MONOTONIC,
-                                                                   repeat_callback, this)) {
+                                                           XKB_CONTEXT_NO_FLAGS)) {
     SPDLOG_DEBUG("Keyboard");
-    repeat_timer_->set_timerspec(40, 400);
     wl_keyboard_add_listener(keyboard_, &keyboard_listener_, this);
 }
 
@@ -52,32 +44,10 @@ Keyboard::Keyboard(struct wl_keyboard *keyboard) : keyboard_(keyboard),
  * The Keyboard class manages the interaction with a Wayland keyboard input device.
  */
 Keyboard::~Keyboard() {
-    repeat_timer_.reset();
+    if (repeat_.timer) {
+        timer_delete(repeat_.timer);
+    }
     wl_keyboard_release(keyboard_);
-}
-
-void Keyboard::repeat_callback(void *data) {
-    auto obj = static_cast<Keyboard *>(data);
-    if (XKB_KEY_NoSymbol != obj->repeat_code_) {
-        for (auto observer: obj->observers_) {
-            observer->notify_key(data, false, obj->keysym_pressed_, obj->repeat_code_, 0);
-        }
-    }
-}
-
-gboolean Keyboard::handle_repeat(Keyboard *keyboard) {
-
-    if (keyboard) {
-        if (keyboard->key_repeat_rate_) {
-            keyboard->key_timeout_id_ = g_timeout_add(static_cast<guint>(keyboard->key_repeat_rate_),
-                                                      reinterpret_cast<GSourceFunc>(handle_repeat), keyboard);
-            return TRUE;
-        } else {
-            g_source_remove(keyboard->key_timeout_id_);
-            return FALSE;
-        }
-    }
-    return TRUE;
 }
 
 void Keyboard::handle_keymap(void *data,
@@ -168,18 +138,15 @@ void Keyboard::handle_key(void *data,
 
     if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
         if (xkb_keymap_key_repeats(obj->keymap_, xkb_scancode)) {
-            SPDLOG_DEBUG("xkb_keymap_key_repeats: {}", xkb_scancode);
             obj->keysym_pressed_ = keysym;
-            Keyboard::set_repeat_code(obj, xkb_scancode);
-            obj->repeat_timer_->arm();
+            obj->start_repeat(xkb_scancode);
         } else {
             SPDLOG_DEBUG("key does not repeat: 0x{:x}", xkb_scancode);
         }
 
     } else if (state == WL_KEYBOARD_KEY_STATE_RELEASED) {
-        if (obj->repeat_code_ == xkb_scancode) {
-            obj->repeat_timer_->disarm();
-            Keyboard::set_repeat_code(obj, XKB_KEY_NoSymbol);
+        if (obj->repeat_.code == xkb_scancode) {
+            obj->stop_repeat();
         }
     }
 }
@@ -195,7 +162,9 @@ void Keyboard::handle_modifiers(void *data,
     if (obj->keyboard_ != keyboard) {
         return;
     }
+
     SPDLOG_DEBUG("[Keyboard] handle_modifiers");
+
     xkb_state_update_mask(obj->xkb_state_, mods_depressed, mods_latched, mods_locked, 0, 0, group);
 }
 
@@ -207,11 +176,33 @@ void Keyboard::handle_repeat_info(void *data,
     if (obj->keyboard_ != keyboard) {
         return;
     }
+
     SPDLOG_DEBUG("[Keyboard] handle_repeat_info: rate: {}, delay: {}", rate, delay);
-    obj->key_timeout_id_ = g_timeout_add(static_cast<guint>(delay), reinterpret_cast<GSourceFunc>(handle_repeat), obj);
-    obj->key_repeat_rate_ = rate;
-    obj->key_timeout_id_ = g_timeout_add(static_cast<guint>(delay),
-                                         reinterpret_cast<GSourceFunc>(handle_repeat), obj);
+
+    obj->repeat_.rate = rate;
+    obj->repeat_.delay = delay;
+
+    if (!obj->repeat_.timer) {
+
+        /// Setup signal event
+        obj->repeat_.sev.sigev_notify = SIGEV_SIGNAL;
+        obj->repeat_.sev.sigev_signo = SIGRTMIN;
+        obj->repeat_.sev.sigev_value.sival_ptr = data;
+        auto res = timer_create(CLOCK_REALTIME, &obj->repeat_.sev, &obj->repeat_.timer);
+        if (res != 0) {
+            spdlog::critical("Error timer_create: {}", strerror(errno));
+            abort();
+        }
+
+        /// Setup signal action
+        obj->repeat_.sa.sa_flags = SA_SIGINFO;
+        obj->repeat_.sa.sa_sigaction = repeat_callback;
+        sigemptyset(&obj->repeat_.sa.sa_mask);
+        if (sigaction(SIGRTMIN, &obj->repeat_.sa, nullptr) == -1) {
+            spdlog::critical("Error sigaction: {}", strerror(errno));
+            abort();
+        }
+    }
 }
 
 const struct wl_keyboard_listener Keyboard::keyboard_listener_ = {
@@ -222,3 +213,39 @@ const struct wl_keyboard_listener Keyboard::keyboard_listener_ = {
         .modifiers = handle_modifiers,
         .repeat_info = handle_repeat_info,
 };
+
+void Keyboard::repeat_callback(int /* sig */, siginfo_t *si, void * /* uc */) {
+    auto obj = static_cast<Keyboard *>(si->_sifields._rt.si_sigval.sival_ptr);
+    if (obj->repeat_.code != XKB_KEY_NoSymbol) {
+        for (auto observer: obj->observers_) {
+            observer->notify_key(obj, false, obj->keysym_pressed_, obj->repeat_.code, 0);
+        }
+    }
+}
+
+void Keyboard::start_repeat(uint32_t repeat_code) {
+    repeat_.code = repeat_code;
+
+    SPDLOG_DEBUG("Keyboard::start_repeat: {}", repeat_code);
+
+    struct itimerspec in{};
+    in.it_value.tv_nsec = repeat_.delay * 1000000;
+    in.it_interval.tv_nsec = repeat_.rate * 1000000;
+    auto res = timer_settime(repeat_.timer, 0, &in, nullptr);
+    if (res != 0) {
+        spdlog::critical("Error timer_settime: {}", strerror(errno));
+        abort();
+    }
+}
+
+void Keyboard::stop_repeat() {
+    repeat_.code = XKB_KEY_NoSymbol;
+
+    SPDLOG_DEBUG("Keyboard::stop_repeat");
+
+    /// Stop timer
+    if (repeat_.timer) {
+        struct itimerspec its{};
+        timer_settime(repeat_.timer, 0, &its, nullptr);
+    }
+}

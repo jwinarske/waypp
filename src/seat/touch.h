@@ -17,8 +17,41 @@
 #pragma once
 
 #include <cstdint>
+#include <list>
 
 #include <wayland-client.h>
+
+class TouchObserver {
+public:
+    virtual ~TouchObserver() = default;
+
+    virtual void notify_touch_down(void *data,
+                                   struct wl_touch *wl_touch,
+                                   uint32_t serial,
+                                   uint32_t time,
+                                   struct wl_surface *surface,
+                                   int32_t id,
+                                   wl_fixed_t x_w,
+                                   wl_fixed_t y_w) = 0;
+
+    virtual void notify_touch_up(void *data,
+                                 struct wl_touch *touch,
+                                 uint32_t serial,
+                                 uint32_t time,
+                                 int32_t id) = 0;
+
+    virtual void notify_touch_motion(void *data,
+                                     struct wl_touch *touch,
+                                     uint32_t time,
+                                     int32_t id,
+                                     wl_fixed_t x_w,
+                                     wl_fixed_t y_w) = 0;
+
+    virtual void notify_touch_cancel(void *data, struct wl_touch *touch) = 0;
+
+    virtual void notify_touch_frame(void *data,
+                                    struct wl_touch *touch) = 0;
+};
 
 class Touch {
 public:
@@ -26,8 +59,22 @@ public:
 
     ~Touch();
 
+    void register_observer(TouchObserver *observer) {
+        observers_.push_back(observer);
+    }
+
+    void unregister_observer(TouchObserver *observer) {
+        observers_.remove(observer);
+    }
+
+    // Disallow copy and assign.
+    Touch(const Touch &) = delete;
+
+    Touch &operator=(const Touch &) = delete;
+
 private:
     struct wl_touch *touch_;
+    std::list<TouchObserver *> observers_{};
 
     static void handle_down(void *data,
                             struct wl_touch *wl_touch,

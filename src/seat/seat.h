@@ -75,7 +75,7 @@ private:
     std::string name_;
     bool ready_{};
 
-    std::list<SeatObserver *> observers_;
+    std::list<SeatObserver *> observers_{};
 
 
     std::unique_ptr<Keyboard> keyboard_;

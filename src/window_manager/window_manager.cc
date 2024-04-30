@@ -132,6 +132,10 @@ struct wl_display *WindowManager::get_display(const char *name) {
  * The WindowManager class provides functionality for managing windows and handling events using Wayland protocol.
  */
 int WindowManager::poll_events(int /* timeout */) const {
+    for (auto observer: observers_) {
+        observer->notify_task();
+    }
+
     while (wl_display_prepare_read(wl_display_) != 0) {
         wl_display_dispatch_pending(wl_display_);
     }
@@ -139,4 +143,8 @@ int WindowManager::poll_events(int /* timeout */) const {
 
     wl_display_read_events(wl_display_);
     return wl_display_dispatch_pending(wl_display_);
+}
+
+int WindowManager::display_dispatch() const {
+    return wl_display_dispatch(wl_display_);
 }

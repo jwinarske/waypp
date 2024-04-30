@@ -20,10 +20,12 @@
 
 #include "registrar.h"
 #include "seat/cursor.h"
+#include "window_manager_observer.h"
 
 class Registrar;
 
 class XdgWindowManager;
+
 
 class WindowManager : public Registrar {
 public:
@@ -43,9 +45,17 @@ public:
 
     [[nodiscard]] int dispatch_pending() const { return wl_display_dispatch_pending(wl_display_); }
 
-    [[nodiscard]] int display_dispatch() const { return wl_display_dispatch(wl_display_); }
+    [[nodiscard]] int display_dispatch() const;
 
     [[nodiscard]] bool has_subcompositor() const { return sub_compositor_.wl_subcompositor.has_value(); }
+
+    void register_task_observer(WindowManagerObserver *observer) {
+        observers_.push_back(observer);
+    }
+
+    void unregister_task_observer(WindowManagerObserver *observer) {
+        observers_.remove(observer);
+    }
 
     // Disallow copy and assign.
     WindowManager(const WindowManager &) = delete;
@@ -56,6 +66,8 @@ private:
     friend XdgWindowManager;
 
     GMainContext *context_;
+
+    std::list<WindowManagerObserver *> observers_{};
 
     struct {
         int width;

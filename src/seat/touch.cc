@@ -53,17 +53,22 @@ Touch::~Touch() {
  */
 void Touch::handle_down(void *data,
                         struct wl_touch *touch,
-                        uint32_t /* serial */,
-                        uint32_t /* time */,
-                        struct wl_surface * /* surface */,
-                        int32_t /* id */,
-                        wl_fixed_t /* x_w */,
-                        wl_fixed_t /* y_w */) {
+                        uint32_t serial,
+                        uint32_t time,
+                        struct wl_surface *surface,
+                        int32_t id,
+                        wl_fixed_t x_w,
+                        wl_fixed_t y_w) {
     const auto obj = static_cast<Touch *>(data);
     if (obj->touch_ != touch) {
         return;
     }
-    SPDLOG_DEBUG("Touch::handle_down");
+
+    SPDLOG_TRACE("Touch::handle_down");
+
+    for (auto observer: obj->observers_) {
+        observer->notify_touch_down(data, touch, serial, time, surface, id, x_w, y_w);
+    }
 }
 
 /**
@@ -81,14 +86,19 @@ void Touch::handle_down(void *data,
  */
 void Touch::handle_up(void *data,
                       struct wl_touch *touch,
-                      uint32_t /* serial */,
-                      uint32_t /* time */,
-                      int32_t /* id */) {
+                      uint32_t serial,
+                      uint32_t time,
+                      int32_t id) {
     const auto obj = static_cast<Touch *>(data);
     if (obj->touch_ != touch) {
         return;
     }
-    SPDLOG_DEBUG("Touch::handle_up");
+
+    SPDLOG_TRACE("Touch::handle_up");
+
+    for (auto observer: obj->observers_) {
+        observer->notify_touch_up(data, touch, serial, time, id);
+    }
 }
 
 /**
@@ -108,15 +118,20 @@ void Touch::handle_up(void *data,
  */
 void Touch::handle_motion(void *data,
                           struct wl_touch *touch,
-                          uint32_t /* time */,
-                          int32_t /* id */,
-                          wl_fixed_t /* x_w */,
-                          wl_fixed_t /* y_w */) {
+                          uint32_t time,
+                          int32_t id,
+                          wl_fixed_t x_w,
+                          wl_fixed_t y_w) {
     const auto obj = static_cast<Touch *>(data);
     if (obj->touch_ != touch) {
         return;
     }
-    SPDLOG_DEBUG("Touch::handle_motion");
+
+    SPDLOG_TRACE("Touch::handle_motion");
+
+    for (auto observer: obj->observers_) {
+        observer->notify_touch_motion(data, touch, time, id, x_w, y_w);
+    }
 }
 
 /**
@@ -135,7 +150,12 @@ void Touch::handle_cancel(void *data, struct wl_touch *touch) {
     if (obj->touch_ != touch) {
         return;
     }
-    SPDLOG_DEBUG("Touch::handle_cancel");
+
+    SPDLOG_TRACE("Touch::handle_cancel");
+
+    for (auto observer: obj->observers_) {
+        observer->notify_touch_cancel(data, touch);
+    }
 }
 
 /**
@@ -150,5 +170,10 @@ void Touch::handle_frame(void *data,
     if (obj->touch_ != touch) {
         return;
     }
-    SPDLOG_DEBUG("Touch::handle_frame");
+
+    SPDLOG_TRACE("Touch::handle_frame");
+
+    for (auto observer: obj->observers_) {
+        observer->notify_touch_frame(data, touch);
+    }
 }
