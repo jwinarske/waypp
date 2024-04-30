@@ -22,7 +22,7 @@
 
 class Buffer {
 public:
-    Buffer(struct wl_shm *wl_shm, uint32_t format);
+    Buffer(struct wl_shm *wl_shm);
 
     ~Buffer();
 
@@ -32,7 +32,7 @@ public:
 
     [[nodiscard]] uint32_t get_format() const { return format_; }
 
-    int create_shm_buffer(int width, int height);
+    int create_shm_buffer(int width, int height, uint32_t format);
 
     [[nodiscard]] bool is_busy() const { return busy_; }
 
@@ -46,16 +46,20 @@ public:
 
     void set_busy() { busy_ = true; }
 
+    // Disallow copy and assign.
+    Buffer(const Buffer &) = delete;
+
+    Buffer &operator=(const Buffer &) = delete;
+
 private:
     int width_;
     int height_;
-    uint32_t format_;
+    uint32_t format_{};
     bool busy_;
 
     int size_{};
     struct wl_shm *wl_shm_;
     struct wl_buffer *buffer_{};
-
     void *shm_data_{};
 
     static void handle_release(void *data, struct wl_buffer *buffer);

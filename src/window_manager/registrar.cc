@@ -23,9 +23,11 @@
 
 Registrar::Registrar(struct wl_display *wl_display,
                      const unsigned long ext_interface_count,
-                     const RegistrarCallback *ext_interface_data)
+                     const RegistrarCallback *ext_interface_data,
+                     bool disable_cursor)
         : wl_display_(wl_display),
-          wl_registry_(wl_display_get_registry(wl_display)) {
+          wl_registry_(wl_display_get_registry(wl_display)),
+          disable_cursor_(disable_cursor) {
     SPDLOG_TRACE("++Registrar::Registrar()");
 
     registrar_global_ = std::make_unique<std::map<std::string, RegistrarGlobalCallback>>();
@@ -82,19 +84,8 @@ Registrar::Registrar(struct wl_display *wl_display,
 
 Registrar::~Registrar() {
     SPDLOG_TRACE("++Registrar::~Registrar()");
-
-    registrar_global_.reset();
-    registrar_global_remove_.reset();
-
-    for (auto &it: output_.outputs) {
-        it.second.reset();
-        wl_output_destroy(it.first);
-    }
-
-    for (auto &it: seat_.seats) {
-        it.second.reset();
-        wl_seat_destroy(it.first);
-    }
+    output_.outputs.clear();
+    seat_.seats.clear();
 
     if (shm_.wl_shm.has_value()) {
         wl_shm_destroy(shm_.wl_shm.value());
@@ -120,6 +111,10 @@ Registrar::~Registrar() {
         xdg_wm_base_destroy(xdg_wm_base_.xdg_wm_base.value());
     }
 #endif
+
+    if (presentation_time_.wp_presentation) {
+        wp_presentation_destroy(presentation_time_.wp_presentation);
+    }
 
 #if defined(HAS_WAYLAND_PROTOCOL_XDG_DECORATION_UNSTABLE_V1)
     if (xdg_decoration_manager_.zxdg_toplevel_decoration_v1.has_value()) {
@@ -485,7 +480,7 @@ void Registrar::handle_interface_seat(void *data,
     auto wl_seat = static_cast<struct wl_seat *>(
             wl_registry_bind(registry, name, &wl_seat_interface,
                              std::min(static_cast<uint32_t>(r->seat_.min_version), version)));
-    r->seat_.seats[wl_seat] = std::make_unique<Seat>(wl_seat);
+    r->seat_.seats[wl_seat] = std::make_unique<Seat>(wl_seat, r->get_shm(), r->get_compositor(), r->disable_cursor_);
     spdlog::debug("{}: {}", interface, wl_seat_get_version(wl_seat));
 }
 

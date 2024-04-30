@@ -75,6 +75,10 @@ public:
         wl_surface_damage(wl_surface_, x, y, width, height);
     }
 
+    // Disallow copy and assign.
+    XdgTopLevel(const XdgTopLevel &) = delete;
+
+    XdgTopLevel &operator=(const XdgTopLevel &) = delete;
 
 private:
     WindowManager *wm_;
@@ -84,7 +88,7 @@ private:
     std::string title_;
     std::string app_id_;
 
-    uint32_t configure_serial_;
+    uint32_t configure_serial_{};
     volatile bool wait_for_configure_;
 
     static void handle_xdg_surface_configure(

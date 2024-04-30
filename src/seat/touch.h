@@ -21,11 +21,13 @@
 
 #include <wayland-client.h>
 
+class Touch;
+
 class TouchObserver {
 public:
     virtual ~TouchObserver() = default;
 
-    virtual void notify_touch_down(void *data,
+    virtual void notify_touch_down(Touch *touch,
                                    struct wl_touch *wl_touch,
                                    uint32_t serial,
                                    uint32_t time,
@@ -34,23 +36,24 @@ public:
                                    wl_fixed_t x_w,
                                    wl_fixed_t y_w) = 0;
 
-    virtual void notify_touch_up(void *data,
-                                 struct wl_touch *touch,
+    virtual void notify_touch_up(Touch *touch,
+                                 struct wl_touch *wl_touch,
                                  uint32_t serial,
                                  uint32_t time,
                                  int32_t id) = 0;
 
-    virtual void notify_touch_motion(void *data,
-                                     struct wl_touch *touch,
+    virtual void notify_touch_motion(Touch *touch,
+                                     struct wl_touch *wl_touch,
                                      uint32_t time,
                                      int32_t id,
                                      wl_fixed_t x_w,
                                      wl_fixed_t y_w) = 0;
 
-    virtual void notify_touch_cancel(void *data, struct wl_touch *touch) = 0;
+    virtual void notify_touch_cancel(Touch *touch,
+                                     struct wl_touch *wl_touch) = 0;
 
-    virtual void notify_touch_frame(void *data,
-                                    struct wl_touch *touch) = 0;
+    virtual void notify_touch_frame(Touch *touch,
+                                    struct wl_touch *wl_touch) = 0;
 };
 
 class Touch {

@@ -35,25 +35,17 @@ class Registrar;
  * @see Window
  * @see XdgWm
  */
-WindowManager::WindowManager(const unsigned long ext_interface_count,
+WindowManager::WindowManager(bool disable_cursor,
+                             const unsigned long ext_interface_count,
                              const Registrar::RegistrarCallback *ext_interface_data,
                              GMainContext *context,
-                             bool enable_cursor,
                              const char *display_name) : Registrar(get_display(display_name),
                                                                    ext_interface_count,
-                                                                   ext_interface_data),
+                                                                   ext_interface_data,
+                                                                   disable_cursor),
                                                          context_(context),
-                                                         outputs_(get_outputs()),
-                                                         cursor_{.enable = enable_cursor} {
+                                                         outputs_(get_outputs()) {
     SPDLOG_TRACE("++WindowManager::WindowManager()");
-    if (enable_cursor && get_shm().has_value()) {
-        if (!shm_has_format(WL_SHM_FORMAT_XRGB8888)) {
-            spdlog::warn("Format {} is not supported. Disabling cursor", shm_format_to_text(WL_SHM_FORMAT_XRGB8888));
-            cursor_.enable = false;
-            return;
-        }
-        cursor_.cursor = std::make_unique<Cursor>(get_shm().value(), get_compositor());
-    }
     SPDLOG_TRACE("--WindowManager::WindowManager()");
 }
 
@@ -65,8 +57,8 @@ WindowManager::WindowManager(const unsigned long ext_interface_count,
  */
 WindowManager::~WindowManager() {
     SPDLOG_TRACE("++WindowManager::~WindowManager()");
-    wl_display_flush(wl_display_);
-    wl_display_disconnect(wl_display_);
+//    wl_display_flush(wl_display_);
+//    wl_display_disconnect(wl_display_);
     SPDLOG_TRACE("--WindowManager::~WindowManager()");
 }
 

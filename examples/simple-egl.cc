@@ -381,11 +381,57 @@ static void draw_frame(void *userdata, uint32_t /* time */) {
     frames++;
 }
 
-class KeyboardHandler : public KeyboardObserver {
+class KeyboardHandler : public SeatObserver, public KeyboardObserver {
 public:
-    void notify_key(void * /* data */, bool released, xkb_keysym_t /* keysym */, uint32_t xkb_scancode,
-                    uint32_t modifiers) override {
-        spdlog::info("KeyEvent: released: {}, scancode: {}, modifiers: {}", released, xkb_scancode, modifiers);
+    void notify_seat_capabilities(Seat *seat, struct wl_seat * /* seat */, uint32_t /* caps */) override {
+        if (seat) {
+            auto keyboard = seat->get_keyboard();
+            if (keyboard.has_value()) {
+                keyboard.value()->register_observer(this);
+            }
+        }
+    }
+
+    void notify_seat_name(Seat * /* seat */, struct wl_seat * /* seat */, const char *name) override {
+        spdlog::info("Seat: {}", name);
+    }
+
+    void notify_keyboard_enter(Keyboard * /* keyboard */,
+                               struct wl_keyboard * /* wl_keyboard */,
+                               uint32_t serial,
+                               struct wl_surface *surface,
+                               struct wl_array * /* keys */) override {
+        spdlog::info("Keyboard Enter: serial: {}, surface: {}", serial, fmt::ptr(surface));
+    }
+
+    void notify_keyboard_leave(Keyboard * /* keyboard */,
+                               struct wl_keyboard * /* wl_keyboard */,
+                               uint32_t serial,
+                               struct wl_surface *surface) override {
+        spdlog::info("Keyboard Leave: serial: {}, surface: {}", serial, fmt::ptr(surface));
+    }
+
+    void notify_keyboard_keymap(Keyboard * /* keyboard */,
+                                struct wl_keyboard * /* wl_keyboard */,
+                                uint32_t format,
+                                int32_t fd,
+                                uint32_t size) override {
+        spdlog::info("Keymap: format: {}, fd: {}, size: {}", format, fd, size);
+    }
+
+    void notify_keyboard_key(Keyboard * /* keyboard */,
+                             struct wl_keyboard * /* wl_keyboard */,
+                             uint32_t serial,
+                             uint32_t time,
+                             uint32_t xkb_scancode,
+                             bool key_repeats,
+                             uint32_t state,
+                             int xdg_key_symbol_count,
+                             const xkb_keysym_t *xdg_key_symbols) override {
+        spdlog::info(
+                "Key: serial: {}, time: {}, xkb_scancode: 0x{:X}, key_repeats: {}, state: {}, xdg_keysym_count: {}, syms_out[0]: 0x{:X}",
+                serial, time, xkb_scancode, key_repeats, state == KeyState::KEY_STATE_PRESS ? "press" : "release",
+                xdg_key_symbol_count, xdg_key_symbols[0]);
     }
 };
 
@@ -445,14 +491,14 @@ int main(int argc, char **argv) {
         config.interval = 0;
     }
 
-    // Control EGL_ALPHA_SIZE value
+    /// Control EGL_ALPHA_SIZE value
     if (config.opaque || config.buffer_bpp == 16) {
         kEglConfigAttribs[9] = 0;
     }
 
-    XdgWindowManager wm;
     auto keyboard_handler = std::make_unique<KeyboardHandler>();
 
+    XdgWindowManager wm;
     auto seat = wm.get_seat();
     if (seat.has_value()) {
         auto keyboard = seat.value()->get_keyboard();

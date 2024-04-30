@@ -117,6 +117,11 @@ public:
 
     void presentation_feedback_add_callbacks();
 
+    // Disallow copy and assign.
+    Window(const Window &) = delete;
+
+    Window &operator=(const Window &) = delete;
+
 private:
     friend XdgTopLevel;
 

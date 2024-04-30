@@ -28,10 +28,9 @@ class XdgTopLevel;
 
 class XdgWindowManager : public WindowManager {
 public:
-    XdgWindowManager(unsigned long ext_interface_count = 0,
+    XdgWindowManager(bool disable_cursor = false, unsigned long ext_interface_count = 0,
                      const Registrar::RegistrarCallback *ext_interface_data = nullptr,
                      GMainContext *context = nullptr,
-                     bool enable_cursor = true,
                      const char *display_name = nullptr);
 
     ~XdgWindowManager();
@@ -40,8 +39,7 @@ public:
 
     XdgTopLevel *
     create_top_level(const char *title, const char *app_id, int width, int height,
-                     int buffer_count, uint32_t buffer_format,
-                     bool fullscreen, bool maximized, bool fullscreen_ratio,
+                     int buffer_count, uint32_t buffer_format, bool fullscreen, bool maximized, bool fullscreen_ratio,
                      bool tearing, const std::function<void(void *, const uint32_t)> &frame_callback,
                      const int32_t *context_attribs = nullptr, size_t context_attribs_size = 0,
                      const int32_t *config_attribs = nullptr, size_t config_attribs_size = 0,

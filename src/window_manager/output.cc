@@ -34,7 +34,11 @@ Output::Output(struct wl_output *wl_output) : wl_output_(wl_output) {
     SPDLOG_TRACE("--Output::Output()");
 }
 
-Output::~Output() = default;
+Output::~Output() {
+    if (wl_output_) {
+        wl_output_destroy(wl_output_);
+    }
+}
 
 void Output::handle_geometry(void *data,
                              struct wl_output *wl_output,

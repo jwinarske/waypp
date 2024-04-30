@@ -23,15 +23,15 @@
 #include "logging.h"
 
 
-Buffer::Buffer(struct wl_shm *wl_shm, uint32_t format) : width_(0), height_(0), format_(format), busy_(false),
-                                                         wl_shm_(wl_shm) {
+Buffer::Buffer(struct wl_shm *wl_shm) : width_(0), height_(0), busy_(false), wl_shm_(wl_shm) {
 }
 
 Buffer::~Buffer() {
-    if (buffer_)
-        wl_buffer_destroy(buffer_);
-
     munmap(shm_data_, static_cast<size_t>(size_));
+
+    if (buffer_) {
+        wl_buffer_destroy(buffer_);
+    }
 }
 
 void Buffer::handle_release(void *data, struct wl_buffer * /* buffer */) {
@@ -43,7 +43,7 @@ const struct wl_buffer_listener Buffer::listener_ = {
         .release = handle_release
 };
 
-int Buffer::create_shm_buffer(int width, int height) {
+int Buffer::create_shm_buffer(int width, int height, uint32_t format) {
     if (buffer_) {
         spdlog::error("shm_buffer already exists");
         return -1;
@@ -68,11 +68,12 @@ int Buffer::create_shm_buffer(int width, int height) {
         return -1;
     }
 
-    auto pool = wl_shm_create_pool(wl_shm_, fd, size_);
-    buffer_ = wl_shm_pool_create_buffer(pool, 0, width, height, pitch, format_);
-    wl_buffer_add_listener(buffer_, &listener_, this);
-    wl_shm_pool_destroy(pool);
+    auto wl_shm_pool = wl_shm_create_pool(wl_shm_, fd, size_);
+    buffer_ = wl_shm_pool_create_buffer(wl_shm_pool, 0, width, height, pitch, format_);
+    wl_shm_pool_destroy(wl_shm_pool);
     close(fd);
+
+    wl_buffer_add_listener(buffer_, &listener_, this);
 
     shm_data_ = data;
     return 0;

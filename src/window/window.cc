@@ -44,8 +44,8 @@ Window::Window(WindowManager *wm,
         }
         buffers_.reserve(static_cast<unsigned long>(buffer_count));
         for (int i = 0; i < buffer_count_; i++) {
-            auto buffer = std::make_unique<Buffer>(wm_->get_shm().value(), buffer_format_);
-            buffer->create_shm_buffer(width, height);
+            auto buffer = std::make_unique<Buffer>(wm_->get_shm().value());
+            buffer->create_shm_buffer(width, height, buffer_format_);
             buffers_.push_back(std::move(buffer));
         }
     }
@@ -110,7 +110,7 @@ Window::~Window() {
     }
 
     if (buffer_count_) {
-        for(auto &buffer: buffers_) {
+        for (auto &buffer: buffers_) {
             buffer.reset();
         }
     }
@@ -410,7 +410,7 @@ Buffer *Window::next_buffer() {
         return nullptr;
 
     if (!buffer->get_wl_buffer()) {
-        auto ret = buffer->create_shm_buffer(window_size_.width, window_size_.height);
+        auto ret = buffer->create_shm_buffer(window_size_.width, window_size_.height, buffer_format_);
 
         if (ret < 0)
             return nullptr;

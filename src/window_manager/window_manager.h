@@ -19,7 +19,6 @@
 #include <EGL/egl.h>
 
 #include "registrar.h"
-#include "seat/cursor.h"
 #include "window_manager_observer.h"
 
 class Registrar;
@@ -29,10 +28,9 @@ class XdgWindowManager;
 
 class WindowManager : public Registrar {
 public:
-    explicit WindowManager(unsigned long ext_interface_count = 0,
+    explicit WindowManager(bool disable_cursor = false, unsigned long ext_interface_count = 0,
                            const Registrar::RegistrarCallback *ext_interface_data = nullptr,
                            GMainContext *context = nullptr,
-                           bool enable_cursor = true,
                            const char *display_name = nullptr);
 
     ~WindowManager();
@@ -78,12 +76,7 @@ private:
 
     struct wl_display *wl_display_;
 
-    struct {
-        bool enable;
-        std::unique_ptr<Cursor> cursor;
-    } cursor_;
-
-    enum wl_output_transform buffer_transform_;
+    enum wl_output_transform buffer_transform_{};
 
     int32_t buffer_scale_ = 1;
     double fractional_buffer_scale_ = 1.0;

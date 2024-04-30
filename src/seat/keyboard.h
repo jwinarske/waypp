@@ -24,15 +24,43 @@
 #include <glib-2.0/glib.h>
 #include <xkbcommon/xkbcommon.h>
 
+class Keyboard;
+
 class KeyboardObserver {
 public:
+    enum KeyState {
+        KEY_STATE_RELEASE,
+        KEY_STATE_PRESS,
+    };
+
     virtual ~KeyboardObserver() = default;
 
-    virtual void notify_key(void *data,
-                            bool released,
-                            xkb_keysym_t keysym,
-                            uint32_t xkb_scancode,
-                            uint32_t modifiers) = 0;
+    virtual void notify_keyboard_enter(Keyboard *keyboard,
+                                       struct wl_keyboard *wl_keyboard,
+                                       uint32_t serial,
+                                       struct wl_surface *surface,
+                                       struct wl_array *keys) = 0;
+
+    virtual void notify_keyboard_leave(Keyboard *keyboard,
+                                       struct wl_keyboard *wl_keyboard,
+                                       uint32_t serial,
+                                       struct wl_surface *surface) = 0;
+
+    virtual void notify_keyboard_keymap(Keyboard *keyboard,
+                                        struct wl_keyboard *wl_keyboard,
+                                        uint32_t format,
+                                        int32_t fd,
+                                        uint32_t size) = 0;
+
+    virtual void notify_keyboard_key(Keyboard *keyboard,
+                                     struct wl_keyboard *wl_keyboard,
+                                     uint32_t serial,
+                                     uint32_t time,
+                                     uint32_t xkb_scancode,
+                                     bool keymap_key_repeats,
+                                     uint32_t state,
+                                     int xdg_key_symbol_count,
+                                     const xkb_keysym_t *xdg_key_symbols) = 0;
 };
 
 class Keyboard {
@@ -49,16 +77,20 @@ public:
         observers_.remove(observer);
     }
 
+    [[nodiscard]] int32_t get_repeat_delay() const { return repeat_.delay; }
+
+    [[nodiscard]] int32_t get_repeat_rate() const { return repeat_.rate; }
+
     // Disallow copy and assign.
     Keyboard(const Keyboard &) = delete;
 
     Keyboard &operator=(const Keyboard &) = delete;
 
 private:
-    struct wl_keyboard *keyboard_;
-    struct wl_surface *active_surface_{};
+    struct wl_keyboard *wl_keyboard_;
+    struct wl_surface *wl_surface{};
     struct xkb_context *xkb_context_;
-    struct xkb_keymap *keymap_{};
+    struct xkb_keymap *xkb_keymap_{};
     struct xkb_state *xkb_state_{};
     std::list<KeyboardObserver *> observers_{};
 
@@ -69,9 +101,16 @@ private:
         uint32_t code;
         struct sigevent sev;
         struct sigaction sa;
+        struct {
+            struct wl_keyboard *wl_keyboard;
+            uint32_t serial;
+            uint32_t time;
+            uint32_t xkb_scancode;
+            int key_repeats;
+            int xdg_keysym_count;
+            const xkb_keysym_t *key_syms;
+        } notify;
     } repeat_{};
-
-    xkb_keysym_t keysym_pressed_{};
 
     /**
      * @brief Handles the repeated key events for the Keyboard.
@@ -80,20 +119,6 @@ private:
      *
      */
     static void repeat_callback(int sig, siginfo_t *si, void *uc);
-
-    /**
-     * @brief Starts key repeat logic.
-     *
-     * @param repeat_code
-     */
-    void start_repeat(uint32_t repeat_code);
-
-    /**
-     * @brief Stops key repeat logic.
-     *
-     * @param repeat_code
-     */
-    void stop_repeat();
 
     /**
      * keyboard mapping

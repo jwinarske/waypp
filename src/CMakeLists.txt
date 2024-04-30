@@ -39,7 +39,6 @@ set(WINDOW_MANAGER_SRC
 )
 
 set(SEAT_SRC
-        seat/cursor.cc
         seat/seat.cc
         seat/keyboard.cc
         seat/pointer.cc

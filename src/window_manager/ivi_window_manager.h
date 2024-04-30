@@ -32,7 +32,6 @@ public:
                      unsigned long ext_interface_count = 0,
                      const Registrar::RegistrarCallback *ext_interface_data = nullptr,
                      GMainContext *context = nullptr,
-                     bool enable_cursor = true,
                      const char *name = nullptr);
 
     ~IviWindowManager();

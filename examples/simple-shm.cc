@@ -34,8 +34,9 @@
 struct Configuration {
     int width;
     int height;
+    bool disable_cursor;
     bool fullscreen;
-    int maximized;
+    bool maximized;
     bool fullscreen_ratio;
     bool tearing;
 };
@@ -60,16 +61,15 @@ void handle_signal(int signal) {
     }
 }
 
-static void
-paint_pixels(void *image, int padding, int width, int height, uint32_t time) {
-    const int halfh = padding + (height - padding * 2) / 2;
-    const int halfw = padding + (width - padding * 2) / 2;
+static void paint_pixels(void *image, int padding, int width, int height, uint32_t time) {
+    auto pixel = static_cast<uint32_t *>(image);
+    int half_h = padding + (height - padding * 2) / 2;
+    int half_w = padding + (width - padding * 2) / 2;
     int ir, or_;
-    auto *pixel = static_cast<uint32_t *>(image);
     int y;
 
-    /* squared radii thresholds */
-    or_ = (halfw < halfh ? halfw : halfh) - 8;
+    /// Squared radii thresholds
+    or_ = (half_w < half_h ? half_w : half_h) - 8;
     ir = or_ - 32;
     or_ *= or_;
     ir *= ir;
@@ -77,14 +77,14 @@ paint_pixels(void *image, int padding, int width, int height, uint32_t time) {
     pixel += padding * width;
     for (y = padding; y < height - padding; y++) {
         int x;
-        int y2 = (y - halfh) * (y - halfh);
+        int y2 = (y - half_h) * (y - half_h);
 
         pixel += padding;
         for (x = padding; x < width - padding; x++) {
             uint32_t v;
 
-            /* squared distance from center */
-            int r2 = (x - halfw) * (x - halfw) + y2;
+            /// Squared distance from center
+            int r2 = (x - half_w) * (x - half_w) + y2;
 
             if (r2 < ir)
                 v = (static_cast<uint32_t>(r2 / 32) + time / 64) * 0x0080401;
@@ -94,7 +94,7 @@ paint_pixels(void *image, int padding, int width, int height, uint32_t time) {
                 v = (static_cast<uint32_t>(x) + time / 16) * 0x0080401;
             v &= 0x00ffffff;
 
-            /* cross if compositor uses X from XRGB as alpha */
+            /// Cross if compositor uses X from XRGB as alpha
             if (abs(x - y) > 6 && abs(x + y - height) > 6)
                 v |= 0xff000000;
 
@@ -128,7 +128,7 @@ class App : public PointerObserver, public KeyboardObserver, public SeatObserver
 public:
     explicit App(Configuration config) : logging_(std::make_unique<Logging>()) {
 
-        wm_ = std::make_unique<XdgWindowManager>();
+        wm_ = std::make_unique<XdgWindowManager>(config.disable_cursor);
         auto seat = wm_->get_seat();
         if (seat.has_value()) {
             seat.value()->register_observer(this);
@@ -152,7 +152,6 @@ public:
 
         /// paint padding
         top_level_->set_surface_damage(0, 0, config.width, config.height);
-        top_level_->update_buffer_geometry();
         top_level_->start_frame_callbacks();
     }
 
@@ -161,11 +160,11 @@ public:
     }
 
     bool run() {
+        /// display_dispatch is blocking
         return (top_level_->is_valid() && wm_->display_dispatch() != -1);
     }
 
-    void notify_seat_capabilities(void *data, struct wl_seat * /* seat */, uint32_t /* caps */) override {
-        auto seat = static_cast<Seat *>(data);
+    void notify_seat_capabilities(Seat *seat, struct wl_seat * /* seat */, uint32_t /* caps */) override {
         if (seat) {
             auto keyboard = seat->get_keyboard();
             if (keyboard.has_value()) {
@@ -179,32 +178,66 @@ public:
         }
     }
 
-    void notify_seat_name(void * /* data */, struct wl_seat * /* seat */, const char *name) override {
+    void notify_seat_name(Seat * /* seat */, struct wl_seat * /* seat */, const char *name) override {
         spdlog::info("Seat: {}", name);
     }
 
-    void notify_key(void * /* data */, bool released, xkb_keysym_t /* keysym */, uint32_t xkb_scancode,
-                    uint32_t modifiers) override {
-        spdlog::info("KeyEvent: released: {}, scancode: {}, modifiers: {}", released, xkb_scancode, modifiers);
+    void notify_keyboard_enter(Keyboard * /* keyboard */,
+                               struct wl_keyboard * /* wl_keyboard */,
+                               uint32_t serial,
+                               struct wl_surface *surface,
+                               struct wl_array * /* keys */) override {
+        spdlog::info("Keyboard Enter: serial: {}, surface: {}", serial, fmt::ptr(surface));
     }
 
-    void notify_pointer_enter(void * /* data */,
+    void notify_keyboard_leave(Keyboard * /* keyboard */,
+                               struct wl_keyboard * /* wl_keyboard */,
+                               uint32_t serial,
+                               struct wl_surface *surface) override {
+        spdlog::info("Keyboard Leave: serial: {}, surface: {}", serial, fmt::ptr(surface));
+    }
+
+    void notify_keyboard_keymap(Keyboard * /* keyboard */,
+                                struct wl_keyboard * /* wl_keyboard */,
+                                uint32_t format,
+                                int32_t fd,
+                                uint32_t size) override {
+        spdlog::info("Keymap: format: {}, fd: {}, size: {}", format, fd, size);
+    }
+
+    void notify_keyboard_key(Keyboard * /* keyboard */,
+                             struct wl_keyboard * /* wl_keyboard */,
+                             uint32_t serial,
+                             uint32_t time,
+                             uint32_t xkb_scancode,
+                             bool key_repeats,
+                             uint32_t state,
+                             int xdg_key_symbol_count,
+                             const xkb_keysym_t *xdg_key_symbols) override {
+        spdlog::info(
+                "Key: serial: {}, time: {}, xkb_scancode: 0x{:X}, key_repeats: {}, state: {}, xdg_keysym_count: {}, syms_out[0]: 0x{:X}",
+                serial, time, xkb_scancode, key_repeats, state == KeyState::KEY_STATE_PRESS ? "press" : "release",
+                xdg_key_symbol_count, xdg_key_symbols[0]);
+    }
+
+    void notify_pointer_enter(Pointer *pointer,
                               struct wl_pointer * /* pointer */,
-                              uint32_t /* serial */,
+                              uint32_t serial,
                               struct wl_surface *surface,
                               double sx,
                               double sy) override {
-        spdlog::info("Pointer Enter: surface: {}, x: {}, y: {}", fmt::ptr(surface), sx, sy);
+        spdlog::info("Pointer Enter: serial: {}, surface: {}, x: {}, y: {}", serial, fmt::ptr(surface), sx, sy);
+        pointer->set_cursor(serial);
     }
 
-    void notify_pointer_leave(void * /* data */,
+    void notify_pointer_leave(Pointer * /* pointer */,
                               struct wl_pointer * /* pointer */,
-                              uint32_t /* serial */,
+                              uint32_t serial,
                               struct wl_surface *surface) override {
-        spdlog::info("Pointer Leave: surface: {}", fmt::ptr(surface));
+        spdlog::info("Pointer Leave: serial: {}, surface: {}", serial, fmt::ptr(surface));
     }
 
-    void notify_pointer_motion(void *  /* data  */,
+    void notify_pointer_motion(Pointer *  /* pointer  */,
                                struct wl_pointer * /* pointer */,
                                uint32_t time,
                                double sx,
@@ -212,41 +245,41 @@ public:
         spdlog::info("Pointer: time: {}, x: {}, y: {}", time, sx, sy);
     }
 
-    void notify_pointer_button(void * /* data */,
+    void notify_pointer_button(Pointer * /* pointer */,
                                struct wl_pointer * /* pointer  */,
-                               uint32_t /* serial  */,
+                               uint32_t serial,
                                uint32_t time,
                                uint32_t button,
                                uint32_t state) override {
-        spdlog::info("Pointer Button: time: {}, button: {}, state: {}", time, button, state);
+        spdlog::info("Pointer Button: pointer: {}, time: {}, button: {}, state: {}", serial, time, button, state);
     }
 
-    void notify_pointer_axis(void * /* data */,
+    void notify_pointer_axis(Pointer * /* pointer */,
                              struct wl_pointer * /* pointer */,
-                             uint32_t /* time */,
+                             uint32_t time,
                              uint32_t axis,
                              wl_fixed_t value) override {
-        spdlog::info("Pointer Axis: axis: {}, value: {}", axis, value);
+        spdlog::info("Pointer Axis: time: {}, axis: {}, value: {}", time, axis, value);
     }
 
-    void notify_pointer_frame(void * /* data */, struct wl_pointer * /* pointer */) override {
+    void notify_pointer_frame(Pointer * /* pointer */, struct wl_pointer * /* pointer */) override {
         spdlog::info("Pointer Frame");
     };
 
-    void notify_pointer_axis_source(void * /* data */,
+    void notify_pointer_axis_source(Pointer * /* pointer */,
                                     struct wl_pointer * /* pointer */,
                                     uint32_t axis_source) override {
         spdlog::info("Pointer Axis Source: axis_source: {}", axis_source);
     };
 
-    void notify_pointer_axis_stop(void * /* data */,
+    void notify_pointer_axis_stop(Pointer * /* pointer */,
                                   struct wl_pointer * /* pointer */,
                                   uint32_t /* time */,
                                   uint32_t axis) override {
         spdlog::info("Pointer Axis Stop: axis: {}", axis);
     };
 
-    void notify_pointer_axis_discrete(void * /* data */,
+    void notify_pointer_axis_discrete(Pointer * /* pointer */,
                                       struct wl_pointer * /*pointer */,
                                       uint32_t axis,
                                       int32_t discrete) override {
@@ -267,6 +300,7 @@ int main(int argc, char **argv) {
     options.add_options()
             ("w,width", "Set width", cxxopts::value<int>()->default_value("250"))
             ("h,height", "Set height", cxxopts::value<int>()->default_value("250"))
+            ("c,disable-cursor", "Disable Cursor")
             ("f,fullscreen", "Run in fullscreen mode")
             ("m,maximized", "Run in maximized mode")
             ("r,fullscreen-ratio", "Use fixed width/height ratio when run in fullscreen mode")
@@ -276,8 +310,9 @@ int main(int argc, char **argv) {
     App app({
                     .width = result["width"].as<int>(),
                     .height = result["height"].as<int>(),
+                    .disable_cursor = result["disable-cursor"].as<bool>(),
                     .fullscreen = result["fullscreen"].as<bool>(),
-                    .maximized = result["maximized"].as<bool>() ? 1 : 0,
+                    .maximized = result["maximized"].as<bool>(),
                     .fullscreen_ratio = result["fullscreen-ratio"].as<bool>(),
                     .tearing = result["tearing"].as<bool>(),
             });

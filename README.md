@@ -1,6 +1,6 @@
 # Wayland C++ Library (waypp)
 
-_Note: Currently waypp is a work in progress._
+_Note: waypp is a work in progress and is not ABI stable_
 
 ## Introduction
 
@@ -9,12 +9,13 @@ for developers to build Wayland-based applications using C++.
 
 ## Installation
 
+### Debian
+
 This project requires the following packages/libraries:
 
 - libwayland-dev
 - libxkbcommon-dev
 - wayland-protocols
-- cairo-dev
 - glib-2.0
 
 ### If your graphics driver is supported by Mesa, then use:
@@ -39,9 +40,9 @@ Follow these steps to start using the project:
 ### Build the project
 ```make -j```
 
-### Run demo application
-```./demo/demo```
-
+### Run demo applications
+```./examples/simple-egl```
+```./examples/simple-shm```
 
 ## License
 

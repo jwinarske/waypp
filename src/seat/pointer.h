@@ -17,65 +17,72 @@
 #pragma once
 
 #include <list>
+#include <optional>
 
 #include <wayland-client.h>
+
+class Pointer;
 
 class PointerObserver {
 public:
     virtual ~PointerObserver() = default;
 
-    virtual void notify_pointer_enter(void *data,
-                                      struct wl_pointer *pointer,
+    virtual void notify_pointer_enter(Pointer *pointer,
+                                      struct wl_pointer *wl_pointer,
                                       uint32_t serial,
                                       struct wl_surface *surface,
                                       double sx,
                                       double sy) = 0;
 
-    virtual void notify_pointer_leave(void *data,
-                                      struct wl_pointer *pointer,
+    virtual void notify_pointer_leave(Pointer *pointer,
+                                      struct wl_pointer *wl_pointer,
                                       uint32_t serial,
                                       struct wl_surface *surface) = 0;
 
-    virtual void notify_pointer_motion(void *data,
-                                       struct wl_pointer *pointer,
+    virtual void notify_pointer_motion(Pointer *pointer,
+                                       struct wl_pointer *wl_pointer,
                                        uint32_t time,
                                        double sx,
                                        double sy) = 0;
 
-    virtual void notify_pointer_button(void *data,
-                                       struct wl_pointer *pointer,
+    virtual void notify_pointer_button(Pointer *pointer,
+                                       struct wl_pointer *wl_pointer,
                                        uint32_t serial,
                                        uint32_t time,
                                        uint32_t button,
                                        uint32_t state) = 0;
 
-    virtual void notify_pointer_axis(void *data,
-                                     struct wl_pointer *pointer,
+    virtual void notify_pointer_axis(Pointer *pointer,
+                                     struct wl_pointer *wl_pointer,
                                      uint32_t time,
                                      uint32_t axis,
                                      wl_fixed_t value) = 0;
 
-    virtual void notify_pointer_frame(void *data, struct wl_pointer *pointer) = 0;
+    virtual void notify_pointer_frame(Pointer *pointer,
+                                      struct wl_pointer *wl_pointer) = 0;
 
-    virtual void notify_pointer_axis_source(void *data,
-                                            struct wl_pointer *pointer,
+    virtual void notify_pointer_axis_source(Pointer *pointer,
+                                            struct wl_pointer *wl_pointer,
                                             uint32_t axis_source) = 0;
 
-    virtual void notify_pointer_axis_stop(void *data,
-                                          struct wl_pointer *pointer,
+    virtual void notify_pointer_axis_stop(Pointer *pointer,
+                                          struct wl_pointer *wl_pointer,
                                           uint32_t
                                           time,
                                           uint32_t axis) = 0;
 
-    virtual void notify_pointer_axis_discrete(void *data,
-                                              struct wl_pointer *pointer,
+    virtual void notify_pointer_axis_discrete(Pointer *pointer,
+                                              struct wl_pointer *wl_pointer,
                                               uint32_t axis,
                                               int32_t discrete) = 0;
 };
 
 class Pointer {
 public:
-    explicit Pointer(struct wl_pointer *pointer);
+    explicit Pointer(struct wl_pointer *pointer, struct wl_compositor *wl_compositor,
+                     const std::optional<struct wl_shm *> &wl_shm,
+                     bool disable_cursor,
+                     int size = 24);
 
     ~Pointer();
 
@@ -87,6 +94,8 @@ public:
         observers_.remove(observer);
     }
 
+    void set_cursor(uint32_t serial, const char *name = "right_ptr");
+
     // Disallow copy and assign.
     Pointer(const Pointer &) = delete;
 
@@ -95,6 +104,11 @@ public:
 private:
     struct wl_pointer *wl_pointer_;
     std::list<PointerObserver *> observers_{};
+    struct wl_surface *wl_surface_;
+    struct wl_cursor_theme *theme_{};
+    const std::optional<struct wl_shm *> &wl_shm_;
+    bool disable_cursor_;
+    int size_;
 
     static void handle_enter(void *data,
                              struct wl_pointer *pointer,

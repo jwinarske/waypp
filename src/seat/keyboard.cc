@@ -30,11 +30,11 @@
  * The Keyboard class provides a wrapper for a keyboard device,
  * which interacts with the Wayland compositor.
  */
-Keyboard::Keyboard(struct wl_keyboard *keyboard) : keyboard_(keyboard),
+Keyboard::Keyboard(struct wl_keyboard *keyboard) : wl_keyboard_(keyboard),
                                                    xkb_context_(xkb_context_new(
                                                            XKB_CONTEXT_NO_FLAGS)) {
     SPDLOG_DEBUG("Keyboard");
-    wl_keyboard_add_listener(keyboard_, &keyboard_listener_, this);
+    wl_keyboard_add_listener(wl_keyboard_, &keyboard_listener_, this);
 }
 
 /**
@@ -45,109 +45,134 @@ Keyboard::Keyboard(struct wl_keyboard *keyboard) : keyboard_(keyboard),
  */
 Keyboard::~Keyboard() {
     if (repeat_.timer) {
+        struct itimerspec its{};
+        timer_settime(repeat_.timer, 0, &its, nullptr);
         timer_delete(repeat_.timer);
     }
-    wl_keyboard_release(keyboard_);
+
+    wl_keyboard_release(wl_keyboard_);
+
+    if (xkb_state_) {
+        xkb_state_unref(xkb_state_);
+    }
+    if (xkb_keymap_) {
+        xkb_keymap_unref(xkb_keymap_);;
+    }
+    if (xkb_context_) {
+        xkb_context_unref(xkb_context_);
+    }
 }
 
 void Keyboard::handle_keymap(void *data,
-                             struct wl_keyboard *keyboard,
-                             uint32_t /* format */,
+                             struct wl_keyboard *wl_keyboard,
+                             uint32_t format,
                              int fd,
                              uint32_t size) {
     const auto obj = static_cast<Keyboard *>(data);
-    if (obj->keyboard_ != keyboard) {
+    if (obj->wl_keyboard_ != wl_keyboard) {
         return;
     }
     char *keymap_string = static_cast<char *>(mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0));
-    xkb_keymap_unref(obj->keymap_);
-    obj->keymap_ = xkb_keymap_new_from_string(obj->xkb_context_, keymap_string,
-                                              XKB_KEYMAP_FORMAT_TEXT_V1,
-                                              XKB_KEYMAP_COMPILE_NO_FLAGS);
+    xkb_keymap_unref(obj->xkb_keymap_);
+    obj->xkb_keymap_ = xkb_keymap_new_from_string(obj->xkb_context_, keymap_string,
+                                                  XKB_KEYMAP_FORMAT_TEXT_V1,
+                                                  XKB_KEYMAP_COMPILE_NO_FLAGS);
     munmap(keymap_string, size);
     close(fd);
     xkb_state_unref(obj->xkb_state_);
-    obj->xkb_state_ = xkb_state_new(obj->keymap_);
+    obj->xkb_state_ = xkb_state_new(obj->xkb_keymap_);
+
+    for (auto observer: obj->observers_) {
+        observer->notify_keyboard_keymap(obj, wl_keyboard, format, fd, size);
+    }
 }
 
 void Keyboard::handle_enter(void *data,
-                            struct wl_keyboard *keyboard,
-                            uint32_t /* serial */,
-                            struct wl_surface *surface,
-                            struct wl_array * /* keys */) {
+                            struct wl_keyboard *wl_keyboard,
+                            uint32_t serial,
+                            struct wl_surface *wl_surface,
+                            struct wl_array *keys) {
     const auto obj = static_cast<Keyboard *>(data);
-    if (obj->keyboard_ != keyboard) {
+    if (obj->wl_keyboard_ != wl_keyboard) {
         return;
     }
-    SPDLOG_DEBUG("[Keyboard] handle_enter");
-    obj->active_surface_ = surface;
+
+    SPDLOG_TRACE("[Keyboard] handle_enter");
+
+    obj->wl_surface = wl_surface;
+
+    for (auto observer: obj->observers_) {
+        observer->notify_keyboard_enter(obj, wl_keyboard, serial, wl_surface, keys);
+    }
 }
 
 void Keyboard::handle_leave(void *data,
-                            struct wl_keyboard *keyboard,
-                            uint32_t /* serial */,
-                            struct wl_surface * /* surface */) {
+                            struct wl_keyboard *wl_keyboard,
+                            uint32_t serial,
+                            struct wl_surface *wl_surface) {
     const auto obj = static_cast<Keyboard *>(data);
-    if (obj->keyboard_ != keyboard) {
+    if (obj->wl_keyboard_ != wl_keyboard) {
         return;
     }
-    SPDLOG_DEBUG("[Keyboard] handle_leave");
-    obj->active_surface_ = nullptr;
+    SPDLOG_TRACE("[Keyboard] handle_leave");
+
+    obj->wl_surface = nullptr;
+
+    for (auto observer: obj->observers_) {
+        observer->notify_keyboard_leave(obj, wl_keyboard, serial, wl_surface);
+    }
 }
 
 void Keyboard::handle_key(void *data,
-                          struct wl_keyboard *keyboard,
-                          uint32_t /* serial */,
-                          uint32_t /* time */,
+                          struct wl_keyboard *wl_keyboard,
+                          uint32_t serial,
+                          uint32_t time,
                           uint32_t key,
                           uint32_t state) {
     const auto obj = static_cast<Keyboard *>(data);
-    if (obj->keyboard_ != keyboard) {
+    if (obj->wl_keyboard_ != wl_keyboard) {
         return;
     }
 
     if (!obj->xkb_state_)
         return;
 
-    // translate scancode to XKB scancode
-    const uint32_t xkb_scancode = key + 8;
+    /// translate scancode to XKB scancode
+    auto xkb_scancode = key + 8;
+    auto key_repeats = xkb_keymap_key_repeats(obj->xkb_keymap_, xkb_scancode);
 
-    // Gets the single keysym obtained from pressing a particular key in a given
-    // keyboard state.
-    xkb_keysym_t keysym = xkb_state_key_get_one_sym(obj->xkb_state_, xkb_scancode);
-    if (keysym == XKB_KEY_NoSymbol) {
-        const xkb_keysym_t *key_symbols;
-        const int res =
-                xkb_state_key_get_syms(obj->xkb_state_, xkb_scancode, &key_symbols);
-        if (res == 0) {
-            keysym = XKB_KEY_NoSymbol;
-        } else {
-            // only use the first symbol until the use case for two is clarified
-            keysym = key_symbols[0];
-            for (int i = 0; i < res; i++) {
-                SPDLOG_DEBUG("xkb keysym: 0x{}", key_symbols[i]);
-            }
+    const xkb_keysym_t *key_syms;
+    auto xdg_keysym_count = xkb_state_key_get_syms(obj->xkb_state_, xkb_scancode, &key_syms);
+
+    if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+        if (key_repeats) {
+
+            /// values required for repeat notify
+            obj->repeat_.notify = {
+                    .serial = serial,
+                    .time = time,
+                    .xkb_scancode = xkb_scancode,
+                    .key_repeats = key_repeats,
+                    .xdg_keysym_count = xdg_keysym_count,
+                    .key_syms = key_syms,
+            };
+
+            struct itimerspec in{};
+            in.it_value.tv_nsec = obj->repeat_.delay * 1000000;
+            in.it_interval.tv_nsec = obj->repeat_.rate * 1000000;
+            timer_settime(obj->repeat_.timer, 0, &in, nullptr);
+        }
+
+    } else if (state == WL_KEYBOARD_KEY_STATE_RELEASED) {
+        if (obj->repeat_.notify.xkb_scancode == xkb_scancode) {
+            struct itimerspec its{};
+            timer_settime(obj->repeat_.timer, 0, &its, nullptr);
         }
     }
 
     for (auto observer: obj->observers_) {
-        observer->notify_key(
-                obj, state == WL_KEYBOARD_KEY_STATE_RELEASED, keysym, xkb_scancode, 0
-        );
-    }
-
-    if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
-        if (xkb_keymap_key_repeats(obj->keymap_, xkb_scancode)) {
-            obj->keysym_pressed_ = keysym;
-            obj->start_repeat(xkb_scancode);
-        } else {
-            SPDLOG_DEBUG("key does not repeat: 0x{:x}", xkb_scancode);
-        }
-
-    } else if (state == WL_KEYBOARD_KEY_STATE_RELEASED) {
-        if (obj->repeat_.code == xkb_scancode) {
-            obj->stop_repeat();
-        }
+        observer->notify_keyboard_key(obj, wl_keyboard, serial, time, xkb_scancode, key_repeats, state,
+                                      xdg_keysym_count, key_syms);
     }
 }
 
@@ -159,11 +184,11 @@ void Keyboard::handle_modifiers(void *data,
                                 uint32_t mods_locked,
                                 uint32_t group) {
     const auto obj = static_cast<Keyboard *>(data);
-    if (obj->keyboard_ != keyboard) {
+    if (obj->wl_keyboard_ != keyboard) {
         return;
     }
 
-    SPDLOG_DEBUG("[Keyboard] handle_modifiers");
+    SPDLOG_TRACE("[Keyboard] handle_modifiers");
 
     xkb_state_update_mask(obj->xkb_state_, mods_depressed, mods_latched, mods_locked, 0, 0, group);
 }
@@ -173,11 +198,11 @@ void Keyboard::handle_repeat_info(void *data,
                                   int32_t rate,
                                   int32_t delay) {
     const auto obj = static_cast<Keyboard *>(data);
-    if (obj->keyboard_ != keyboard) {
+    if (obj->wl_keyboard_ != keyboard) {
         return;
     }
 
-    SPDLOG_DEBUG("[Keyboard] handle_repeat_info: rate: {}, delay: {}", rate, delay);
+    SPDLOG_TRACE("[Keyboard] handle_repeat_info: rate: {}, delay: {}", rate, delay);
 
     obj->repeat_.rate = rate;
     obj->repeat_.delay = delay;
@@ -216,36 +241,11 @@ const struct wl_keyboard_listener Keyboard::keyboard_listener_ = {
 
 void Keyboard::repeat_callback(int /* sig */, siginfo_t *si, void * /* uc */) {
     auto obj = static_cast<Keyboard *>(si->_sifields._rt.si_sigval.sival_ptr);
-    if (obj->repeat_.code != XKB_KEY_NoSymbol) {
-        for (auto observer: obj->observers_) {
-            observer->notify_key(obj, false, obj->keysym_pressed_, obj->repeat_.code, 0);
-        }
-    }
-}
 
-void Keyboard::start_repeat(uint32_t repeat_code) {
-    repeat_.code = repeat_code;
-
-    SPDLOG_DEBUG("Keyboard::start_repeat: {}", repeat_code);
-
-    struct itimerspec in{};
-    in.it_value.tv_nsec = repeat_.delay * 1000000;
-    in.it_interval.tv_nsec = repeat_.rate * 1000000;
-    auto res = timer_settime(repeat_.timer, 0, &in, nullptr);
-    if (res != 0) {
-        spdlog::critical("Error timer_settime: {}", strerror(errno));
-        abort();
-    }
-}
-
-void Keyboard::stop_repeat() {
-    repeat_.code = XKB_KEY_NoSymbol;
-
-    SPDLOG_DEBUG("Keyboard::stop_repeat");
-
-    /// Stop timer
-    if (repeat_.timer) {
-        struct itimerspec its{};
-        timer_settime(repeat_.timer, 0, &its, nullptr);
+    for (auto observer: obj->observers_) {
+        observer->notify_keyboard_key(obj, obj->repeat_.notify.wl_keyboard, obj->repeat_.notify.serial,
+                                      obj->repeat_.notify.time, obj->repeat_.notify.xkb_scancode,
+                                      obj->repeat_.notify.key_repeats, WL_KEYBOARD_KEY_STATE_PRESSED,
+                                      obj->repeat_.notify.xdg_keysym_count, obj->repeat_.notify.key_syms);
     }
 }

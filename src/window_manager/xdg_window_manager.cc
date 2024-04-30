@@ -28,13 +28,13 @@
  * The XdgWm class is responsible for managing application windows using the XDG Shell protocol.
  */
 
-XdgWindowManager::XdgWindowManager(const unsigned long ext_interface_count,
+XdgWindowManager::XdgWindowManager(bool disable_cursor, const unsigned long ext_interface_count,
                                    const Registrar::RegistrarCallback *ext_interface_data,
                                    GMainContext *context,
-                                   bool enable_cursor,
-                                   const char *display_name) : WindowManager(ext_interface_count,
+                                   const char *display_name) : WindowManager(disable_cursor,
+                                                                             ext_interface_count,
                                                                              ext_interface_data,
-                                                                             context, enable_cursor, display_name) {
+                                                                             context, display_name) {
     SPDLOG_TRACE("++XdgWindowManager::XdgWindowManager()");
     auto xdg_wm_base = get_xdg_wm_base();
     if (!xdg_wm_base.has_value()) {
@@ -79,13 +79,13 @@ void XdgWindowManager::xdg_wm_base_ping(void *data,
 
 XdgTopLevel *
 XdgWindowManager::create_top_level(const char *title, const char *app_id, int width, int height, int buffer_count,
-                                   uint32_t buffer_format,
-                                   bool fullscreen, bool maximized, bool fullscreen_ratio, bool tearing,
-                                   const std::function<void(void *, const uint32_t)> &frame_callback,
+                                   uint32_t buffer_format, bool fullscreen, bool maximized, bool fullscreen_ratio,
+                                   bool tearing, const std::function<void(void *, const uint32_t)> &frame_callback,
                                    const int32_t *context_attribs, size_t context_attribs_size,
                                    const int32_t *config_attribs, size_t config_attribs_size,
                                    int buffer_bpp, int swap_interval) {
     auto wm = reinterpret_cast<WindowManager *>(this);
+
     xdg_top_level_ = std::make_unique<XdgTopLevel>(wm, title, app_id, width, height, buffer_count, buffer_format,
                                                    fullscreen, maximized, fullscreen_ratio, tearing,
                                                    frame_callback, buffer_bpp, swap_interval,

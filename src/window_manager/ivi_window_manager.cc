@@ -25,10 +25,9 @@ IviWindowManager::IviWindowManager(const char *title,
                                    const unsigned long ext_interface_count,
                                    const Registrar::RegistrarCallback *ext_interface_data,
                                    GMainContext *context,
-                                   bool enable_cursor,
                                    const char *name) : WindowManager(ext_interface_count,
                                                                      ext_interface_data,
-                                                                     context, enable_cursor,
+                                                                     context,
                                                                      name), app_title_(title),
                                                        app_id_(app_id) {
     auto ivi_wm = get_ivi_wm();

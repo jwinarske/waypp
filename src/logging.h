@@ -33,11 +33,14 @@ public:
 
     ~Logging();
 
+    // Disallow copy and assign.
+    Logging(const Logging &) = delete;
+
+    Logging &operator=(const Logging &) = delete;
+
 private:
     std::shared_ptr<spdlog::logger> logger_{};
-    std::shared_ptr<
-            spdlog::sinks::ansicolor_stdout_sink<spdlog::details::console_mutex>>
-            console_sink_;
+    std::shared_ptr<spdlog::sinks::ansicolor_stdout_sink<spdlog::details::console_mutex>> console_sink_;
 };
 
 #endif // INCLUDE_LOGGING_H_

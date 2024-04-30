@@ -8,6 +8,11 @@ public:
 
     ~DrmLeaseDevice_v1();
 
+    // Disallow copy and assign.
+    DrmLeaseDevice_v1(const DrmLeaseDevice_v1 &) = delete;
+
+    DrmLeaseDevice_v1 &operator=(const DrmLeaseDevice_v1 &) = delete;
+
 private:
     struct wp_drm_lease_device_v1 *wp_drm_lease_device_v1_;
     struct wp_drm_lease_v1 *wp_drm_lease_v1_;

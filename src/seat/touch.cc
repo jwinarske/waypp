@@ -67,7 +67,7 @@ void Touch::handle_down(void *data,
     SPDLOG_TRACE("Touch::handle_down");
 
     for (auto observer: obj->observers_) {
-        observer->notify_touch_down(data, touch, serial, time, surface, id, x_w, y_w);
+        observer->notify_touch_down(obj, touch, serial, time, surface, id, x_w, y_w);
     }
 }
 
@@ -97,7 +97,7 @@ void Touch::handle_up(void *data,
     SPDLOG_TRACE("Touch::handle_up");
 
     for (auto observer: obj->observers_) {
-        observer->notify_touch_up(data, touch, serial, time, id);
+        observer->notify_touch_up(obj, touch, serial, time, id);
     }
 }
 
@@ -130,7 +130,7 @@ void Touch::handle_motion(void *data,
     SPDLOG_TRACE("Touch::handle_motion");
 
     for (auto observer: obj->observers_) {
-        observer->notify_touch_motion(data, touch, time, id, x_w, y_w);
+        observer->notify_touch_motion(obj, touch, time, id, x_w, y_w);
     }
 }
 
@@ -154,7 +154,7 @@ void Touch::handle_cancel(void *data, struct wl_touch *touch) {
     SPDLOG_TRACE("Touch::handle_cancel");
 
     for (auto observer: obj->observers_) {
-        observer->notify_touch_cancel(data, touch);
+        observer->notify_touch_cancel(obj, touch);
     }
 }
 
@@ -174,6 +174,6 @@ void Touch::handle_frame(void *data,
     SPDLOG_TRACE("Touch::handle_frame");
 
     for (auto observer: obj->observers_) {
-        observer->notify_touch_frame(data, touch);
+        observer->notify_touch_frame(obj, touch);
     }
 }

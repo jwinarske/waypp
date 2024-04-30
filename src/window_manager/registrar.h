@@ -61,7 +61,8 @@ public:
 
     explicit Registrar(struct wl_display *wl_display,
                        unsigned long ext_interface_count = 0,
-                       const RegistrarCallback *ext_interface_data = nullptr);
+                       const RegistrarCallback *ext_interface_data = nullptr,
+                       bool disable_cursor = false);
 
     ~Registrar();
 
@@ -90,7 +91,7 @@ public:
     get_subcompositor() const { return sub_compositor_.wl_subcompositor; }
 
     // Returns the shm if it exists.
-    [[nodiscard]] std::optional<struct wl_shm *> get_shm() const { return shm_.wl_shm; }
+    [[nodiscard]] const std::optional<struct wl_shm *>& get_shm() const { return shm_.wl_shm; }
 
     // Returns the xdg surface manager base if it exists.
     [[nodiscard]] std::optional<struct xdg_wm_base *> get_xdg_wm_base() const { return xdg_wm_base_.xdg_wm_base; }
@@ -136,6 +137,8 @@ private:
 
     std::unique_ptr<std::map<std::string, RegistrarGlobalCallback>> registrar_global_;
     std::unique_ptr<std::map<uint32_t, RegistrarGlobalRemoveCallback>> registrar_global_remove_;
+
+    bool disable_cursor_;
 
     struct wl_display *wl_display_;
     struct wl_registry *wl_registry_;
