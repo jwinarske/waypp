@@ -51,6 +51,7 @@ int Buffer::create_shm_buffer(int width, int height, uint32_t format) {
 
     width_ = width;
     height_ = height;
+    format_ = format;
 
     auto pitch = width * 4;
     size_ = pitch * height;
