@@ -23,6 +23,12 @@
 
 #include "logging.h"
 
+// workaround for Wayland macro not compiling in C++
+#define WL_ARRAY_FOR_EACH(pos, array, type)                             \
+  for (pos = (type)(array)->data;                                       \
+       (const char*)pos < ((const char*)(array)->data + (array)->size); \
+       (pos)++)
+
 /**
  * @class Keyboard
  * @brief Represents a keyboard device
@@ -101,6 +107,13 @@ void Keyboard::handle_enter(void *data,
 
     obj->wl_surface = wl_surface;
 
+    if (keys->size) {
+        const uint32_t *key;
+        WL_ARRAY_FOR_EACH(key, keys, const uint32_t*) {
+            handle_key(data, wl_keyboard, serial, 0, *key, WL_KEYBOARD_KEY_STATE_PRESSED);
+        }
+    }
+
     for (auto observer: obj->observers_) {
         observer->notify_keyboard_enter(obj, wl_keyboard, serial, wl_surface, keys);
     }
@@ -146,8 +159,13 @@ void Keyboard::handle_key(void *data,
 
     if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
         if (key_repeats) {
+            // start/restart timer
+            struct itimerspec in{};
+            in.it_value.tv_nsec = obj->repeat_.delay * 1000000;
+            in.it_interval.tv_nsec = obj->repeat_.rate * 1000000;
+            timer_settime(obj->repeat_.timer, 0, &in, nullptr);
 
-            /// values required for repeat notify
+            // update notify values
             obj->repeat_.notify = {
                     .serial = serial,
                     .time = time,
@@ -156,15 +174,11 @@ void Keyboard::handle_key(void *data,
                     .xdg_keysym_count = xdg_keysym_count,
                     .key_syms = key_syms,
             };
-
-            struct itimerspec in{};
-            in.it_value.tv_nsec = obj->repeat_.delay * 1000000;
-            in.it_interval.tv_nsec = obj->repeat_.rate * 1000000;
-            timer_settime(obj->repeat_.timer, 0, &in, nullptr);
         }
 
     } else if (state == WL_KEYBOARD_KEY_STATE_RELEASED) {
         if (obj->repeat_.notify.xkb_scancode == xkb_scancode) {
+            // stop timer
             struct itimerspec its{};
             timer_settime(obj->repeat_.timer, 0, &its, nullptr);
         }
