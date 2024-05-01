@@ -78,7 +78,21 @@ void Keyboard::handle_keymap(void *data,
     if (obj->wl_keyboard_ != wl_keyboard) {
         return;
     }
-    char *keymap_string = static_cast<char *>(mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0));
+
+    if (format != WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
+        spdlog::critical(
+                "Usage with a libxkbcommon is currently required.  Please file a bug with configuration information to enable support.");
+        abort();
+    }
+
+    char *keymap_string;
+    /// From version 7 onwards, the fd must be mapped with MAP_PRIVATE by the recipient, as MAP_SHARED may fail.
+    if (wl_keyboard_get_version(wl_keyboard) >= 7 ) {
+        keymap_string = static_cast<char *>(mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0));
+    }
+    else {
+        keymap_string = static_cast<char *>(mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0));
+    }
     xkb_keymap_unref(obj->xkb_keymap_);
     obj->xkb_keymap_ = xkb_keymap_new_from_string(obj->xkb_context_, keymap_string,
                                                   XKB_KEYMAP_FORMAT_TEXT_V1,
