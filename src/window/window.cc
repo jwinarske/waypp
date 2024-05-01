@@ -201,10 +201,13 @@ void Window::update_buffer_geometry() {
         }
     }
 
-    if (fractional_buffer_scale_ > 0.0)
-        wp_viewport_set_destination(viewport_,
-                                    new_viewport_dest_size.width,
-                                    new_viewport_dest_size.height);
+    if (fractional_buffer_scale_ > 0.0) {
+        if (viewport_) {
+            wp_viewport_set_destination(viewport_,
+                                        new_viewport_dest_size.width,
+                                        new_viewport_dest_size.height);
+        }
+    }
 
     needs_buffer_geometry_update_ = false;
 }

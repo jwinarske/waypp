@@ -189,8 +189,8 @@ struct weston_matrix {
  *  3  7 11 15
  */
 
-void weston_matrix_init(struct weston_matrix *matrix) {
-    static const struct weston_matrix identity = {
+void weston_matrix_init(weston_matrix *matrix) {
+    static const weston_matrix identity = {
             .d = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1},
             .type = 0,
     };
@@ -199,8 +199,8 @@ void weston_matrix_init(struct weston_matrix *matrix) {
 }
 
 /* m <- n * m, that is, m is multiplied on the LEFT. */
-void weston_matrix_multiply(struct weston_matrix *m, const struct weston_matrix *n) {
-    struct weston_matrix tmp{};
+void weston_matrix_multiply(weston_matrix *m, const weston_matrix *n) {
+    weston_matrix tmp{};
     const float *row, *column;
     int i, j, k;
 
@@ -217,8 +217,8 @@ void weston_matrix_multiply(struct weston_matrix *m, const struct weston_matrix 
     memcpy(m, &tmp, sizeof tmp);
 }
 
-void weston_matrix_scale(struct weston_matrix *matrix, float x, float y, float z) {
-    struct weston_matrix scale = {
+void weston_matrix_scale(weston_matrix *matrix, float x, float y, float z) {
+    weston_matrix scale = {
             .d = {x, 0, 0, 0, 0, y, 0, 0, 0, 0, z, 0, 0, 0, 0, 1},
             .type = WESTON_MATRIX_TRANSFORM_SCALE,
     };
@@ -226,8 +226,8 @@ void weston_matrix_scale(struct weston_matrix *matrix, float x, float y, float z
     weston_matrix_multiply(matrix, &scale);
 }
 
-void weston_matrix_rotate_xy(struct weston_matrix *matrix, float cos, float sin) {
-    struct weston_matrix translate = {
+void weston_matrix_rotate_xy(weston_matrix *matrix, float cos, float sin) {
+    weston_matrix translate = {
             .d = {cos, sin, 0, 0, -sin, cos, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1},
             .type = WESTON_MATRIX_TRANSFORM_ROTATE,
     };
@@ -303,7 +303,7 @@ static void draw_frame(void *userdata, uint32_t /* time */) {
 
     window->update_buffer_geometry();
 
-    struct timeval tv{};
+    timeval tv{};
     gettimeofday(&tv, nullptr);
     auto time = static_cast<uint32_t>(tv.tv_sec * 1000 + tv.tv_usec / 1000);
     if (frames == 0) {
@@ -325,7 +325,7 @@ static void draw_frame(void *userdata, uint32_t /* time */) {
         angle = static_cast<GLfloat>(((time - initial_frame_time) / speed_div)
                                      % 360 * M_PI / 180.0);
     }
-    struct weston_matrix rotation{};
+    weston_matrix rotation{};
     weston_matrix_init(&rotation);
     rotation.d[0] = cos(angle);
     rotation.d[2] = sin(angle);
@@ -383,7 +383,7 @@ static void draw_frame(void *userdata, uint32_t /* time */) {
 
 class KeyboardHandler : public SeatObserver, public KeyboardObserver {
 public:
-    void notify_seat_capabilities(Seat *seat, struct wl_seat * /* seat */, uint32_t /* caps */) override {
+    void notify_seat_capabilities(Seat *seat, wl_seat * /* seat */, uint32_t /* caps */) override {
         if (seat) {
             auto keyboard = seat->get_keyboard();
             if (keyboard.has_value()) {
@@ -392,27 +392,27 @@ public:
         }
     }
 
-    void notify_seat_name(Seat * /* seat */, struct wl_seat * /* seat */, const char *name) override {
+    void notify_seat_name(Seat * /* seat */, wl_seat * /* seat */, const char *name) override {
         spdlog::info("Seat: {}", name);
     }
 
     void notify_keyboard_enter(Keyboard * /* keyboard */,
-                               struct wl_keyboard * /* wl_keyboard */,
+                               wl_keyboard * /* wl_keyboard */,
                                uint32_t serial,
-                               struct wl_surface *surface,
-                               struct wl_array * /* keys */) override {
+                               wl_surface *surface,
+                               wl_array * /* keys */) override {
         spdlog::info("Keyboard Enter: serial: {}, surface: {}", serial, fmt::ptr(surface));
     }
 
     void notify_keyboard_leave(Keyboard * /* keyboard */,
-                               struct wl_keyboard * /* wl_keyboard */,
+                               wl_keyboard * /* wl_keyboard */,
                                uint32_t serial,
-                               struct wl_surface *surface) override {
+                               wl_surface *surface) override {
         spdlog::info("Keyboard Leave: serial: {}, surface: {}", serial, fmt::ptr(surface));
     }
 
     void notify_keyboard_keymap(Keyboard * /* keyboard */,
-                                struct wl_keyboard * /* wl_keyboard */,
+                                wl_keyboard * /* wl_keyboard */,
                                 uint32_t format,
                                 int32_t fd,
                                 uint32_t size) override {
@@ -420,7 +420,7 @@ public:
     }
 
     void notify_keyboard_key(Keyboard * /* keyboard */,
-                             struct wl_keyboard * /* wl_keyboard */,
+                             wl_keyboard * /* wl_keyboard */,
                              uint32_t serial,
                              uint32_t time,
                              uint32_t xkb_scancode,

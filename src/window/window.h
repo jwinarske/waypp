@@ -185,7 +185,6 @@ private:
         int height;
     } logical_size_;
 
-    bool init_buffers_;
     bool needs_buffer_geometry_update_;
 
     static void handle_surface_enter(void *data,
@@ -217,9 +216,9 @@ private:
 #endif
     };
 
-    struct wp_viewport *viewport_;
+    struct wp_viewport *viewport_{};
 
-    struct wp_fractional_scale_v1 *fractional_scale_;
+    struct wp_fractional_scale_v1 *fractional_scale_{};
 
     static void handle_preferred_scale(void *data,
                                        struct wp_fractional_scale_v1 *wp_fractional_scale_v1,

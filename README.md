@@ -7,6 +7,12 @@ _Note: waypp is a work in progress and is not ABI stable_
 waypp is a modern and efficient C++ library for Wayland. This library aims to provide a smooth and easy-to-use interface
 for developers to build Wayland-based applications using C++.
 
+## Compatible Compositors
+
+* Mutter
+* Weston
+* Wlroots
+
 ## Installation
 
 ### Debian

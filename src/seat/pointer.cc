@@ -31,9 +31,7 @@ Pointer::Pointer(wl_pointer *pointer, struct wl_compositor *wl_compositor, const
         wl_pointer_(pointer), wl_shm_(wl_shm), disable_cursor_(disable_cursor), size_(size) {
     SPDLOG_DEBUG("Pointer");
     wl_pointer_add_listener(pointer, &pointer_listener_, this);
-    if (!disable_cursor_) {
-        wl_surface_ = wl_compositor_create_surface(wl_compositor);
-    }
+    wl_surface_cursor_ = wl_compositor_create_surface(wl_compositor);
 }
 
 /**
@@ -51,8 +49,8 @@ Pointer::~Pointer() {
     if (theme_) {
         wl_cursor_theme_destroy(theme_);
     }
-    if (wl_surface_) {
-        wl_surface_destroy(wl_surface_);
+    if (wl_surface_cursor_) {
+        wl_surface_destroy(wl_surface_cursor_);
     }
     if (wl_pointer_) {
         wl_pointer_release(wl_pointer_);
@@ -298,7 +296,15 @@ void Pointer::handle_axis_discrete(void *data,
 }
 
 void Pointer::set_cursor(uint32_t serial, const char *name) {
-    if (disable_cursor_ || !wl_shm_.has_value()) {
+    if (disable_cursor_) {
+        wl_pointer_set_cursor(wl_pointer_, serial,
+                              wl_surface_cursor_, 0, 0);
+        wl_surface_damage(wl_surface_cursor_, 0, 0, 0, 0);
+        wl_surface_commit(wl_surface_cursor_);
+        return;
+    }
+
+    if (!wl_shm_.has_value()) {
         return;
     }
 
@@ -321,11 +327,11 @@ void Pointer::set_cursor(uint32_t serial, const char *name) {
         return;
     }
     wl_pointer_set_cursor(wl_pointer_, serial,
-                          wl_surface_,
+                          wl_surface_cursor_,
                           static_cast<int32_t>(image->hotspot_x),
                           static_cast<int32_t>(image->hotspot_y));
-    wl_surface_attach(wl_surface_, buffer, 0, 0);
-    wl_surface_damage(wl_surface_, 0, 0,
+    wl_surface_attach(wl_surface_cursor_, buffer, 0, 0);
+    wl_surface_damage(wl_surface_cursor_, 0, 0,
                       static_cast<int32_t>(image->width), static_cast<int32_t>(image->height));
-    wl_surface_commit(wl_surface_);
+    wl_surface_commit(wl_surface_cursor_);
 }

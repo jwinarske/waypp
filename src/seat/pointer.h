@@ -96,6 +96,8 @@ public:
 
     void set_cursor(uint32_t serial, const char *name = "right_ptr");
 
+    [[nodiscard]] bool is_cursor_enabled() const { return !disable_cursor_; }
+
     // Disallow copy and assign.
     Pointer(const Pointer &) = delete;
 
@@ -104,7 +106,7 @@ public:
 private:
     struct wl_pointer *wl_pointer_;
     std::list<PointerObserver *> observers_{};
-    struct wl_surface *wl_surface_;
+    struct wl_surface *wl_surface_cursor_;
     struct wl_cursor_theme *theme_{};
     const std::optional<struct wl_shm *> &wl_shm_;
     bool disable_cursor_;

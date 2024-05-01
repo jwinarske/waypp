@@ -164,7 +164,7 @@ public:
         return (top_level_->is_valid() && wm_->display_dispatch() != -1);
     }
 
-    void notify_seat_capabilities(Seat *seat, struct wl_seat * /* seat */, uint32_t /* caps */) override {
+    void notify_seat_capabilities(Seat *seat, wl_seat * /* seat */, uint32_t /* caps */) override {
         if (seat) {
             auto keyboard = seat->get_keyboard();
             if (keyboard.has_value()) {
@@ -178,27 +178,27 @@ public:
         }
     }
 
-    void notify_seat_name(Seat * /* seat */, struct wl_seat * /* seat */, const char *name) override {
+    void notify_seat_name(Seat * /* seat */, wl_seat * /* seat */, const char *name) override {
         spdlog::info("Seat: {}", name);
     }
 
     void notify_keyboard_enter(Keyboard * /* keyboard */,
-                               struct wl_keyboard * /* wl_keyboard */,
+                               wl_keyboard * /* wl_keyboard */,
                                uint32_t serial,
-                               struct wl_surface *surface,
-                               struct wl_array * /* keys */) override {
+                               wl_surface *surface,
+                               wl_array * /* keys */) override {
         spdlog::info("Keyboard Enter: serial: {}, surface: {}", serial, fmt::ptr(surface));
     }
 
     void notify_keyboard_leave(Keyboard * /* keyboard */,
-                               struct wl_keyboard * /* wl_keyboard */,
+                               wl_keyboard * /* wl_keyboard */,
                                uint32_t serial,
-                               struct wl_surface *surface) override {
+                               wl_surface *surface) override {
         spdlog::info("Keyboard Leave: serial: {}, surface: {}", serial, fmt::ptr(surface));
     }
 
     void notify_keyboard_keymap(Keyboard * /* keyboard */,
-                                struct wl_keyboard * /* wl_keyboard */,
+                                wl_keyboard * /* wl_keyboard */,
                                 uint32_t format,
                                 int32_t fd,
                                 uint32_t size) override {
@@ -206,7 +206,7 @@ public:
     }
 
     void notify_keyboard_key(Keyboard * /* keyboard */,
-                             struct wl_keyboard * /* wl_keyboard */,
+                             wl_keyboard * /* wl_keyboard */,
                              uint32_t serial,
                              uint32_t time,
                              uint32_t xkb_scancode,
@@ -221,24 +221,24 @@ public:
     }
 
     void notify_pointer_enter(Pointer *pointer,
-                              struct wl_pointer * /* pointer */,
+                              wl_pointer * /* pointer */,
                               uint32_t serial,
-                              struct wl_surface *surface,
+                              wl_surface *surface,
                               double sx,
                               double sy) override {
         spdlog::info("Pointer Enter: serial: {}, surface: {}, x: {}, y: {}", serial, fmt::ptr(surface), sx, sy);
-        pointer->set_cursor(serial);
+        pointer->set_cursor(serial, "crosshair");
     }
 
     void notify_pointer_leave(Pointer * /* pointer */,
-                              struct wl_pointer * /* pointer */,
+                              wl_pointer * /* pointer */,
                               uint32_t serial,
-                              struct wl_surface *surface) override {
+                              wl_surface *surface) override {
         spdlog::info("Pointer Leave: serial: {}, surface: {}", serial, fmt::ptr(surface));
     }
 
     void notify_pointer_motion(Pointer *  /* pointer  */,
-                               struct wl_pointer * /* pointer */,
+                               wl_pointer * /* pointer */,
                                uint32_t time,
                                double sx,
                                double sy) override {
@@ -246,7 +246,7 @@ public:
     }
 
     void notify_pointer_button(Pointer * /* pointer */,
-                               struct wl_pointer * /* pointer  */,
+                               wl_pointer * /* pointer  */,
                                uint32_t serial,
                                uint32_t time,
                                uint32_t button,
@@ -255,32 +255,32 @@ public:
     }
 
     void notify_pointer_axis(Pointer * /* pointer */,
-                             struct wl_pointer * /* pointer */,
+                             wl_pointer * /* pointer */,
                              uint32_t time,
                              uint32_t axis,
                              wl_fixed_t value) override {
         spdlog::info("Pointer Axis: time: {}, axis: {}, value: {}", time, axis, value);
     }
 
-    void notify_pointer_frame(Pointer * /* pointer */, struct wl_pointer * /* pointer */) override {
+    void notify_pointer_frame(Pointer * /* pointer */, wl_pointer * /* pointer */) override {
         spdlog::info("Pointer Frame");
     };
 
     void notify_pointer_axis_source(Pointer * /* pointer */,
-                                    struct wl_pointer * /* pointer */,
+                                    wl_pointer * /* pointer */,
                                     uint32_t axis_source) override {
         spdlog::info("Pointer Axis Source: axis_source: {}", axis_source);
     };
 
     void notify_pointer_axis_stop(Pointer * /* pointer */,
-                                  struct wl_pointer * /* pointer */,
+                                  wl_pointer * /* pointer */,
                                   uint32_t /* time */,
                                   uint32_t axis) override {
         spdlog::info("Pointer Axis Stop: axis: {}", axis);
     };
 
     void notify_pointer_axis_discrete(Pointer * /* pointer */,
-                                      struct wl_pointer * /*pointer */,
+                                      wl_pointer * /*pointer */,
                                       uint32_t axis,
                                       int32_t discrete) override {
         spdlog::info("Pointer Axis Discrete: axis: {}, discrete: {}", axis, discrete);

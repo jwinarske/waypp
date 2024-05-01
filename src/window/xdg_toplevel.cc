@@ -61,7 +61,6 @@ XdgTopLevel::XdgTopLevel(WindowManager *wm, const char *title, const char *app_i
     }
 
     wait_for_configure_ = true;
-    //wl_surface_damage(wl_surface_, 0, 0, width, height);
     wl_surface_commit(wl_surface_);
 
     // this makes the start-up from the beginning with the correct dimensions
