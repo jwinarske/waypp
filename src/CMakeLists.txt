@@ -49,14 +49,17 @@ set(WINDOW_SRC
         window/anonymous_file.cc
         window/buffer.cc
         window/egl.cc
+        window/feedback.cc
         window/window.cc
 )
 
 add_library(waypp
-        logging.cc
         ${WINDOW_MANAGER_SRC}
         ${SEAT_SRC}
-        ${WINDOW_SRC})
+        ${WINDOW_SRC}
+        command.cc
+        logging.cc
+)
 
 if (ENABLE_XDG_CLIENT)
     target_sources(waypp PRIVATE

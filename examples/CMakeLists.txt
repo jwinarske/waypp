@@ -49,21 +49,21 @@ if (ENABLE_XDG_CLIENT)
 
     add_sanitizers(simple-shm)
 
+if (FALSE)
     #
-    # simple-shm
+    # presentation-shm
     #
-    if (HAS_WAYLAND_PROTOCOL_PRESENTATION_TIME)
-        add_executable(presentation-shm presentation-shm.cc)
-        target_include_directories(presentation-shm PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
+    add_executable(presentation-shm presentation-shm.cc)
+    target_include_directories(presentation-shm PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
 
-        target_link_libraries(presentation-shm PRIVATE waypp wayland-gen cxxopts::cxxopts)
+    target_link_libraries(presentation-shm PRIVATE waypp wayland-gen cxxopts::cxxopts)
 
-        if (IPO_SUPPORT_RESULT)
-            set_property(TARGET presentation-shm PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-        endif ()
-
-        add_sanitizers(presentation-shm)
+    if (IPO_SUPPORT_RESULT)
+        set_property(TARGET presentation-shm PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
     endif ()
+
+    add_sanitizers(presentation-shm)
+endif ()
 
     #
     # simple-ext-protocol
