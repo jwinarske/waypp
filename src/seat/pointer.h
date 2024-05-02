@@ -18,6 +18,7 @@
 
 #include <list>
 #include <optional>
+#include <vector>
 
 #include <wayland-client.h>
 
