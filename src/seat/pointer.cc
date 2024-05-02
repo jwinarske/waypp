@@ -16,9 +16,12 @@
 
 #include "pointer.h"
 
+#include <algorithm>
+
 #include <wayland-client.h>
 #include <wayland-cursor.h>
 
+#include "command.h"
 #include "logging.h"
 
 /**
@@ -295,7 +298,7 @@ void Pointer::handle_axis_discrete(void *data,
     }
 }
 
-void Pointer::set_cursor(uint32_t serial, const char *name) {
+void Pointer::set_cursor(uint32_t serial, const char *cursor_name, const char *theme_name) {
     if (disable_cursor_) {
         wl_pointer_set_cursor(wl_pointer_, serial,
                               wl_surface_cursor_, 0, 0);
@@ -309,16 +312,16 @@ void Pointer::set_cursor(uint32_t serial, const char *name) {
     }
 
     if (!theme_) {
-        theme_ = wl_cursor_theme_load(nullptr, size_, wl_shm_.value());
+        theme_ = wl_cursor_theme_load(theme_name, size_, wl_shm_.value());
         if (!theme_) {
-            spdlog::error("[Pointer] unable to load default theme");
+            spdlog::error("[Pointer] unable to load {} theme", theme_name == nullptr ? "default" : theme_name);
             return;
         }
     }
 
-    auto cursor = wl_cursor_theme_get_cursor(theme_, name);
+    auto cursor = wl_cursor_theme_get_cursor(theme_, cursor_name);
     if (!cursor) {
-        spdlog::error("[Pointer] unable to load {}", name);
+        spdlog::error("[Pointer] unable to load {}", cursor_name);
         return;
     }
     auto image = cursor->images[0];
@@ -334,4 +337,22 @@ void Pointer::set_cursor(uint32_t serial, const char *name) {
     wl_surface_damage(wl_surface_cursor_, 0, 0,
                       static_cast<int32_t>(image->width), static_cast<int32_t>(image->height));
     wl_surface_commit(wl_surface_cursor_);
+}
+
+std::string Pointer::get_cursor_theme() {
+    auto buf = std::make_unique<char[]>(PATH_MAX);
+    Command::Execute("gsettings get org.gnome.desktop.interface cursor-theme", static_cast<char *>(&buf[0]));
+    std::string res{buf.get()};
+    buf.reset();
+
+    if (!res.empty()) {
+
+        // clean up string
+        std::string tmp = "\'\n";
+        for_each(tmp.begin(), tmp.end(), [&res](char n) {
+            res.erase(std::remove(res.begin(), res.end(), n), res.end());
+        });
+    }
+
+    return std::move(res);
 }

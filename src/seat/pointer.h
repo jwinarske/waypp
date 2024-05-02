@@ -94,7 +94,9 @@ public:
         observers_.remove(observer);
     }
 
-    void set_cursor(uint32_t serial, const char *name = "right_ptr");
+    static std::string get_cursor_theme();
+
+    void set_cursor(uint32_t serial, const char *cursor_name = "right_ptr", const char *theme_name = nullptr);
 
     [[nodiscard]] bool is_cursor_enabled() const { return !disable_cursor_; }
 
