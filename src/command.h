@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <string>
+
 #include <linux/limits.h>
 
 class Command {
@@ -26,5 +28,5 @@ public:
      * @relation
      * internal
      */
-    static bool Execute(const char *cmd, char result[PATH_MAX]);
+    static bool Execute(const char* cmd, std::string &result);
 };

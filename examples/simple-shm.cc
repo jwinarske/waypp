@@ -24,6 +24,7 @@
  */
 
 #include <csignal>
+#include <random>
 
 #include <cxxopts.hpp>
 
@@ -41,8 +42,9 @@ struct Configuration {
     bool tearing;
 };
 
-static volatile bool running = true;
+static volatile bool gRunning = true;
 
+static std::vector<std::string> gCursors = Pointer::get_available_cursors();
 
 /**
  * @brief Signal handler function to handle signals.
@@ -57,7 +59,7 @@ static volatile bool running = true;
  */
 void handle_signal(int signal) {
     if (signal == SIGINT) {
-        running = false;
+        gRunning = false;
     }
 }
 
@@ -126,7 +128,10 @@ void draw_frame(void *data, const uint32_t time) {
 
 class App : public PointerObserver, public KeyboardObserver, public SeatObserver {
 public:
-    explicit App(Configuration config) : logging_(std::make_unique<Logging>()) {
+    explicit App(Configuration config) : logging_(std::make_unique<Logging>()),
+                                         gen_(rd_()) {
+
+        spdlog::info("Available cursors:");
 
         wm_ = std::make_unique<XdgWindowManager>(config.disable_cursor);
         auto seat = wm_->get_seat();
@@ -227,7 +232,13 @@ public:
                               double sx,
                               double sy) override {
         spdlog::info("Pointer Enter: serial: {}, surface: {}, x: {}, y: {}", serial, fmt::ptr(surface), sx, sy);
-        pointer->set_cursor(serial, "crosshair");
+
+        if (gCursors.size() > 1) {
+            std::uniform_int_distribution<size_t> distribution(0, gCursors.size() - 1);
+            pointer->set_cursor(serial, gCursors[distribution(gen_)].c_str());
+        } else {
+            pointer->set_cursor(serial, "crosshair");
+        }
     }
 
     void notify_pointer_leave(Pointer * /* pointer */,
@@ -290,6 +301,8 @@ private:
     std::unique_ptr<Logging> logging_;
     std::unique_ptr<XdgWindowManager> wm_;
     XdgTopLevel *top_level_;
+    std::random_device rd_;
+    std::mt19937 gen_;
 };
 
 int main(int argc, char **argv) {
@@ -317,7 +330,7 @@ int main(int argc, char **argv) {
                     .tearing = result["tearing"].as<bool>(),
             });
 
-    while (running && app.run()) {}
+    while (gRunning && app.run()) {}
 
     return EXIT_SUCCESS;
 }

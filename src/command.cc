@@ -18,7 +18,7 @@
 
 #include "logging.h"
 
-bool Command::Execute(const char* cmd, char result[PATH_MAX]) {
+bool Command::Execute(const char *cmd, std::string &result) {
     const auto fp = popen(cmd, "r");
     if (fp == nullptr) {
         spdlog::error("[ExecuteCommand] Failed to Execute Command: ({}) {}", errno,
@@ -27,8 +27,14 @@ bool Command::Execute(const char* cmd, char result[PATH_MAX]) {
         return false;
     }
 
-    while (fgets(&result[0], PATH_MAX, fp) != nullptr) {
+    SPDLOG_TRACE("[Command] Execute: {}", cmd);
+
+    auto buf = std::make_unique<char[]>(1024);
+    while (fgets(&buf[0], PATH_MAX, fp) != nullptr) {
+        result.append(&buf[0]);
     }
+
+    SPDLOG_TRACE("[Command] Execute Result: [{}] {}", result.size(), result);
 
     const auto status = pclose(fp);
     if (status == -1) {

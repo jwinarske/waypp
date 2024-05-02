@@ -96,6 +96,8 @@ public:
 
     static std::string get_cursor_theme();
 
+    static std::vector<std::string> get_available_cursors(const char* theme_name = nullptr);
+
     void set_cursor(uint32_t serial, const char *cursor_name = "right_ptr", const char *theme_name = nullptr);
 
     [[nodiscard]] bool is_cursor_enabled() const { return !disable_cursor_; }

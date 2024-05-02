@@ -340,13 +340,11 @@ void Pointer::set_cursor(uint32_t serial, const char *cursor_name, const char *t
 }
 
 std::string Pointer::get_cursor_theme() {
-    auto buf = std::make_unique<char[]>(PATH_MAX);
-    Command::Execute("gsettings get org.gnome.desktop.interface cursor-theme", static_cast<char *>(&buf[0]));
-    std::string res{buf.get()};
-    buf.reset();
+
+    std::string res;
+    Command::Execute("gsettings get org.gnome.desktop.interface cursor-theme", res);
 
     if (!res.empty()) {
-
         // clean up string
         std::string tmp = "\'\n";
         for_each(tmp.begin(), tmp.end(), [&res](char n) {
@@ -355,4 +353,28 @@ std::string Pointer::get_cursor_theme() {
     }
 
     return std::move(res);
+}
+
+std::vector<std::string> Pointer::get_available_cursors(const char *theme_name) {
+
+    std::string theme = theme_name == nullptr ? get_cursor_theme() : theme_name;
+
+    std::ostringstream ss;
+    ss << "ls -1 /usr/share/icons/" << theme << "/cursors";
+
+    std::string res;
+    Command::Execute(ss.str().c_str(), res);
+
+    std::vector<std::string> cursor_list;
+
+    std::string line;
+    std::istringstream orig_stream(res);
+    while (std::getline(orig_stream, line)) {
+        if (!line.empty())
+            cursor_list.push_back(line);
+    }
+
+    std::sort(cursor_list.begin(), cursor_list.end());
+
+    return std::move(cursor_list);
 }
