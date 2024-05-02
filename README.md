@@ -51,6 +51,15 @@ Follow these steps to start using the project:
 ```./examples/simple-egl```
 ```./examples/simple-shm```
 
+### List available cursors that can be used with `Pointer::set_cursor()`
+
+```
+RAW_THEME=`gsettings get org.gnome.desktop.interface cursor-theme`
+export CURSOR_THEME=`echo $RAW_THEME | tr -d "\'"`
+ls -1 /usr/share/icons/${CURSOR_THEME}/cursors
+```
+
+
 ## License
 
 This project is licensed under Apache-2.0.
