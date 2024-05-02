@@ -44,7 +44,7 @@ struct Configuration {
 
 static volatile bool gRunning = true;
 
-static std::vector<std::string> gCursors;
+static std::vector<std::string> gCursors = Pointer::get_available_cursors();
 
 /**
  * @brief Signal handler function to handle signals.
@@ -319,8 +319,6 @@ int main(int argc, char **argv) {
             ("r,fullscreen-ratio", "Use fixed width/height ratio when run in fullscreen mode")
             ("t,tearing", "Enable tearing via the tearing_control protocol");
     auto result = options.parse(argc, argv);
-
-    gCursors = Pointer::get_available_cursors();
 
     App app({
                     .width = result["width"].as<int>(),
