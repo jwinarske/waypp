@@ -28,5 +28,5 @@ public:
      * @relation
      * internal
      */
-    static bool Execute(const char* cmd, std::string &result);
+    static bool Execute(const char *cmd, std::string &result);
 };

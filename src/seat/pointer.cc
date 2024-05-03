@@ -29,7 +29,7 @@
  *
  * The Pointer class is responsible for handling Wayland pointer events and managing the cursor.
  */
-Pointer::Pointer(wl_pointer *pointer, struct wl_compositor *wl_compositor, const std::optional<struct wl_shm *> &wl_shm,
+Pointer::Pointer(wl_pointer *pointer, struct wl_compositor *wl_compositor, struct wl_shm *wl_shm,
                  bool disable_cursor, int size) :
         wl_pointer_(pointer), wl_shm_(wl_shm), disable_cursor_(disable_cursor), size_(size) {
     SPDLOG_DEBUG("Pointer");
@@ -307,12 +307,12 @@ void Pointer::set_cursor(uint32_t serial, const char *cursor_name, const char *t
         return;
     }
 
-    if (!wl_shm_.has_value()) {
+    if (!wl_shm_) {
         return;
     }
 
     if (!theme_) {
-        theme_ = wl_cursor_theme_load(theme_name, size_, wl_shm_.value());
+        theme_ = wl_cursor_theme_load(theme_name, size_, wl_shm_);
         if (!theme_) {
             spdlog::error("[Pointer] unable to load {} theme", theme_name == nullptr ? "default" : theme_name);
             return;

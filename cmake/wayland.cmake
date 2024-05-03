@@ -26,6 +26,11 @@ option(ENABLE_DRM_LEASE_CLIENT "Enable DRM Lease Client" OFF)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(WAYLAND REQUIRED IMPORTED_TARGET wayland-client wayland-egl wayland-cursor xkbcommon)
 
+include(CheckFunctionExists)
+check_function_exists(memfd_create HAVE_MEMFD_CREATE)
+check_function_exists(posix_fallocate HAVE_POSIX_FALLOCATE)
+check_function_exists(mkostemp HAVE_MKOSTEMP)
+
 set(MIN_PROTOCOL_VER 1.13)
 if (ENABLE_DRM_LEASE)
     set(MIN_PROTOCOL_VER 1.22)
@@ -64,7 +69,6 @@ macro(add_protocol protocol_file)
 endmacro()
 
 set(WAYLAND_PROTOCOL_SOURCES)
-set(LIST_WAYLAND_PROTOCOLS)
 
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/protocols)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/protocols)
@@ -115,26 +119,10 @@ if (EXT_PROTOCOL)
     endforeach ()
 endif ()
 
-message(STATUS "WAYLAND_PROTOCOL_SOURCES: ${WAYLAND_PROTOCOL_SOURCES}")
+configure_file(cmake/wayland-protocols.h.in ${CMAKE_CURRENT_BINARY_DIR}/protocols/wayland-protocols.h)
+
 add_library(wayland-gen STATIC ${WAYLAND_PROTOCOL_SOURCES})
 target_link_libraries(wayland-gen PUBLIC PkgConfig::WAYLAND)
-
-if (ENABLE_XDG_CLIENT)
-    target_compile_definitions(wayland-gen PUBLIC ENABLE_XDG_CLIENT)
-endif ()
-if (ENABLE_AGL_SHELL_CLIENT)
-    target_compile_definitions(wayland-gen PUBLIC ENABLE_AGL_SHELL_CLIENT)
-endif ()
-if (ENABLE_IVI_SHELL_CLIENT)
-    target_compile_definitions(wayland-gen PUBLIC ENABLE_IVI_SHELL_CLIENT)
-endif ()
-if (ENABLE_DRM_LEASE_CLIENT)
-    target_compile_definitions(wayland-gen PUBLIC ENABLE_DRM_LEASE_CLIENT)
-endif ()
-
-string(REPLACE ";" " " WAYLAND_PROTOCOL_DEFINES "${LIST_WAYLAND_PROTOCOLS}" GLOBAL)
-message(STATUS "DEFINITIONS: ${WAYLAND_PROTOCOL_DEFINES}")
-target_compile_definitions(wayland-gen PUBLIC ${WAYLAND_PROTOCOL_DEFINES})
 
 if (IPO_SUPPORT_RESULT)
     set_property(TARGET wayland-gen PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)

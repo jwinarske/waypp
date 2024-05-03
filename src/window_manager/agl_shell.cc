@@ -36,12 +36,11 @@ AglShell::AglShell(bool disable_cursor, unsigned long ext_interface_count,
         display_name),
                                                wait_for_bound_(true),
                                                bound_ok_(false) {
-    auto agl_shell = get_agl_shell();
-    if (!agl_shell.has_value()) {
+    agl_shell_ = get_agl_shell();
+    if (!agl_shell_) {
         spdlog::critical("{} is required.", agl_shell_interface.name);
         exit(EXIT_FAILURE);
     }
-    agl_shell_ = agl_shell.value();
 
     agl_shell_add_listener(agl_shell_, &agl_shell_listener_, this);
 
@@ -74,7 +73,7 @@ void AglShell::handle_bound_ok(void *data,
 }
 
 struct wl_output *AglShell::find_output_by_name(const std::string &output_name) {
-    for (auto &it: output_.outputs) {
+    for (auto &it: get_outputs()) {
         if (it.second->get_name() == output_name) {
             return it.first;
         }

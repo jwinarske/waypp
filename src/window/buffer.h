@@ -22,7 +22,7 @@
 
 class Buffer {
 public:
-    Buffer(struct wl_shm *wl_shm);
+    explicit Buffer(struct wl_shm *wl_shm);
 
     ~Buffer();
 

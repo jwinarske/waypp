@@ -49,10 +49,10 @@ if (ENABLE_XDG_CLIENT)
 
     add_sanitizers(simple-shm)
 
+    #
+    # presentation-shm
+    #
     if (FALSE)
-        #
-        # presentation-shm
-        #
         add_executable(presentation-shm presentation-shm.cc)
         target_include_directories(presentation-shm PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
 
@@ -81,20 +81,19 @@ if (ENABLE_XDG_CLIENT)
         add_sanitizers(simple-ext-protocol)
     endif ()
 
-endif ()
-
-if (ENABLE_AGL_SHELL_CLIENT)
     #
     # agl-simple-shm
     #
-    add_executable(agl-simple-shm agl-simple-shm.cc)
-    target_include_directories(agl-simple-shm PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
+    if (ENABLE_AGL_SHELL_CLIENT)
+        add_executable(agl-simple-shm agl-simple-shm.cc)
+        target_include_directories(agl-simple-shm PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
 
-    target_link_libraries(agl-simple-shm PRIVATE waypp wayland-gen cxxopts::cxxopts)
+        target_link_libraries(agl-simple-shm PRIVATE waypp wayland-gen cxxopts::cxxopts)
 
-    if (IPO_SUPPORT_RESULT)
-        set_property(TARGET agl-simple-shm PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+        if (IPO_SUPPORT_RESULT)
+            set_property(TARGET agl-simple-shm PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+        endif ()
+
+        add_sanitizers(agl-simple-shm)
     endif ()
-
-    add_sanitizers(agl-simple-shm)
 endif ()

@@ -49,7 +49,7 @@ public:
 
 class Seat {
 public:
-    explicit Seat(struct wl_seat *seat, const std::optional<struct wl_shm *> &wl_shm,
+    explicit Seat(struct wl_seat *seat, struct wl_shm *wl_shm,
                   struct wl_compositor *wl_compositor, bool disable_cursor = false);
 
     ~Seat();
@@ -81,7 +81,7 @@ private:
     struct wl_seat *wl_seat_;
     uint32_t capabilities_{};
     std::string name_;
-    const std::optional<struct wl_shm *> &wl_shm_;
+    struct wl_shm *wl_shm_;
     struct wl_compositor *wl_compositor_;
     bool disable_cursor_;
 

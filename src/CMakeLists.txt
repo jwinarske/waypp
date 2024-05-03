@@ -18,20 +18,6 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(GLIB REQUIRED IMPORTED_TARGET glib-2.0)
 find_package(OpenGL REQUIRED COMPONENTS EGL)
 
-include(CheckFunctionExists)
-check_function_exists(memfd_create HAVE_MEMFD_CREATE)
-check_function_exists(posix_fallocate HAVE_POSIX_FALLOCATE)
-check_function_exists(mkostemp HAVE_MKOSTEMP)
-if (HAVE_MEMFD_CREATE)
-    add_compile_definitions(HAVE_MEMFD_CREATE)
-endif ()
-if (HAVE_POSIX_FALLOCATE)
-    add_compile_definitions(HAVE_POSIX_FALLOCATE)
-endif ()
-if (HAVE_MKOSTEMP)
-    add_compile_definitions(HAVE_MKOSTEMP)
-endif ()
-
 set(WINDOW_MANAGER_SRC
         window_manager/output.cc
         window_manager/registrar.cc
@@ -40,9 +26,7 @@ set(WINDOW_MANAGER_SRC
 )
 
 if (ENABLE_AGL_SHELL_CLIENT)
-list(APPEND WINDOW_MANAGER_SRC
-        window_manager/agl_shell.cc
-)
+    list(APPEND WINDOW_MANAGER_SRC window_manager/agl_shell.cc)
 endif ()
 
 set(SEAT_SRC
@@ -74,16 +58,13 @@ if (ENABLE_XDG_CLIENT)
             window_manager/xdg_window_manager.cc)
 endif ()
 if (ENABLE_AGL_CLIENT)
-    target_sources(waypp PRIVATE
-            window_manager/agl_shell.cc)
+    target_sources(waypp PRIVATE window_manager/agl_shell.cc)
 endif ()
 if (ENABLE_IVI_SHELL_CLIENT)
-    target_sources(waypp PRIVATE
-            window_manager/ivi_window_manager.cc)
+    target_sources(waypp PRIVATE window_manager/ivi_window_manager.cc)
 endif ()
 if (ENABLE_DRM_LEASE_CLIENT)
-    target_sources(waypp PRIVATE
-            window_manager/drm_lease_device_v1.cc)
+    target_sources(waypp PRIVATE window_manager/drm_lease_device_v1.cc)
 endif ()
 
 target_include_directories(waypp PUBLIC .)

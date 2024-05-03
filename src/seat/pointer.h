@@ -82,7 +82,7 @@ public:
 class Pointer {
 public:
     explicit Pointer(struct wl_pointer *pointer, struct wl_compositor *wl_compositor,
-                     const std::optional<struct wl_shm *> &wl_shm,
+                     struct wl_shm *wl_shm,
                      bool disable_cursor,
                      int size = 24);
 
@@ -98,7 +98,7 @@ public:
 
     static std::string get_cursor_theme();
 
-    static std::vector<std::string> get_available_cursors(const char* theme_name = nullptr);
+    static std::vector<std::string> get_available_cursors(const char *theme_name = nullptr);
 
     void set_cursor(uint32_t serial, const char *cursor_name = "right_ptr", const char *theme_name = nullptr);
 
@@ -114,7 +114,7 @@ private:
     std::list<PointerObserver *> observers_{};
     struct wl_surface *wl_surface_cursor_;
     struct wl_cursor_theme *theme_{};
-    const std::optional<struct wl_shm *> &wl_shm_;
+    struct wl_shm *wl_shm_;
     bool disable_cursor_;
     int size_;
 

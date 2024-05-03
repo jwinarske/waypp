@@ -172,7 +172,7 @@ void Egl::swap_buffers() {
 }
 
 void Egl::get_buffer_age(EGLint &buffer_age) {
-    if(pfSwapBufferWithDamage_) {
+    if (pfSwapBufferWithDamage_) {
         eglQuerySurface(dpy_, egl_surface_, EGL_BUFFER_AGE_EXT, &buffer_age);
         return;
     }
@@ -180,7 +180,7 @@ void Egl::get_buffer_age(EGLint &buffer_age) {
 }
 
 void Egl::swap_buffers_with_damage(const EGLint *rects, EGLint n_rects) {
-    if(pfSwapBufferWithDamage_) {
+    if (pfSwapBufferWithDamage_) {
         pfSwapBufferWithDamage_(dpy_, egl_surface_, rects, n_rects);
     }
 }

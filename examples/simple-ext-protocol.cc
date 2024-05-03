@@ -64,14 +64,14 @@ void handle_signal(int signal) {
 
 static void
 paint_pixels(void *image, int padding, int width, int height, uint32_t time) {
-    const int halfh = padding + (height - padding * 2) / 2;
-    const int halfw = padding + (width - padding * 2) / 2;
+    const int half_height = padding + (height - padding * 2) / 2;
+    const int half_width = padding + (width - padding * 2) / 2;
     int ir, or_;
     auto *pixel = static_cast<uint32_t *>(image);
     int y;
 
     /* squared radii thresholds */
-    or_ = (halfw < halfh ? halfw : halfh) - 8;
+    or_ = (half_width < half_height ? half_width : half_height) - 8;
     ir = or_ - 32;
     or_ *= or_;
     ir *= ir;
@@ -79,14 +79,14 @@ paint_pixels(void *image, int padding, int width, int height, uint32_t time) {
     pixel += padding * width;
     for (y = padding; y < height - padding; y++) {
         int x;
-        int y2 = (y - halfh) * (y - halfh);
+        int y2 = (y - half_height) * (y - half_height);
 
         pixel += padding;
         for (x = padding; x < width - padding; x++) {
             uint32_t v;
 
             /* squared distance from center */
-            int r2 = (x - halfw) * (x - halfw) + y2;
+            int r2 = (x - half_width) * (x - half_width) + y2;
 
             if (r2 < ir)
                 v = (static_cast<uint32_t>(r2 / 32) + time / 64) * 0x0080401;
@@ -110,8 +110,6 @@ paint_pixels(void *image, int padding, int width, int height, uint32_t time) {
 void draw_frame(void *data, const uint32_t time) {
     auto window = static_cast<Window *>(data);
 
-    window->prune_old_released_buffers();
-
     auto buffer = window->next_buffer();
     if (!buffer) {
         spdlog::error("Failed to acquire a buffer");
@@ -126,7 +124,7 @@ void draw_frame(void *data, const uint32_t time) {
     buffer->set_busy();
 }
 
-static void handle_interface1_add(void * /* data */,
+static void handle_interface1_add(Registrar * /* data */,
                                   struct wl_registry * /* registry */,
                                   uint32_t name,
                                   const char *interface,
@@ -134,37 +132,18 @@ static void handle_interface1_add(void * /* data */,
     spdlog::info("handle_interface1_add: name: {}, interface: {}, version: {}", name, interface, version);
 }
 
-static void handle_interface1_remove(void * /* data */,
+static void handle_interface1_remove(Registrar * /* data */,
                                      struct wl_registry * /* registry */,
                                      uint32_t id) {
     spdlog::info("handle_interface1_remove: id: {}", id);
 }
 
-static void handle_interface2_add(void * /* data */,
-                                  struct wl_registry * /* registry */,
-                                  uint32_t name,
-                                  const char *interface,
-                                  uint32_t version) {
-    spdlog::info("handle_interface2_add: name: {}, interface: {}, version: {}", name, interface, version);
-}
-
-static void handle_interface2_remove(void * /* data */,
-                                     struct wl_registry * /* registry */,
-                                     uint32_t id) {
-    spdlog::info("handle_interface2_remove: id: {}", id);
-}
-
 static constexpr
-std::array<Registrar::RegistrarCallback, 2> ext_interfaces{{
-                                                                   {
-                                                                           "zxdg_output_manager_v1",
-                                                                           handle_interface1_add,
-                                                                           handle_interface1_remove,
-                                                                   },
+std::array<Registrar::RegistrarCallback, 1> ext_interfaces{{
                                                                    {
                                                                            "wl_drm",
-                                                                           handle_interface2_add,
-                                                                           handle_interface2_remove,
+                                                                           handle_interface1_add,
+                                                                           handle_interface1_remove,
                                                                    }
                                                            }};
 
@@ -193,7 +172,7 @@ int main(int argc, char **argv) {
             .tearing = result["tearing"].as<bool>(),
     };
 
-    XdgWindowManager wm = XdgWindowManager(ext_interfaces.size(),
+    XdgWindowManager wm = XdgWindowManager(false, ext_interfaces.size(),
                                            ext_interfaces.data()
     );
     spdlog::info("XDG Window Manager Version: {}", wm.get_version());

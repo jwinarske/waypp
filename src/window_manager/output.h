@@ -119,15 +119,15 @@ private:
             handle_geometry,
             handle_mode,
             handle_done
-#if defined(WL_OUTPUT_SCALE_SINCE_VERSION)
+#if WL_OUTPUT_SCALE_SINCE_VERSION
             ,
             handle_scale
 #endif
-#if defined(WL_OUTPUT_NAME_SINCE_VERSION)
+#if WL_OUTPUT_NAME_SINCE_VERSION
             ,
             handle_name
 #endif
-#if defined(WL_OUTPUT_DESCRIPTION_SINCE_VERSION)
+#if WL_OUTPUT_DESCRIPTION_SINCE_VERSION
             ,
             handle_desc
 #endif

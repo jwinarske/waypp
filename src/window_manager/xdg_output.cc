@@ -83,3 +83,16 @@ void XdgOutput::handle_description(void *data, struct zxdg_output_v1 *zxdg_outpu
     spdlog::debug("XdgOutput::handle_description: {}", description);
     obj->output_.description = description;
 }
+
+void XdgOutput::print() {
+    spdlog::info("XDG Output");
+    spdlog::info("\tDone: {}", output_.done);
+    spdlog::info("\tName: {}", output_.name);
+    spdlog::info("\tDescription: {}", output_.description);
+    spdlog::info("\tlogical_position");
+    spdlog::info("\t\tx: {}", output_.logical_position.x);
+    spdlog::info("\t\ty: {}", output_.logical_position.y);
+    spdlog::info("\tlogical_size");
+    spdlog::info("\t\tx: {}", output_.logical_size.width);
+    spdlog::info("\t\ty: {}", output_.logical_size.height);
+}

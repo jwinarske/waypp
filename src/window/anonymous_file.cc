@@ -34,9 +34,11 @@
 #include <cstdlib>
 #include <sys/mman.h>
 
+#include "wayland-protocols.h"
 #include "logging.h"
 
 #if !defined(HAVE_MKOSTEMP)
+
 int
 os_fd_set_cloexec(int fd) {
     int flags;
@@ -62,12 +64,13 @@ set_cloexec_or_close(int fd) {
     }
     return fd;
 }
+
 #endif
 
 static int create_tmpfile_cloexec(char *tmpname) {
     int fd;
 
-#if defined(HAVE_MKOSTEMP)
+#if HAVE_MKOSTEMP
     fd = mkostemp(tmpname, O_CLOEXEC);
     if (fd >= 0)
         unlink(tmpname);
@@ -114,7 +117,7 @@ int AnonymousFile::create(off_t size) {
     int fd;
     int ret;
 
-#if defined(HAVE_MEMFD_CREATE)
+#if HAVE_MEMFD_CREATE
     fd = memfd_create("waypp-shared", MFD_CLOEXEC | MFD_ALLOW_SEALING);
     if (fd >= 0) {
         /* We can add this seal before calling posix_fallocate(), as
@@ -142,7 +145,7 @@ int AnonymousFile::create(off_t size) {
             return -1;
     }
 
-#if defined(HAVE_POSIX_FALLOCATE)
+#if HAVE_POSIX_FALLOCATE
     do {
         ret = posix_fallocate(fd, 0, size);
     } while (ret == EINTR);

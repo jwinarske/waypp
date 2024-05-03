@@ -7,7 +7,7 @@ unsigned Feedback::sequence_ = 0;
 
 Feedback::Feedback(struct wp_presentation *wp_presentation, clockid_t clock_id, struct wl_surface *wl_surface,
                    uint32_t time, FeedbackObserver *observer)
-        : clock_id_(clock_id), observer_(observer) {
+        : wp_presentation_(wp_presentation), clock_id_(clock_id), observer_(observer) {
 
     clock_gettime(clock_id_, &committed_);
     frame_stamp_ = time;

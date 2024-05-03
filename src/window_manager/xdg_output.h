@@ -28,19 +28,23 @@ public:
 
     ~XdgOutput();
 
-    int get_logical_position_x() const { return output_.logical_position.x; }
+    [[nodiscard]] int get_logical_position_x() const { return output_.logical_position.x; }
 
-    int get_logical_position_y() const { return output_.logical_position.y; }
+    [[nodiscard]] int get_logical_position_y() const { return output_.logical_position.y; }
 
-    int get_logical_size_width() const { return output_.logical_size.width; }
+    [[nodiscard]] int get_logical_size_width() const { return output_.logical_size.width; }
 
-    int get_logical_size_height() const { return output_.logical_size.height; }
+    [[nodiscard]] int get_logical_size_height() const { return output_.logical_size.height; }
 
-    const std::string &get_name() const { return output_.name; }
+    [[nodiscard]] const std::string &get_name() const { return output_.name; }
 
-    const std::string &get_description() const { return output_.description; }
+    [[nodiscard]] const std::string &get_description() const { return output_.description; }
 
-    bool is_origin() const { return (output_.logical_position.x == 0 && output_.logical_position.y == 0); }
+    [[nodiscard]] bool is_origin() const {
+        return (output_.logical_position.x == 0 && output_.logical_position.y == 0);
+    }
+
+    void print();
 
     // Disallow copy and assign.
     XdgOutput(const XdgOutput &) = delete;

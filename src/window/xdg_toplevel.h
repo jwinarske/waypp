@@ -55,7 +55,7 @@ public:
 
     void set_title(const char *title) { xdg_toplevel_set_title(xdg_toplevel_, title); }
 
-    struct wl_surface* get_surface() const { return wl_surface_; }
+    struct wl_surface *get_surface() const { return wl_surface_; }
 
     [[nodiscard]] bool get_fullscreen() const { return fullscreen_; }
 
@@ -113,7 +113,7 @@ private:
             void *data,
             struct xdg_toplevel *xdg_toplevel);
 
-#if defined(XDG_TOPLEVEL_CONFIGURE_BOUNDS_SINCE_VERSION)
+#if XDG_TOPLEVEL_CONFIGURE_BOUNDS_SINCE_VERSION
 
     static void handle_xdg_toplevel_configure_bounds(void *data,
                                                      struct xdg_toplevel *xdg_toplevel,
@@ -121,7 +121,7 @@ private:
                                                      int32_t height);
 
 #endif
-#if defined(XDG_TOPLEVEL_WM_CAPABILITIES_SINCE_VERSION)
+#if XDG_TOPLEVEL_WM_CAPABILITIES_SINCE_VERSION
 
     static void handle_xdg_toplevel_wm_capabilities(void *data,
                                                     struct xdg_toplevel *xdg_toplevel,
@@ -132,11 +132,11 @@ private:
     static constexpr struct xdg_toplevel_listener xdg_toplevel_listener_ = {
             .configure = handle_xdg_toplevel_configure,
             .close = handle_xdg_toplevel_close
-#if defined(XDG_TOPLEVEL_CONFIGURE_BOUNDS_SINCE_VERSION)
+#if XDG_TOPLEVEL_CONFIGURE_BOUNDS_SINCE_VERSION
             ,
             .configure_bounds = handle_xdg_toplevel_configure_bounds
 #endif
-#if defined(XDG_TOPLEVEL_WM_CAPABILITIES_SINCE_VERSION)
+#if XDG_TOPLEVEL_WM_CAPABILITIES_SINCE_VERSION
             ,
             .wm_capabilities = handle_xdg_toplevel_wm_capabilities
 #endif

@@ -62,7 +62,7 @@ Keyboard::~Keyboard() {
         xkb_state_unref(xkb_state_);
     }
     if (xkb_keymap_) {
-        xkb_keymap_unref(xkb_keymap_);;
+        xkb_keymap_unref(xkb_keymap_);
     }
     if (xkb_context_) {
         xkb_context_unref(xkb_context_);
@@ -87,10 +87,9 @@ void Keyboard::handle_keymap(void *data,
 
     char *keymap_string;
     /// From version 7 onwards, the fd must be mapped with MAP_PRIVATE by the recipient, as MAP_SHARED may fail.
-    if (wl_keyboard_get_version(wl_keyboard) >= 7 ) {
+    if (wl_keyboard_get_version(wl_keyboard) >= 7) {
         keymap_string = static_cast<char *>(mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0));
-    }
-    else {
+    } else {
         keymap_string = static_cast<char *>(mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0));
     }
     xkb_keymap_unref(obj->xkb_keymap_);

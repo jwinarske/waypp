@@ -36,14 +36,13 @@ XdgWindowManager::XdgWindowManager(bool disable_cursor, const unsigned long ext_
                                                                              ext_interface_data,
                                                                              context, display_name) {
     SPDLOG_TRACE("++XdgWindowManager::XdgWindowManager()");
-    auto xdg_wm_base = get_xdg_wm_base();
-    if (!xdg_wm_base.has_value()) {
+    xdg_wm_base_ = get_xdg_wm_base();
+    if (!xdg_wm_base_) {
         spdlog::critical("XDG Window Manager is not supported.");
         exit(EXIT_FAILURE);
     }
-    xdg_wm_base_ = xdg_wm_base.value();
 
-    xdg_wm_base_add_listener(xdg_wm_base.value(), &xdg_wm_base_listener_, this);
+    xdg_wm_base_add_listener(xdg_wm_base_, &xdg_wm_base_listener_, this);
     SPDLOG_TRACE("--XdgWindowManager::XdgWindowManager()");
 }
 
@@ -69,7 +68,7 @@ void XdgWindowManager::xdg_wm_base_ping(void *data,
                                         struct xdg_wm_base *xdg_wm_base,
                                         uint32_t serial) {
     auto wm = static_cast<XdgWindowManager *>(data);
-    if (wm->get_xdg_wm_base().value() != xdg_wm_base) {
+    if (wm->get_xdg_wm_base() != xdg_wm_base) {
         SPDLOG_CRITICAL("wm->get_xdg_wm_base().value() != xdg_wm_base");
         return;
     }

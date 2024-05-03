@@ -37,7 +37,7 @@ XdgTopLevel::XdgTopLevel(WindowManager *wm, const char *title, const char *app_i
                                                                                       app_id_(app_id) {
     auto xwm = reinterpret_cast<XdgWindowManager *>(wm_);
     auto xdg_wm_base = xwm->get_xdg_wm_base();
-    if (!xdg_wm_base.has_value()) {
+    if (!xdg_wm_base) {
         spdlog::critical("xdg_wm_base is not available");
         exit(EXIT_FAILURE);
     }
@@ -45,7 +45,7 @@ XdgTopLevel::XdgTopLevel(WindowManager *wm, const char *title, const char *app_i
     window_size_.width = width;
     window_size_.height = height;
 
-    xdg_surface_ = xdg_wm_base_get_xdg_surface(xdg_wm_base.value(), wl_surface_);
+    xdg_surface_ = xdg_wm_base_get_xdg_surface(xdg_wm_base, wl_surface_);
     xdg_surface_add_listener(xdg_surface_, &xdg_surface_listener_, this);
 
     xdg_toplevel_ = xdg_surface_get_toplevel(xdg_surface_);
@@ -206,7 +206,7 @@ void XdgTopLevel::handle_xdg_toplevel_close(
  * @param width
  * @param height
  */
-#if defined(XDG_TOPLEVEL_CONFIGURE_BOUNDS_SINCE_VERSION)
+#if XDG_TOPLEVEL_CONFIGURE_BOUNDS_SINCE_VERSION
 
 void XdgTopLevel::handle_xdg_toplevel_configure_bounds(void *data,
                                                        struct xdg_toplevel *xdg_toplevel,
@@ -229,7 +229,7 @@ void XdgTopLevel::handle_xdg_toplevel_configure_bounds(void *data,
  * @param xdg_toplevel
  * @param capabilities
  */
-#if defined(XDG_TOPLEVEL_WM_CAPABILITIES_SINCE_VERSION)
+#if XDG_TOPLEVEL_WM_CAPABILITIES_SINCE_VERSION
 
 void XdgTopLevel::handle_xdg_toplevel_wm_capabilities(void *data,
                                                       struct xdg_toplevel *xdg_toplevel,

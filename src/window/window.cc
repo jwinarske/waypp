@@ -44,7 +44,7 @@ Window::Window(WindowManager *wm, const char *name, int buffer_count, uint32_t b
         }
         buffers_.reserve(static_cast<unsigned long>(buffer_count));
         for (int i = 0; i < buffer_count_; i++) {
-            auto buffer = std::make_unique<Buffer>(wm_->get_shm().value());
+            auto buffer = std::make_unique<Buffer>(wm_->get_shm());
             buffer->create_shm_buffer(width, height, buffer_format_);
             buffers_.push_back(std::move(buffer));
         }
@@ -62,25 +62,25 @@ Window::Window(WindowManager *wm, const char *name, int buffer_count, uint32_t b
         egl_->set_swap_interval(swap_interval);
     }
 
-    if (wm->get_viewporter().has_value()) {
-#if defined(HAS_WAYLAND_PROTOCOL_VIEWPORTER)
-        viewport_ = wp_viewporter_get_viewport(wm->get_viewporter().value(), wl_surface_);
+    if (wm->get_viewporter()) {
+#if HAS_WAYLAND_PROTOCOL_VIEWPORTER
+        viewport_ = wp_viewporter_get_viewport(wm->get_viewporter(), wl_surface_);
 #endif
     }
 
-    if (wm->get_fractional_scale_manager().has_value()) {
-#if defined(HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1)
+    if (wm->get_fractional_scale_manager()) {
+#if HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1
         fractional_scale_ = wp_fractional_scale_manager_v1_get_fractional_scale(
-                wm->get_fractional_scale_manager().value(),
+                wm->get_fractional_scale_manager(),
                 wl_surface_);
         wp_fractional_scale_v1_add_listener(fractional_scale_, &fractional_scale_listener_, this);
 #endif
     }
 
-    if (wm->get_tearing_control_manager().has_value()) {
-#if defined(HAS_WAYLAND_PROTOCOL_TEARING_CONTROL_V1)
+    if (wm->get_tearing_control_manager()) {
+#if HAS_WAYLAND_PROTOCOL_TEARING_CONTROL_V1
         tearing_control_ = wp_tearing_control_manager_v1_get_tearing_control(
-                wm->get_tearing_control_manager().value(), wl_surface_);
+                wm->get_tearing_control_manager(), wl_surface_);
         if (tearing) {
             SPDLOG_DEBUG("[Surface] Set Presentation Hint: ASYNC");
             wp_tearing_control_v1_set_presentation_hint(tearing_control_,
@@ -98,12 +98,12 @@ Window::Window(WindowManager *wm, const char *name, int buffer_count, uint32_t b
 
 Window::~Window() {
     if (viewport_) {
-#if defined(HAS_WAYLAND_PROTOCOL_VIEWPORTER)
+#if HAS_WAYLAND_PROTOCOL_VIEWPORTER
         wp_viewport_destroy(viewport_);
 #endif
     }
     if (fractional_scale_) {
-#if defined(HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1)
+#if HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1
         wp_fractional_scale_v1_destroy(fractional_scale_);
 #endif
     }
@@ -220,7 +220,7 @@ void Window::update_buffer_geometry() {
 void Window::handle_preferred_scale(void *data,
                                     struct wp_fractional_scale_v1 *wp_fractional_scale_v1,
                                     uint32_t scale) {
-    SPDLOG_DEBUG("[Window] handle_preferred_scale()");
+    SPDLOG_TRACE("[Window] handle_preferred_scale()");
     auto *w = static_cast<Window *>(data);
     if (w->fractional_scale_ != wp_fractional_scale_v1) {
         return;
@@ -232,25 +232,23 @@ void Window::handle_preferred_scale(void *data,
 void Window::handle_surface_enter(void *data,
                                   struct wl_surface *wl_surface,
                                   struct wl_output *wl_output) {
-    SPDLOG_DEBUG("[Window] handle_surface_enter()");
     auto obj = static_cast<Window *>(data);
     if (obj->wl_surface_ != wl_surface) {
         return;
     }
-    SPDLOG_DEBUG("handle_surface_enter: {} [{}]", fmt::ptr(wl_output), obj->name_);
+    SPDLOG_TRACE("handle_surface_enter: {} [{}]", fmt::ptr(wl_output), obj->name_);
     obj->wl_output_ = wl_output;
 }
 
 void Window::handle_surface_leave(void *data,
                                   struct wl_surface *wl_surface,
                                   struct wl_output *output) {
-    SPDLOG_DEBUG("[Window] handle_surface_leave()");
     auto obj = static_cast<Window *>(data);
     if (obj->wl_surface_ != wl_surface) {
         return;
     }
 #if !defined(NDEBUG)
-    SPDLOG_DEBUG("handle_surface_leave: {} [{}]", fmt::ptr(output), obj->name_);
+    SPDLOG_TRACE("handle_surface_leave: {} [{}]", fmt::ptr(output), obj->name_);
 #else
     (void)output;
 #endif
@@ -265,7 +263,7 @@ void Window::handle_surface_leave(void *data,
  * @note This function assumes that the surface has been initialized properly.
  */
 void Window::start_frame_callbacks() {
-    SPDLOG_DEBUG("[Window] start_frame_callbacks");
+    SPDLOG_TRACE("[Window] start_frame_callbacks");
     handle_frame_callback(this, nullptr, 0);
 }
 
@@ -274,7 +272,7 @@ void Window::start_frame_callbacks() {
  * This function is intended to be called from outside the Window class.
  */
 void Window::stop_frame_callbacks() {
-    SPDLOG_DEBUG("[Window] stop_frame_callbacks");
+    SPDLOG_TRACE("[Window] stop_frame_callbacks");
     if (wl_callback_) {
         wl_callback_destroy(wl_callback_);
         wl_callback_ = nullptr;
@@ -406,21 +404,6 @@ Buffer *Window::pick_free_buffer() {
         }
     }
     return res;
-}
-
-void Window::prune_old_released_buffers() {
-#if 0
-    long i = 0;
-    for (auto &b: buffers_) {
-        if (!b->is_busy() &&
-            b->get_width() != window_size_.width ||
-            b->get_height() != window_size_.height) {
-            b.reset();
-            buffers_.erase(buffers_.begin() + i);
-        }
-        i++;
-    }
-#endif
 }
 
 Buffer *Window::next_buffer() {

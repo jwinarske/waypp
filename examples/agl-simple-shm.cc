@@ -111,8 +111,6 @@ static void paint_pixels(void *image, int padding, int width, int height, uint32
 void draw_frame(void *data, const uint32_t time) {
     auto window = static_cast<Window *>(data);
 
-    window->prune_old_released_buffers();
-
     auto buffer = window->next_buffer();
     if (!buffer) {
         spdlog::error("Failed to acquire a buffer");

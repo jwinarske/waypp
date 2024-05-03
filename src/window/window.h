@@ -112,8 +112,6 @@ public:
 
     Buffer *pick_free_buffer();
 
-    void prune_old_released_buffers();
-
     [[nodiscard]] size_t get_num_buffers() const { return buffers_.size(); }
 
     [[nodiscard]] const std::vector<std::unique_ptr<Buffer>> &get_buffers() const { return buffers_; }
@@ -222,11 +220,11 @@ private:
     static constexpr struct wl_surface_listener surface_listener_ = {
             .enter = handle_surface_enter,
             .leave = handle_surface_leave
-#if defined(WL_SURFACE_PREFERRED_BUFFER_SCALE_SINCE_VERSION)
+#if WL_SURFACE_PREFERRED_BUFFER_SCALE_SINCE_VERSION
             ,
             .preferred_buffer_scale = handle_preferred_buffer_scale
 #endif
-#if defined(WL_SURFACE_PREFERRED_BUFFER_TRANSFORM_SINCE_VERSION)
+#if WL_SURFACE_PREFERRED_BUFFER_TRANSFORM_SINCE_VERSION
             ,
             .preferred_buffer_transform = handle_preferred_buffer_transform,
 #endif
@@ -240,7 +238,7 @@ private:
                                        struct wp_fractional_scale_v1 *wp_fractional_scale_v1,
                                        uint32_t scale);
 
-#if defined(HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1)
+#if HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1
     static constexpr struct wp_fractional_scale_v1_listener fractional_scale_listener_ = {
             .preferred_scale = handle_preferred_scale,
     };

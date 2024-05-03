@@ -47,7 +47,7 @@ public:
 
     [[nodiscard]] int display_dispatch() const;
 
-    [[nodiscard]] bool has_subcompositor() const { return sub_compositor_.wl_subcompositor.has_value(); }
+    [[nodiscard]] bool has_subcompositor() const { return wl_subcompositor_; }
 
     void register_task_observer(WindowManagerObserver *observer) {
         observers_.push_back(observer);

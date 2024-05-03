@@ -25,14 +25,14 @@
  * The Seat class provides a representation of a seat in a Wayland compositor. It is used to handle input events from
  * devices such as keyboards, pointers, and touchscreens.
  */
-Seat::Seat(struct wl_seat *seat, const std::optional<struct wl_shm *> &wl_shm, struct wl_compositor *wl_compositor,
+Seat::Seat(struct wl_seat *seat, struct wl_shm *wl_shm, struct wl_compositor *wl_compositor,
            bool disable_cursor)
         : wl_seat_(seat), wl_shm_(wl_shm), wl_compositor_(wl_compositor), disable_cursor_(disable_cursor) {
     wl_seat_add_listener(seat, &listener_, this);
 }
 
 Seat::~Seat() {
-    if(wl_seat_) {
+    if (wl_seat_) {
         wl_seat_destroy(wl_seat_);
     }
 }

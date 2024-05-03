@@ -152,10 +152,12 @@ void initialize_scene(Window *window) {
     GLint status;
     glGetProgramiv(program, GL_LINK_STATUS, &status);
     if (!status) {
-        char log[1000];
         GLsizei len;
-        glGetProgramInfoLog(program, 1000, &len, log);
-        fprintf(stderr, "Error: linking:\n%.*s\n", len, log);
+        auto buf = std::make_unique<char[]>(1024);
+        glGetProgramInfoLog(program, 1024, &len, buf.get());
+        std::string res{buf.get(), static_cast<size_t>(len)};
+        buf.reset();
+        spdlog::error("Error: linking:\n{}", res.c_str());
         exit(1);
     }
 

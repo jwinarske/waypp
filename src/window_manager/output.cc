@@ -169,10 +169,11 @@ std::string Output::transform_to_string(enum wl_output_transform transform) {
 
 void Output::print() {
     spdlog::info("Output");
-#if defined(WL_OUTPUT_NAME_SINCE_VERSION)
+    spdlog::info("\tDone: {}", output_.done);
+#if WL_OUTPUT_NAME_SINCE_VERSION
     spdlog::info("\tName: {}", output_.name);
 #endif
-#if defined(WL_OUTPUT_DESCRIPTION_SINCE_VERSION)
+#if WL_OUTPUT_DESCRIPTION_SINCE_VERSION
     spdlog::info("\tDescription: {}", output_.description);
 #endif
     spdlog::info("\tMode");
@@ -192,7 +193,7 @@ void Output::print() {
     spdlog::info("\t\tSubpixel: {}", output_.geometry.subpixel);
     spdlog::info("\t\tTransform: {}", transform_to_string(output_.geometry.transform));
     spdlog::info("\t\tx: {}, y: {}", output_.geometry.x, output_.geometry.y);
-#if defined(WL_OUTPUT_SCALE_SINCE_VERSION)
+#if WL_OUTPUT_SCALE_SINCE_VERSION
     spdlog::info("\tScaling factor: {}", output_.factor);
 #endif
 }
