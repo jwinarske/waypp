@@ -85,12 +85,12 @@ if (ENABLE_DRM_LEASE_CLIENT)
     add_protocol(${WAYLAND_PROTOCOLS_BASE}/staging/drm-lease/drm-lease-v1.xml)
 endif ()
 
+add_protocol(${WAYLAND_PROTOCOLS_BASE}/stable/presentation-time/presentation-time.xml)
+message(STATUS "Presentation Time ..... ${HAS_WAYLAND_PROTOCOL_PRESENTATION_TIME}")
+
 #
 # Optional
 #
-add_protocol(${WAYLAND_PROTOCOLS_BASE}/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml)
-message(STATUS "XDG Decoration ........ ${HAS_WAYLAND_PROTOCOL_XDG_DECORATION_UNSTABLE_V1}")
-
 add_protocol(${WAYLAND_PROTOCOLS_BASE}/staging/fractional-scale/fractional-scale-v1.xml)
 message(STATUS "Fractional Scale ...... ${HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1}")
 
@@ -100,8 +100,11 @@ message(STATUS "Viewporter ............ ${HAS_WAYLAND_PROTOCOL_VIEWPORTER}")
 add_protocol(${WAYLAND_PROTOCOLS_BASE}/staging/tearing-control/tearing-control-v1.xml)
 message(STATUS "Tearing Control ....... ${HAS_WAYLAND_PROTOCOL_TEARING_CONTROL_V1}")
 
-add_protocol(${WAYLAND_PROTOCOLS_BASE}/stable/presentation-time/presentation-time.xml)
-message(STATUS "Presentation Time ..... ${HAS_WAYLAND_PROTOCOL_PRESENTATION_TIME}")
+add_protocol(${WAYLAND_PROTOCOLS_BASE}/unstable/xdg-output/xdg-output-unstable-v1.xml)
+message(STATUS "XDG Output Manager .... ${HAS_WAYLAND_PROTOCOL_XDG_OUTPUT_UNSTABLE_V1}")
+
+add_protocol(${WAYLAND_PROTOCOLS_BASE}/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml)
+message(STATUS "XDG Decoration ........ ${HAS_WAYLAND_PROTOCOL_XDG_DECORATION_UNSTABLE_V1}")
 
 #
 # External
@@ -129,9 +132,9 @@ if (ENABLE_DRM_LEASE_CLIENT)
     target_compile_definitions(wayland-gen PUBLIC ENABLE_DRM_LEASE_CLIENT)
 endif ()
 
-string(REPLACE ";" " " WAYLAND_PROTOCOLS "${LIST_WAYLAND_PROTOCOLS}")
-message(STATUS "DEFINITIONS: ${WAYLAND_PROTOCOLS}")
-target_compile_definitions(wayland-gen PUBLIC ${WAYLAND_PROTOCOLS})
+string(REPLACE ";" " " WAYLAND_PROTOCOL_DEFINES "${LIST_WAYLAND_PROTOCOLS}" GLOBAL)
+message(STATUS "DEFINITIONS: ${WAYLAND_PROTOCOL_DEFINES}")
+target_compile_definitions(wayland-gen PUBLIC ${WAYLAND_PROTOCOL_DEFINES})
 
 if (IPO_SUPPORT_RESULT)
     set_property(TARGET wayland-gen PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)

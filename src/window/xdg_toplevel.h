@@ -55,6 +55,8 @@ public:
 
     void set_title(const char *title) { xdg_toplevel_set_title(xdg_toplevel_, title); }
 
+    struct wl_surface* get_surface() const { return wl_surface_; }
+
     [[nodiscard]] bool get_fullscreen() const { return fullscreen_; }
 
     void set_fullscreen() { xdg_toplevel_set_fullscreen(xdg_toplevel_, nullptr); }

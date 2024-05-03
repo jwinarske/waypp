@@ -33,10 +33,6 @@
 #include "drm_lease_device_v1.h"
 #endif
 
-#if defined(ENABLE_AGL_SHELL_CLIENT)
-class AglShell;
-#endif
-
 class WindowManager;
 
 class Registrar {
@@ -91,7 +87,7 @@ public:
     get_subcompositor() const { return sub_compositor_.wl_subcompositor; }
 
     // Returns the shm if it exists.
-    [[nodiscard]] const std::optional<struct wl_shm *>& get_shm() const { return shm_.wl_shm; }
+    [[nodiscard]] const std::optional<struct wl_shm *> &get_shm() const { return shm_.wl_shm; }
 
     // Returns the xdg surface manager base if it exists.
     [[nodiscard]] std::optional<struct xdg_wm_base *> get_xdg_wm_base() const { return xdg_wm_base_.xdg_wm_base; }
@@ -102,7 +98,10 @@ public:
     // Returns the ivi surface manager if it exists.
     [[nodiscard]] std::optional<struct ivi_wm *> get_ivi_wm() const { return ivi_wm_.ivi_wm; }
 
-    [[nodiscard]] struct wp_presentation *get_wp_presentation() const { return presentation_time_.wp_presentation; }
+    [[nodiscard]] struct wp_presentation *
+    get_presentation_time_wp_presentation() const { return presentation_time_.wp_presentation; }
+
+    [[nodiscard]] clockid_t get_presentation_time_clk_id() const { return presentation_time_.clk_id; }
 
     [[nodiscard]] std::optional<struct wp_tearing_control_manager_v1 *>
     get_tearing_control_manager() const { return tearing_manager_.wp_tearing_control_manager; }
@@ -113,6 +112,9 @@ public:
     [[nodiscard]] std::optional<struct wp_fractional_scale_manager_v1 *>
     get_fractional_scale_manager() const { return fractional_scale_manager_.fractional_scale_manager; }
 
+    [[nodiscard]] std::optional<struct zxdg_output_manager_v1 *>
+    get_xdg_output_manager() const { return zxdg_output_manager_v1_; }
+
     [[nodiscard]] const std::map<struct wl_output *, std::unique_ptr<Output>> &
     get_outputs() const { return output_.outputs; }
 
@@ -120,7 +122,6 @@ public:
 
     int32_t get_output_buffer_scale(struct wl_output *wl_output);
 
-    [[nodiscard]] clockid_t get_clk_id() const { return presentation_time_.clk_id; }
 
     std::optional<Seat *> get_seat(wl_seat *seat = nullptr) const;
 
@@ -130,9 +131,6 @@ public:
     Registrar &operator=(const Registrar &) = delete;
 
 private:
-#if defined(ENABLE_AGL_SHELL_CLIENT)
-    friend AglShell;
-#endif
     friend WindowManager;
 
     std::unique_ptr<std::map<std::string, RegistrarGlobalCallback>> registrar_global_;
@@ -213,6 +211,8 @@ private:
         std::optional<struct wp_fractional_scale_manager_v1 *> fractional_scale_manager;
     } fractional_scale_manager_;
 
+    struct zxdg_output_manager_v1 * zxdg_output_manager_v1_{};
+
     std::mutex registrar_global_mutex_;
     std::mutex registrar_global_remove_mutex_;
 
@@ -283,11 +283,13 @@ private:
 #endif
 
 #if defined(ENABLE_AGL_SHELL_CLIENT)
+
     static void handle_interface_agl_shell(void *data,
                                            struct wl_registry *registry,
                                            uint32_t name,
                                            const char *interface,
                                            uint32_t version);
+
 #endif
 
 #if defined(ENABLE_IVI_SHELL_CLIENT)
@@ -356,6 +358,14 @@ private:
                                                           uint32_t name,
                                                           const char *interface,
                                                           uint32_t version);
+#endif
+
+#if defined(HAS_WAYLAND_PROTOCOL_XDG_OUTPUT_UNSTABLE_V1)
+    static void handle_interface_xdg_output_unstable_v1(void *data,
+                                                        struct wl_registry *registry,
+                                                        uint32_t name,
+                                                        const char *interface,
+                                                        uint32_t version);
 #endif
 
 protected:

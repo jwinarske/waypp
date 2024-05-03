@@ -24,10 +24,13 @@
 
 #include <wayland-client.h>
 
+#include "xdg_output.h"
+
+class XdgOutput;
 
 class Output {
 public:
-    explicit Output(struct wl_output *output);
+    explicit Output(struct wl_output *output, struct zxdg_output_manager_v1 *zxdg_output_manager_v1);
 
     ~Output();
 
@@ -41,6 +44,8 @@ public:
 
     static std::string transform_to_string(enum wl_output_transform transform);
 
+    const XdgOutput *get_xdg_output() const { return xdg_output_.get(); }
+
     // Disallow copy and assign.
     Output(const Output &) = delete;
 
@@ -48,8 +53,10 @@ public:
 
 private:
     struct wl_output *wl_output_;
+    struct zxdg_output_manager_v1 *zxdg_output_manager_v1_;
+    std::unique_ptr<XdgOutput> xdg_output_;
 
-    typedef struct {
+    struct {
         struct {
             int x;
             int y;
@@ -73,9 +80,7 @@ private:
         std::string description;
         bool done;
 
-    } OUTPUT_INFO_T;
-
-    OUTPUT_INFO_T output_;
+    } output_;
 
     static void handle_geometry(void *data,
                                 struct wl_output *wl_output,

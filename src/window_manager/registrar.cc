@@ -38,34 +38,47 @@ Registrar::Registrar(struct wl_display *wl_display,
             {wl_subcompositor_interface.name, handle_interface_subcompositor},
             {wl_shm_interface.name, handle_interface_shm},
             {wl_seat_interface.name, handle_interface_seat},
-            {wl_output_interface.name, handle_interface_output},
+            {wl_output_interface.name, handle_interface_output}
 #if defined(ENABLE_XDG_CLIENT)
-            {xdg_wm_base_interface.name, handle_interface_xdg_wm_base},
+            ,
+            {xdg_wm_base_interface.name, handle_interface_xdg_wm_base}
 #endif
 #if defined(ENABLE_AGL_SHELL_CLIENT)
-            {agl_shell_interface.name, handle_interface_agl_shell},
+            ,
+            {agl_shell_interface.name, handle_interface_agl_shell}
 #endif
 #if defined(ENABLE_IVI_SHELL_CLIENT)
-            {ivi_wm_interface.name, handle_interface_ivi_wm},
+            ,
+            {ivi_wm_interface.name, handle_interface_ivi_wm}
 #endif
 #if defined(ENABLE_DRM_LEASE_CLIENT)
-            {wp_drm_lease_device_v1_interface.name, handle_interface_drm_lease_device_v1},
+            .
+            {wp_drm_lease_device_v1_interface.name, handle_interface_drm_lease_device_v1}
 #endif
 #if defined(HAS_WAYLAND_PROTOCOL_XDG_DECORATION_UNSTABLE_V1)
+            ,
             {zxdg_decoration_manager_v1_interface.name, handle_interface_zxdg_decoration},
-            {zxdg_toplevel_decoration_v1_interface.name, handle_interface_zxdg_toplevel_decoration},
+            {zxdg_toplevel_decoration_v1_interface.name, handle_interface_zxdg_toplevel_decoration}
 #endif
 #if defined(HAS_WAYLAND_PROTOCOL_PRESENTATION_TIME)
-            {wp_presentation_interface.name, handle_interface_presentation},
+            ,
+            {wp_presentation_interface.name, handle_interface_presentation}
 #endif
 #if defined(HAS_WAYLAND_PROTOCOL_TEARING_CONTROL_V1)
-            {wp_tearing_control_manager_v1_interface.name, handle_interface_tearing_control_manager},
+            ,
+            {wp_tearing_control_manager_v1_interface.name, handle_interface_tearing_control_manager}
 #endif
 #if defined(HAS_WAYLAND_PROTOCOL_VIEWPORTER)
-            {wp_viewporter_interface.name, handle_interface_viewporter},
+            ,
+            {wp_viewporter_interface.name, handle_interface_viewporter}
 #endif
 #if defined(HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1)
+            ,
             {wp_fractional_scale_manager_v1_interface.name, handle_interface_fractional_scale_manager}
+#endif
+#if defined(HAS_WAYLAND_PROTOCOL_XDG_OUTPUT_UNSTABLE_V1)
+            ,
+            {zxdg_output_manager_v1_interface.name, handle_interface_xdg_output_unstable_v1}
 #endif
     };
 
@@ -493,7 +506,7 @@ void Registrar::handle_interface_output(void *data,
     auto wl_output = static_cast<struct wl_output *>(
             wl_registry_bind(registry, name, &wl_output_interface,
                              std::min(static_cast<uint32_t>(r->output_.min_version), version)));
-    r->output_.outputs[wl_output] = std::make_unique<Output>(wl_output);
+    r->output_.outputs[wl_output] = std::make_unique<Output>(wl_output, r->zxdg_output_manager_v1_);
     spdlog::debug("{}: {}", interface, wl_output_get_version(wl_output));
 }
 
@@ -514,6 +527,7 @@ void Registrar::handle_interface_xdg_wm_base(void *data,
 #endif
 
 #if defined(ENABLE_AGL_SHELL_CLIENT)
+
 void Registrar::handle_interface_agl_shell(void *data,
                                            struct wl_registry *registry,
                                            uint32_t name,
@@ -525,6 +539,7 @@ void Registrar::handle_interface_agl_shell(void *data,
                              std::min(static_cast<uint32_t>(r->agl_shell_.min_version), version)));
     spdlog::debug("{}: {}", interface, agl_shell_get_version(r->agl_shell_.agl_shell.value()));
 }
+
 #endif
 
 #if defined(ENABLE_IVI_SHELL_CLIENT)
@@ -569,6 +584,21 @@ void Registrar::handle_interface_zxdg_toplevel_decoration(void *data,
                                       version)));
     spdlog::debug("{}: {}", interface, zxdg_toplevel_decoration_v1_get_version(
             r->xdg_decoration_manager_.zxdg_toplevel_decoration_v1.value()));
+}
+#endif
+
+#if defined(HAS_WAYLAND_PROTOCOL_XDG_OUTPUT_UNSTABLE_V1)
+void Registrar::handle_interface_xdg_output_unstable_v1(void *data,
+                                                 struct wl_registry *registry,
+                                                 uint32_t name,
+                                                 const char *interface,
+                                                 uint32_t version) {
+    auto r = static_cast<Registrar *>(data);
+    r->zxdg_output_manager_v1_ = static_cast<struct zxdg_output_manager_v1 *>(
+            wl_registry_bind(registry, name, &zxdg_output_manager_v1_interface,
+                             std::min(kXdgOutputManagerMinVersion, version)));
+    spdlog::debug("{}: {}", interface, zxdg_output_manager_v1_get_version(
+            r->zxdg_output_manager_v1_));
 }
 #endif
 

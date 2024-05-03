@@ -34,6 +34,7 @@ static constexpr uint32_t kPresentationTimeMinVersion = UINT32_C(1);
 static constexpr uint32_t kTearingControlManagerMinVersion = UINT32_C(1);
 static constexpr uint32_t kViewporterMinVersion = UINT32_C(1);
 static constexpr uint32_t kFractionalScaleManagerMinVersion = UINT32_C(1);
+static constexpr uint32_t kXdgOutputManagerMinVersion = UINT32_C(1);
 
 /// Logging Constants
 static constexpr int64_t kLogFlushInterval = INT64_C(5);

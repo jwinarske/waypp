@@ -24,6 +24,7 @@
 
 #include <wayland-client.h>
 
+#include "feedback.h"
 #include "window_manager/xdg_window_manager.h"
 #include "egl.h"
 #include "buffer.h"
@@ -31,6 +32,8 @@
 class Buffer;
 
 class Egl;
+
+class FeedbackObserver;
 
 class Output;
 
@@ -40,6 +43,11 @@ class XdgTopLevel;
 
 class Window {
 public:
+
+    enum RuntimeMode {
+        WINDOW_RUNTIME_MODE_FEEDBACK = 0,
+        WINDOW_RUNTIME_MODE_PRESENTATION = 1 << 0,
+    };
 
     enum WindowState {
         WINDOW_STATE_NONE = 0,
@@ -54,12 +62,11 @@ public:
         WINDOW_STATE_RESIZING = 1 << 8,
     };
 
-    Window(WindowManager *wm,
-           const char *name, int buffer_count, uint32_t buffer_format,
-           const std::function<void(void *, const uint32_t)> &draw_frame_callback,
-           int width, int height, bool fullscreen, bool maximized, bool fullscreen_ratio, bool tearing,
-           int buffer_bpp = 0, int swap_interval = 0, const int32_t *context_attribs = nullptr,
-           size_t context_attribs_size = 0, const int32_t *config_attribs = nullptr, size_t config_attribs_size = 0);
+    Window(WindowManager *wm, const char *name, int buffer_count, uint32_t buffer_format,
+           const std::function<void(void *, const uint32_t)> &draw_frame_callback, int width, int height,
+           bool fullscreen, bool maximized, bool fullscreen_ratio, bool tearing, int buffer_bpp = 0,
+           int swap_interval = 0, const int32_t *context_attribs = nullptr, size_t context_attribs_size = 0,
+           const int32_t *config_attribs = nullptr, size_t config_attribs_size = 0);
 
     ~Window();
 
@@ -85,6 +92,8 @@ public:
 
     void set_user_data(void *user_data) { user_data_ = user_data; }
 
+    void set_runtime_mode(RuntimeMode runtime_mode) { runtime_mode_ = runtime_mode; }
+
     void start_frame_callbacks();
 
     void stop_frame_callbacks();
@@ -107,7 +116,7 @@ public:
 
     [[nodiscard]] size_t get_num_buffers() const { return buffers_.size(); }
 
-    [[nodiscard]] const std::vector<std::unique_ptr<Buffer>>& get_buffers() const { return buffers_; }
+    [[nodiscard]] const std::vector<std::unique_ptr<Buffer>> &get_buffers() const { return buffers_; }
 
     Buffer *next_buffer();
 
@@ -127,9 +136,16 @@ private:
 
     WindowManager *wm_;
     const std::map<struct wl_output *, std::unique_ptr<Output>> &outputs_;
-    struct wp_tearing_control_v1 *tearing_control_;
+    struct wp_tearing_control_v1 *tearing_control_{};
     wl_output_transform buffer_transform_;
     struct wl_output *wl_output_{};
+    RuntimeMode runtime_mode_;
+
+    struct {
+        struct wp_presentation *wp_presentation;
+        clockid_t clock_id;
+        std::list<std::unique_ptr<Feedback>> feedback_list;
+    } presentation_{};
 
     std::string name_;
     struct wl_surface *wl_surface_;

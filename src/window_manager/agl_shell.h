@@ -30,14 +30,10 @@ public:
         int height;
     };
 
-    explicit AglShell(const char *title,
-                      const char *app_id,
-                      bool fullscreen,
-                      bool maximized,
-                      unsigned long ext_interface_count = 0,
+    explicit AglShell(bool disable_cursor = false, unsigned long ext_interface_count = 0,
                       const Registrar::RegistrarCallback *ext_interface_data = nullptr,
                       GMainContext *context = nullptr,
-                      const char *name = nullptr);
+                      const char *display_name = nullptr);
 
     ~AglShell();
 
@@ -46,6 +42,15 @@ public:
     void activate_app(const std::string &app_id);
 
     void deactivate_app(const std::string &app_id);
+
+    void set_background(struct wl_surface *wl_surface, struct wl_output *wl_output) const;
+
+    void set_panel(struct wl_surface *wl_surface, struct wl_output *wl_output, enum agl_shell_edge mode) const;
+
+    void set_activate_area(struct wl_output *wl_output, uint32_t x, uint32_t y, uint32_t width,
+                           uint32_t height) const;
+
+    void ready() const;
 
     struct wl_output *find_output_by_name(const std::string &output_name);
 
@@ -58,23 +63,11 @@ public:
 
 private:
     struct agl_shell *agl_shell_;
-    bool wait_for_bound_;
+    volatile bool wait_for_bound_;
     bool bound_ok_;
 
     std::list<std::string> apps_stack_;
     std::list<std::pair<const std::string, const std::string>> pending_app_list_;
-
-    volatile bool wait_for_configure_{};
-
-    struct {
-        int32_t width;
-        int32_t height;
-    } geometry_{};
-
-    struct {
-        int32_t width;
-        int32_t height;
-    } window_size_{};
 
     /**
      * event sent if binding was ok

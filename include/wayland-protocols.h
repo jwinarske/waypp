@@ -79,4 +79,13 @@ struct wp_viewporter;
 struct wp_viewport;
 #endif
 
+#if defined(HAS_WAYLAND_PROTOCOL_XDG_OUTPUT_UNSTABLE_V1)
+
+#include "xdg-output-unstable-v1-client-protocol.h"
+
+#else
+struct zxdg_output_manager_v1;
+struct zxdg_output_v1;
+#endif
+
 #endif //INCLUDE_PROTOCOLS_H_

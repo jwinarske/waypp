@@ -29,7 +29,7 @@ bool Command::Execute(const char *cmd, std::string &result) {
 
     SPDLOG_TRACE("[Command] Execute: {}", cmd);
 
-    auto buf = std::make_unique<char[]>(1024);
+    auto buf = std::make_unique<char[]>(PATH_MAX);
     while (fgets(&buf[0], PATH_MAX, fp) != nullptr) {
         result.append(&buf[0]);
     }

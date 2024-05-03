@@ -24,14 +24,17 @@
 
 #include "window_manager.h"
 
+class AglShell;
+
 class XdgTopLevel;
+
 
 class XdgWindowManager : public WindowManager {
 public:
-    XdgWindowManager(bool disable_cursor = false, unsigned long ext_interface_count = 0,
-                     const Registrar::RegistrarCallback *ext_interface_data = nullptr,
-                     GMainContext *context = nullptr,
-                     const char *display_name = nullptr);
+    explicit XdgWindowManager(bool disable_cursor = false, unsigned long ext_interface_count = 0,
+                              const Registrar::RegistrarCallback *ext_interface_data = nullptr,
+                              GMainContext *context = nullptr,
+                              const char *display_name = nullptr);
 
     ~XdgWindowManager();
 
@@ -51,6 +54,8 @@ public:
     XdgWindowManager &operator=(const XdgWindowManager &) = delete;
 
 private:
+    friend AglShell;
+
     struct xdg_wm_base *xdg_wm_base_;
     std::unique_ptr<XdgTopLevel> xdg_top_level_;
 

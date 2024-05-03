@@ -28,6 +28,7 @@
 
 #include <cxxopts.hpp>
 
+#include "window_manager/agl_shell.h"
 #include "window/xdg_toplevel.h"
 #include "logging.h"
 
@@ -131,27 +132,33 @@ public:
     explicit App(Configuration config) : logging_(std::make_unique<Logging>()),
                                          gen_(rd_()) {
 
-        wm_ = std::make_unique<XdgWindowManager>(config.disable_cursor);
-        auto seat = wm_->get_seat();
+        agl_shell_ = std::make_unique<AglShell>(config.disable_cursor);
+        spdlog::info("AGL Shell Version: {}", agl_shell_->get_version());
+        auto seat = agl_shell_->get_seat();
         if (seat.has_value()) {
             seat.value()->register_observer(this);
         }
 
-        spdlog::info("XDG Window Manager Version: {}", wm_->get_version());
-
-        top_level_ = wm_->create_top_level("simple-shm",
-                                           "org.freedesktop.gitlab.jwinarske.waypp.simple_shm",
-                                           config.width,
-                                           config.height,
-                                           2,
-                                           WL_SHM_FORMAT_XRGB8888,
-                                           config.fullscreen,
-                                           config.maximized,
-                                           config.fullscreen_ratio,
-                                           config.tearing,
-                                           draw_frame
+        top_level_ = agl_shell_->create_top_level("agl-simple-shm",
+                                                  "org.freedesktop.gitlab.jwinarske.waypp.simple_shm",
+                                                  config.width,
+                                                  config.height,
+                                                  2,
+                                                  WL_SHM_FORMAT_XRGB8888,
+                                                  config.fullscreen,
+                                                  config.maximized,
+                                                  config.fullscreen_ratio,
+                                                  config.tearing,
+                                                  draw_frame
         );
         spdlog::info("XDG Window Version: {}", top_level_->get_version());
+
+        surface_ = top_level_->get_surface();
+        output_ = agl_shell_->get_primary_output();
+        agl_shell_->set_background(surface_, output_);
+        agl_shell_->set_activate_area(output_, 0, 0, static_cast<uint32_t>(config.width),
+                                      static_cast<uint32_t>(config.height));
+        agl_shell_->ready();
 
         /// paint padding
         top_level_->set_surface_damage(0, 0, config.width, config.height);
@@ -164,7 +171,7 @@ public:
 
     bool run() {
         /// display_dispatch is blocking
-        return (top_level_->is_valid() && wm_->display_dispatch() != -1);
+        return (top_level_->is_valid() && agl_shell_->display_dispatch() != -1);
     }
 
     void notify_seat_capabilities(Seat *seat, wl_seat * /* seat */, uint32_t /* caps */) override {
@@ -297,8 +304,11 @@ public:
 
 private:
     std::unique_ptr<Logging> logging_;
-    std::unique_ptr<XdgWindowManager> wm_;
+    std::unique_ptr<AglShell> agl_shell_;
+    struct wl_output *output_;
     XdgTopLevel *top_level_;
+    struct wl_surface *surface_;
+
     std::random_device rd_;
     std::mt19937 gen_;
 };

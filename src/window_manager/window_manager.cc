@@ -140,3 +140,24 @@ int WindowManager::poll_events(int /* timeout */) const {
 int WindowManager::display_dispatch() const {
     return wl_display_dispatch(wl_display_);
 }
+
+struct wl_output *WindowManager::get_primary_output() {
+    auto &outputs = get_outputs();
+
+    if (get_xdg_output_manager()) {
+        for (auto &output: outputs) {
+            if (output.second->get_xdg_output()->is_origin()) {
+                spdlog::debug("get_primary_output: (xdg_output) Origin: {}", fmt::ptr(output.first));
+                return output.first;
+            }
+        }
+    } else {
+        for (auto &output: outputs) {
+            spdlog::debug("get_primary_output: (fist) Origin: {}", fmt::ptr(output.first));
+            return output.first;
+        }
+    }
+
+    spdlog::debug("get_primary_output: (nullptr)");
+    return nullptr;
+}

@@ -26,16 +26,16 @@
  *
  * The AglShell class is responsible for managing application windows using the XDG Shell protocol.
  */
-AglShell::AglShell(const char * /* title */, const char * /* app_id */, bool /* fullscreen */, bool /* maximized */,
-                   const unsigned long ext_interface_count,
+AglShell::AglShell(bool disable_cursor, unsigned long ext_interface_count,
                    const Registrar::RegistrarCallback *ext_interface_data,
-                   GMainContext *context, const char *name) : XdgWindowManager(
-        ext_interface_count,
+                   GMainContext *context,
+                   const char *display_name) : XdgWindowManager(
+        disable_cursor, ext_interface_count,
         ext_interface_data,
         context,
-        name),
-                                                                                  wait_for_bound_(true),
-                                                                                  bound_ok_(false) {
+        display_name),
+                                               wait_for_bound_(true),
+                                               bound_ok_(false) {
     auto agl_shell = get_agl_shell();
     if (!agl_shell.has_value()) {
         spdlog::critical("{} is required.", agl_shell_interface.name);
@@ -43,8 +43,19 @@ AglShell::AglShell(const char * /* title */, const char * /* app_id */, bool /* 
     }
     agl_shell_ = agl_shell.value();
 
-    agl_shell_add_listener(agl_shell_, &agl_shell_listener_,
-                           this);
+    agl_shell_add_listener(agl_shell_, &agl_shell_listener_, this);
+
+    int ret = 0;
+    while (ret != -1 && wait_for_bound_) {
+        ret = wl_display_dispatch(get_display());
+        if (wait_for_bound_)
+            continue;
+    }
+    if (!bound_ok_) {
+        spdlog::critical(
+                "agl_shell extension already in use by other shell client.");
+        exit(EXIT_FAILURE);
+    }
 }
 
 AglShell::~AglShell() = default;
@@ -55,6 +66,9 @@ void AglShell::handle_bound_ok(void *data,
     if (obj->agl_shell_ != agl_shell) {
         return;
     }
+
+    SPDLOG_DEBUG("AglShell::handle_bound_ok");
+
     obj->wait_for_bound_ = false;
     obj->bound_ok_ = true;
 }
@@ -155,6 +169,9 @@ void AglShell::handle_bound_fail(void *data,
     if (obj->agl_shell_ != agl_shell) {
         return;
     }
+
+    SPDLOG_DEBUG("AglShell::handle_bound_fail");
+
     obj->wait_for_bound_ = false;
     obj->bound_ok_ = false;
 }
@@ -167,6 +184,9 @@ void AglShell::handle_app_state(void *data,
     if (obj->agl_shell_ != agl_shell) {
         return;
     }
+
+    SPDLOG_DEBUG("AglShell::handle_app_state");
+
     switch (state) {
         case AGL_SHELL_APP_STATE_STARTED:
             SPDLOG_DEBUG("[AGL] AGL_SHELL_APP_STATE_STARTED for app_id {}", app_id);
@@ -224,4 +244,31 @@ void AglShell::handle_app_on_output(void *data,
         }
         iter++;
     }
+}
+
+void AglShell::set_background(struct wl_surface *wl_surface, struct wl_output *wl_output) const {
+    agl_shell_set_background(agl_shell_, wl_surface, wl_output);
+}
+
+void
+AglShell::set_panel(struct wl_surface *wl_surface, struct wl_output *wl_output, const enum agl_shell_edge mode) const {
+    agl_shell_set_panel(agl_shell_, wl_surface, wl_output, mode);
+}
+
+void AglShell::set_activate_area(struct wl_output *wl_output,
+                                 uint32_t x,
+                                 uint32_t y,
+                                 uint32_t width,
+                                 uint32_t height) const {
+    SPDLOG_DEBUG("Using custom rectangle [{}x{}+{}x{}] for activation", width,
+                 height, x, y);
+
+    agl_shell_set_activate_region(
+            agl_shell_, wl_output, static_cast<int32_t>(x),
+            static_cast<int32_t>(y), static_cast<int32_t>(width),
+            static_cast<int32_t>(height));
+}
+
+void AglShell::ready() const {
+    agl_shell_ready(agl_shell_);
 }

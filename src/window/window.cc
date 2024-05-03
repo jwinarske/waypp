@@ -20,16 +20,16 @@
 
 #include "logging.h"
 
-Window::Window(WindowManager *wm,
-               const char *name, int buffer_count, uint32_t buffer_format,
-               const std::function<void(void *, const uint32_t)> &frame_callback, int width,
-               int height, bool fullscreen, bool maximized, bool fullscreen_ratio, bool tearing, int buffer_bpp,
-               int swap_interval, const int32_t *context_attribs, size_t context_attribs_size,
+Window::Window(WindowManager *wm, const char *name, int buffer_count, uint32_t buffer_format,
+               const std::function<void(void *, const uint32_t)> &frame_callback, int width, int height,
+               bool fullscreen, bool maximized, bool fullscreen_ratio, bool tearing,
+               int buffer_bpp, int swap_interval, const int32_t *context_attribs, size_t context_attribs_size,
                const int32_t *config_attribs, size_t config_attribs_size) :
-        wm_(wm), buffer_transform_(WL_OUTPUT_TRANSFORM_NORMAL), frame_callback_(frame_callback),
-        name_(name), fullscreen_(fullscreen), maximized_(maximized), fullscreen_ratio_(fullscreen_ratio),
-        outputs_(wm->get_outputs()), valid_(true), logical_size_{.width=width, .height=height},
-        buffer_bpp_(buffer_bpp), swap_interval_(swap_interval), buffer_size_{.width=width, .height=height},
+        wm_(wm), buffer_transform_(WL_OUTPUT_TRANSFORM_NORMAL), frame_callback_(frame_callback), name_(name),
+        fullscreen_(fullscreen), maximized_(maximized), fullscreen_ratio_(fullscreen_ratio),
+        runtime_mode_(WINDOW_RUNTIME_MODE_FEEDBACK), outputs_(wm->get_outputs()), valid_(true),
+        logical_size_{.width=width, .height=height}, buffer_bpp_(buffer_bpp), swap_interval_(swap_interval),
+        buffer_size_{.width=width, .height=height},
         window_size_{.width=buffer_size_.width, .height=buffer_size_.height}, needs_buffer_geometry_update_(false),
         buffer_count_(buffer_count), buffer_format_(buffer_format) {
 
@@ -48,6 +48,11 @@ Window::Window(WindowManager *wm,
             buffer->create_shm_buffer(width, height, buffer_format_);
             buffers_.push_back(std::move(buffer));
         }
+    }
+
+    if (runtime_mode_ == WINDOW_RUNTIME_MODE_PRESENTATION) {
+        presentation_.wp_presentation = wm_->get_presentation_time_wp_presentation();
+        presentation_.clock_id = wm_->get_presentation_time_clk_id();
     }
 
     if (context_attribs_size && config_attribs_size) {
@@ -306,6 +311,18 @@ void Window::handle_frame_callback(void *data,
         obj->wl_callback_ = wl_surface_frame(obj->wl_surface_);
         wl_callback_add_listener(obj->wl_callback_, &Window::frame_callback_listener_, data);
 
+        if (obj->runtime_mode_ == WINDOW_RUNTIME_MODE_PRESENTATION) {
+// struct wp_presentation *wp_presentation, clockid_t clock_id, struct wl_surface *wl_surface, uint32_t time, FeedbackObserver *observer = nullptr
+            auto feedback = std::make_unique<Feedback>(
+                    obj->presentation_.wp_presentation,
+                    obj->presentation_.clock_id,
+                    obj->wl_surface_,
+                    time
+            );
+            obj->presentation_.feedback_list.push_back(std::move(feedback));
+//            window_create_feedback(window, time);
+//            window_commit_next(window);
+        }
         wl_surface_commit(obj->wl_surface_);
     }
     SPDLOG_TRACE("--Window::handle_frame_callback()");

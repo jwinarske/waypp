@@ -21,6 +21,8 @@
 #include "registrar.h"
 #include "window_manager_observer.h"
 
+class AglShell;
+
 class Registrar;
 
 class XdgWindowManager;
@@ -54,6 +56,8 @@ public:
     void unregister_task_observer(WindowManagerObserver *observer) {
         observers_.remove(observer);
     }
+
+    struct wl_output *get_primary_output();
 
     // Disallow copy and assign.
     WindowManager(const WindowManager &) = delete;

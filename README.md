@@ -9,7 +9,7 @@ for developers to build Wayland-based applications using C++.
 
 ## Tested Compositors
 
-* AGL (Coming)
+* Automotive Grade Linux (AGL)
 * Mutter
 * Weston
 * WLRoots
