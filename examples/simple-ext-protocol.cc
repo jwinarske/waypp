@@ -113,7 +113,7 @@ void draw_frame(void *data, const uint32_t time) {
     auto buffer = window->next_buffer();
     if (!buffer) {
         spdlog::error("Failed to acquire a buffer");
-        abort();
+        exit(EXIT_FAILURE);
     }
 
     paint_pixels(buffer->get_shm_data(), 20, window->get_width(), window->get_height(), time);
@@ -141,7 +141,7 @@ static void handle_interface1_remove(Registrar * /* data */,
 static constexpr
 std::array<Registrar::RegistrarCallback, 1> ext_interfaces{{
                                                                    {
-                                                                           "wl_drm",
+                                                                           "weston_capture_v1",
                                                                            handle_interface1_add,
                                                                            handle_interface1_remove,
                                                                    }

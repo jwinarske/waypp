@@ -95,15 +95,17 @@ endif ()
 #
 # Toolchain IPO/LTO support
 #
-cmake_policy(SET CMP0069 NEW)
-include(CheckIPOSupported)
-check_ipo_supported(
-        RESULT IPO_SUPPORT_RESULT
-        OUTPUT IPO_SUPPORT_OUTPUT
-        LANGUAGES C CXX
-)
-if (IPO_SUPPORT_RESULT)
-    message(STATUS "IPO .................... supported")
-else ()
-    message(STATUS "IPO .................... not supported: ${IPO_SUPPORT_OUTPUT}")
+if (ENABLE_LTO)
+    cmake_policy(SET CMP0069 NEW)
+    include(CheckIPOSupported)
+    check_ipo_supported(
+            RESULT IPO_SUPPORT_RESULT
+            OUTPUT IPO_SUPPORT_OUTPUT
+            LANGUAGES C CXX
+    )
+    if (IPO_SUPPORT_RESULT)
+        message(STATUS "IPO .................... supported")
+    else ()
+        message(STATUS "IPO .................... not supported: ${IPO_SUPPORT_OUTPUT}")
+    endif ()
 endif ()

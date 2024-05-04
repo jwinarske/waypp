@@ -84,7 +84,7 @@ void XdgOutput::handle_description(void *data, struct zxdg_output_v1 *zxdg_outpu
     obj->output_.description = description;
 }
 
-void XdgOutput::print() {
+void XdgOutput::print() const {
     spdlog::info("XDG Output");
     spdlog::info("\tDone: {}", output_.done);
     spdlog::info("\tName: {}", output_.name);

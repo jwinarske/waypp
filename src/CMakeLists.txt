@@ -19,15 +19,13 @@ pkg_check_modules(GLIB REQUIRED IMPORTED_TARGET glib-2.0)
 find_package(OpenGL REQUIRED COMPONENTS EGL)
 
 set(WINDOW_MANAGER_SRC
+        window_manager/agl_shell.cc
         window_manager/output.cc
         window_manager/registrar.cc
+        window_manager/weston-capture.cc
         window_manager/window_manager.cc
         window_manager/xdg_output.cc
 )
-
-if (ENABLE_AGL_SHELL_CLIENT)
-    list(APPEND WINDOW_MANAGER_SRC window_manager/agl_shell.cc)
-endif ()
 
 set(SEAT_SRC
         seat/seat.cc

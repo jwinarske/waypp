@@ -18,23 +18,24 @@
 #define INCLUDE_CONFIG_H_
 
 /// Wayland interface version selection
-static constexpr uint32_t kWlOutputMinVersion = UINT32_C(4);
-static constexpr uint32_t kWlSeatMinVersion = UINT32_C(8);
-static constexpr uint32_t kWlShmMinVersion = UINT32_C(1);
 static constexpr uint32_t kWlCompositorMinVersion = UINT32_C(5);
 static constexpr uint32_t kWlSubcompositorMinVersion = UINT32_C(1);
+static constexpr uint32_t kWlShmMinVersion = UINT32_C(1);
+static constexpr uint32_t kWlSeatMinVersion = UINT32_C(8);
+static constexpr uint32_t kWlOutputMinVersion = UINT32_C(4);
+static constexpr uint32_t kPresentationTimeMinVersion = UINT32_C(1);
 
+static constexpr uint32_t kAglShellMinVersion = UINT32_C(11);
 static constexpr uint32_t kXdgWmBaseMinVersion = UINT32_C(6);
 static constexpr uint32_t kIviWmMinVersion = UINT32_C(1);
-static constexpr uint32_t kAglShellMinVersion = UINT32_C(10);
 static constexpr uint32_t kDrmLeaseDeviceV1MinVersion = UINT32_C(1);
 
-static constexpr uint32_t kXdgDecorationManagerMinVersion = UINT32_C(1);
-static constexpr uint32_t kPresentationTimeMinVersion = UINT32_C(1);
-static constexpr uint32_t kTearingControlManagerMinVersion = UINT32_C(1);
-static constexpr uint32_t kViewporterMinVersion = UINT32_C(1);
-static constexpr uint32_t kFractionalScaleManagerMinVersion = UINT32_C(1);
 static constexpr uint32_t kXdgOutputManagerMinVersion = UINT32_C(1);
+static constexpr uint32_t kViewporterMinVersion = UINT32_C(1);
+static constexpr uint32_t kTearingControlManagerMinVersion = UINT32_C(1);
+static constexpr uint32_t kFractionalScaleManagerMinVersion = UINT32_C(1);
+static constexpr uint32_t kXdgDecorationManagerMinVersion = UINT32_C(1);
+static constexpr uint32_t kWestonCaptureV1MinVersion = UINT32_C(1);
 
 /// Logging Constants
 static constexpr int64_t kLogFlushInterval = INT64_C(5);

@@ -112,6 +112,8 @@ public:
 
     [[nodiscard]] struct zxdg_output_manager_v1 *get_xdg_output_manager() const { return zxdg_output_manager_v1_; }
 
+    [[nodiscard]] struct weston_capture_v1 *get_weston_capture_v1() const { return weston_capture_v1_; }
+
     [[nodiscard]] const std::map<struct wl_output *, std::unique_ptr<Output>> &get_outputs() const { return outputs_; }
 
     enum wl_output_transform get_output_buffer_transform(struct wl_output *wl_output);
@@ -161,12 +163,10 @@ private:
     } presentation_time_;
 
     struct wp_tearing_control_manager_v1 *wp_tearing_control_manager_{};
-
     struct wp_viewporter *wp_viewporter_{};
-
     struct wp_fractional_scale_manager_v1 *fractional_scale_manager_{};
-
     struct zxdg_output_manager_v1 *zxdg_output_manager_v1_{};
+    struct weston_capture_v1 *weston_capture_v1_{};
 
     std::mutex registrar_global_mutex_;
     std::mutex registrar_global_remove_mutex_;
@@ -332,6 +332,12 @@ private:
                                                         uint32_t version);
 
 #endif
+
+    static void handle_interface_weston_capture_v1(Registrar *r,
+                                                   struct wl_registry *registry,
+                                                   uint32_t name,
+                                                   const char *interface,
+                                                   uint32_t version);
 
 protected:
     std::map<struct wl_output *, std::unique_ptr<Output>> outputs_;

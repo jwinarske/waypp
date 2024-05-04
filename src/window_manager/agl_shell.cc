@@ -16,6 +16,9 @@
 
 #include "agl_shell.h"
 
+#include <algorithm>
+#include <list>
+
 #include "logging.h"
 
 
@@ -72,93 +75,53 @@ void AglShell::handle_bound_ok(void *data,
     obj->bound_ok_ = true;
 }
 
-struct wl_output *AglShell::find_output_by_name(const std::string &output_name) {
-    for (auto &it: get_outputs()) {
-        if (it.second->get_name() == output_name) {
-            return it.first;
-        }
-    }
-    return nullptr;
-}
-
 void AglShell::activate_app(const std::string &app_id) {
 
-    SPDLOG_DEBUG("got app_id {}", app_id);
+    SPDLOG_DEBUG("[AGL] activate_app: {}", app_id);
 
-    // search for a pending application which might have a different output
-    auto iter = pending_app_list_.begin();
-    bool found_pending_app = false;
-    while (iter != pending_app_list_.end()) {
-        auto app_to_search = iter->first;
-        SPDLOG_DEBUG("searching for {}", app_to_search);
-
-        if (app_to_search == app_id) {
-            found_pending_app = true;
-            break;
-        }
-
-        iter++;
-    }
-
-    std::string output_name;
     struct wl_output *wl_output{};
-    if (found_pending_app) {
-        output_name = iter->second;
-        wl_output = find_output_by_name(output_name);
 
-        SPDLOG_DEBUG("Found app_id {} at all", app_id);
+    auto it = std::find_if(std::begin(pending_app_list_),
+                           std::end(pending_app_list_),
+                           [&](const std::pair<std::string, std::string> &p) { return p.first == app_id; });
 
+    if (it != pending_app_list_.end()) {
+        SPDLOG_DEBUG("[AGL] pending: {}", app_id);
+
+        wl_output = find_output_by_name(it->second);
         if (!wl_output) {
             // try with remoting-remote-X which is the streaming
-            wl_output = find_output_by_name("remoting-" + output_name);
+            wl_output = find_output_by_name("remoting-" + it->second);
             if (!wl_output) {
-                SPDLOG_DEBUG("Not activating app_id {} at all", app_id);
+                SPDLOG_DEBUG("[AGL] Not activating app_id {} at all", app_id);
                 return;
             }
         }
-
-        pending_app_list_.erase(iter);
+        pending_app_list_.erase(it);
     }
 
-    SPDLOG_DEBUG("Activating app_id {} on output {}", app_id, output_name);
+    SPDLOG_DEBUG("[AGL] Activating app_id {} on output {}", app_id, it->second);
     agl_shell_activate_app(agl_shell_, app_id.c_str(), wl_output);
     wl_display_flush(get_display());
 }
 
 void AglShell::deactivate_app(const std::string &app_id) {
-    for (auto &i: apps_stack_) {
-        if (i == app_id) {
-            // remove it from apps_stack
-            apps_stack_.remove(i);
-            if (!apps_stack_.empty())
-                activate_app(apps_stack_.back());
-            break;
-        }
+    auto it = std::find_if(std::begin(apps_stack_),
+                           std::end(apps_stack_),
+                           [&](const std::string &app) { return app == app_id; });
+
+    if (it != apps_stack_.end()) {
+        apps_stack_.remove(*it);
+    } else {
+        activate_app(apps_stack_.back());
     }
 }
 
 void AglShell::add_app_to_stack(const std::string &app_id) {
-    bool found_app = false;
-    for (auto &i: apps_stack_) {
-        if (i == app_id) {
-            found_app = true;
-            break;
-        }
-    }
-
-    if (!found_app) {
+    auto it = std::find(apps_stack_.begin(), apps_stack_.end(), app_id);
+    if (it == apps_stack_.end()) {
+        SPDLOG_DEBUG("[AGL] adding {} to apps_stack_", app_id);
         apps_stack_.push_back(app_id);
-    }
-}
-
-void AglShell::process_app_status_event(const char *app_id, const std::string &event_type) {
-
-    if (event_type == "started") {
-        activate_app(std::string(app_id));
-    } else if (event_type == "terminated") {
-        deactivate_app(std::string(app_id));
-    } else if (event_type == "deactivated") {
-        // not handled
     }
 }
 
@@ -184,22 +147,21 @@ void AglShell::handle_app_state(void *data,
         return;
     }
 
-    SPDLOG_DEBUG("AglShell::handle_app_state");
-
     switch (state) {
         case AGL_SHELL_APP_STATE_STARTED:
-            SPDLOG_DEBUG("[AGL] AGL_SHELL_APP_STATE_STARTED for app_id {}", app_id);
-            obj->process_app_status_event(app_id, std::string("started"));
+            SPDLOG_DEBUG("[AGL] app_id: {}, AGL_SHELL_APP_STATE_STARTED", app_id);
+            obj->activate_app(app_id);
             break;
         case AGL_SHELL_APP_STATE_TERMINATED:
-            SPDLOG_DEBUG("[AGL] AGL_SHELL_APP_STATE_TERMINATED for app_id {}", app_id);
+            SPDLOG_DEBUG("[AGL] app_id: {}, AGL_SHELL_APP_STATE_TERMINATED", app_id);
+            obj->deactivate_app(app_id);
             break;
         case AGL_SHELL_APP_STATE_ACTIVATED:
-            SPDLOG_DEBUG("[AGL] AGL_SHELL_APP_STATE_ACTIVATED for app_id {}", app_id);
-            obj->add_app_to_stack(std::string(app_id));
+            SPDLOG_DEBUG("[AGL] app_id: {}, AGL_SHELL_APP_STATE_ACTIVATED", app_id);
+            obj->add_app_to_stack(app_id);
             break;
         case AGL_SHELL_APP_STATE_DEACTIVATED:
-            obj->process_app_status_event(app_id, std::string("deactivated"));
+            SPDLOG_DEBUG("[AGL] app_id: {}, AGL_SHELL_APP_STATE_DEACTIVATED", app_id);
             break;
         default:
             break;
@@ -215,7 +177,7 @@ void AglShell::handle_app_on_output(void *data,
         return;
     }
 
-    SPDLOG_DEBUG("[AGL] app_on_out app_id {} output name {}", app_id, output_name);
+    SPDLOG_DEBUG("[AGL] app_on_output: app_id: {}, output name: {}", app_id, output_name);
 
     // a couple of use-cases, if there is no app_id in the app_list then it
     // means this is a request to map the application, from the start to a
@@ -225,20 +187,18 @@ void AglShell::handle_app_on_output(void *data,
     // if there's an app_id then it means we might have gotten an event to
     // move the application to another output; so we'd need to process it
     // by explicitly calling processAppStatusEvent() which would ultimately
-    // activate the application on other output. We'd have to pick-up the
+    // activate the application on other output. We'd have to pick up the
     // last activated surface and activate the default output.
     //
-    // finally if the outputs are identical probably that's an user-error -
+    // finally if the outputs are identical probably that's a user-error -
     // but the compositor won't activate it again, so we don't handle that.
-    std::pair new_pending_app =
-            std::pair(std::string(app_id), std::string(output_name));
-    obj->pending_app_list_.emplace_back(new_pending_app);
+    obj->pending_app_list_.emplace_back(std::move(std::pair(app_id, output_name)));
 
     auto iter = obj->apps_stack_.begin();
     while (iter != obj->apps_stack_.end()) {
         if (*iter == std::string(app_id)) {
             SPDLOG_DEBUG("[AGL] move {} to another output {}", app_id, output_name);
-            obj->process_app_status_event(app_id, std::string("started"));
+            obj->activate_app(app_id);
             break;
         }
         iter++;
@@ -246,22 +206,37 @@ void AglShell::handle_app_on_output(void *data,
 }
 
 void AglShell::set_background(struct wl_surface *wl_surface, struct wl_output *wl_output) const {
+    SPDLOG_DEBUG("[AGL] Set Background: surface: {}, output: {}", fmt::ptr(wl_surface), fmt::ptr(wl_output));
     agl_shell_set_background(agl_shell_, wl_surface, wl_output);
+}
+
+std::string AglShell::edge_to_string(const enum agl_shell_edge mode) {
+    switch (mode) {
+        case AGL_SHELL_EDGE_TOP:
+            return "AGL_SHELL_EDGE_TOP";
+        case AGL_SHELL_EDGE_BOTTOM:
+            return "AGL_SHELL_EDGE_BOTTOM";
+        case AGL_SHELL_EDGE_LEFT:
+            return "AGL_SHELL_EDGE_LEFT";
+        case AGL_SHELL_EDGE_RIGHT:
+            return "AGL_SHELL_EDGE_RIGHT";
+    }
 }
 
 void
 AglShell::set_panel(struct wl_surface *wl_surface, struct wl_output *wl_output, const enum agl_shell_edge mode) const {
+    SPDLOG_DEBUG("[AGL] Set Panel: surface: {}, output: {}, mode: {}", fmt::ptr(wl_surface), fmt::ptr(wl_output),
+                 edge_to_string(mode).c_str());
     agl_shell_set_panel(agl_shell_, wl_surface, wl_output, mode);
 }
 
-void AglShell::set_activate_area(struct wl_output *wl_output,
-                                 uint32_t x,
-                                 uint32_t y,
-                                 uint32_t width,
-                                 uint32_t height) const {
-    SPDLOG_DEBUG("Using custom rectangle [{}x{}+{}x{}] for activation", width,
-                 height, x, y);
-
+void AglShell::set_activate_region(struct wl_output *wl_output,
+                                   uint32_t x,
+                                   uint32_t y,
+                                   uint32_t width,
+                                   uint32_t height) const {
+    SPDLOG_DEBUG("[AGL] Set Activate Region: output: {}, x: {}, y: {}, width: {}, height: {}", fmt::ptr(wl_output),
+                 x, y, width, height);
     agl_shell_set_activate_region(
             agl_shell_, wl_output, static_cast<int32_t>(x),
             static_cast<int32_t>(y), static_cast<int32_t>(width),
@@ -269,5 +244,6 @@ void AglShell::set_activate_area(struct wl_output *wl_output,
 }
 
 void AglShell::ready() const {
+    SPDLOG_DEBUG("[AGL] Ready");
     agl_shell_ready(agl_shell_);
 }

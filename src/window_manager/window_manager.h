@@ -59,6 +59,8 @@ public:
 
     struct wl_output *get_primary_output();
 
+    struct wl_output *find_output_by_name(const std::string &output_name);
+
     // Disallow copy and assign.
     WindowManager(const WindowManager &) = delete;
 

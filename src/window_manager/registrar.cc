@@ -38,7 +38,8 @@ Registrar::Registrar(struct wl_display *wl_display,
             {wl_subcompositor_interface.name, handle_interface_subcompositor},
             {wl_shm_interface.name, handle_interface_shm},
             {wl_seat_interface.name, handle_interface_seat},
-            {wl_output_interface.name, handle_interface_output}
+            {wl_output_interface.name, handle_interface_output},
+            {weston_capture_v1_interface.name, handle_interface_weston_capture_v1}
 #if ENABLE_XDG_CLIENT
             ,
             {xdg_wm_base_interface.name, handle_interface_xdg_wm_base}
@@ -489,8 +490,10 @@ void Registrar::handle_interface_seat(Registrar *r,
     auto wl_seat = static_cast<struct wl_seat *>(
             wl_registry_bind(registry, name, &wl_seat_interface,
                              std::min(kWlSeatMinVersion, version)));
-    r->seats_[wl_seat] = std::make_unique<Seat>(wl_seat, r->get_shm(), r->get_compositor(), r->disable_cursor_);
-    spdlog::debug("{}: {}", interface, wl_seat_get_version(wl_seat));
+    if (!r->seats_.count(wl_seat)) {
+        r->seats_[wl_seat] = std::make_unique<Seat>(wl_seat, r->get_shm(), r->get_compositor(), r->disable_cursor_);
+        spdlog::debug("{}: {}", interface, wl_seat_get_version(wl_seat));
+    }
 }
 
 void Registrar::handle_interface_output(Registrar *r,
@@ -501,8 +504,10 @@ void Registrar::handle_interface_output(Registrar *r,
     auto wl_output = static_cast<struct wl_output *>(
             wl_registry_bind(registry, name, &wl_output_interface,
                              std::min(kWlOutputMinVersion, version)));
-    r->outputs_[wl_output] = std::make_unique<Output>(wl_output, r->zxdg_output_manager_v1_);
-    spdlog::debug("{}: {}", interface, wl_output_get_version(wl_output));
+    if (!r->outputs_.count(wl_output)) {
+        r->outputs_[wl_output] = std::make_unique<Output>(wl_output, r->zxdg_output_manager_v1_);
+        spdlog::debug("{}: {}", interface, wl_output_get_version(wl_output));
+    }
 }
 
 #if ENABLE_XDG_CLIENT
@@ -591,6 +596,18 @@ void Registrar::handle_interface_xdg_output_unstable_v1(Registrar *r,
 }
 
 #endif
+
+void Registrar::handle_interface_weston_capture_v1(Registrar *r,
+                                                   struct wl_registry *registry,
+                                                   uint32_t name,
+                                                   const char *interface,
+                                                   uint32_t version) {
+    r->weston_capture_v1_ = static_cast<struct weston_capture_v1 *>(
+            wl_registry_bind(registry, name, &weston_capture_v1_interface,
+                             std::min(kWestonCaptureV1MinVersion, version)));
+    spdlog::debug("{}: {}", interface, weston_capture_v1_get_version(r->weston_capture_v1_));
+}
+
 
 void Registrar::handle_presentation_clock_id(void *data,
                                              struct wp_presentation *wp_presentation,

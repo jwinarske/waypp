@@ -44,7 +44,7 @@ public:
         return (output_.logical_position.x == 0 && output_.logical_position.y == 0);
     }
 
-    void print();
+    void print() const;
 
     // Disallow copy and assign.
     XdgOutput(const XdgOutput &) = delete;

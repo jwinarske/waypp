@@ -113,7 +113,7 @@ void draw_frame(void *data, const uint32_t time) {
     auto buffer = window->next_buffer();
     if (!buffer) {
         spdlog::error("Failed to acquire a buffer");
-        abort();
+        exit(EXIT_FAILURE);
     }
 
     paint_pixels(buffer->get_shm_data(), 20, window->get_width(), window->get_height(), time);
@@ -126,7 +126,7 @@ void draw_frame(void *data, const uint32_t time) {
 
 class App : public PointerObserver, public KeyboardObserver, public SeatObserver {
 public:
-    explicit App(Configuration config) : logging_(std::make_unique<Logging>()),
+    explicit App(const Configuration& config) : logging_(std::make_unique<Logging>()),
                                          gen_(rd_()) {
 
         wm_ = std::make_unique<XdgWindowManager>(config.disable_cursor);

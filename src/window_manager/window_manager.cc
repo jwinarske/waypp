@@ -161,3 +161,22 @@ struct wl_output *WindowManager::get_primary_output() {
     spdlog::debug("get_primary_output: (nullptr)");
     return nullptr;
 }
+
+struct wl_output *WindowManager::find_output_by_name(const std::string &output_name) {
+    auto &outputs = get_outputs();
+
+    if (get_xdg_output_manager()) {
+        for (auto &output: outputs) {
+            if (output.second->get_name() == output_name) {
+                spdlog::debug("find_output_by_name: (xdg_output): {}", output_name);
+                return output.first;
+            }
+        }
+    } else {
+        for (auto &output: outputs) {
+            spdlog::debug("find_output_by_name: (fist): {}", output_name);
+            return output.first;
+        }
+    }
+    return nullptr;
+}

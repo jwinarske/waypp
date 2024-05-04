@@ -16,6 +16,12 @@
 
 
 #
+# Link Time Optimization
+#
+option(ENABLE_LTO "Link Time Optimization" ON)
+MESSAGE(STATUS "Link Time Optimizaiton.. ${ENABLE_LTO}")
+
+#
 # Examples
 #
 option(BUILD_EXAMPLES "Build Examples" ON)

@@ -69,7 +69,7 @@ void Output::handle_geometry(void *data,
             .model = model,
             .transform = static_cast<enum wl_output_transform>(transform),
     };
-    if (obj->zxdg_output_manager_v1_) {
+    if (obj->zxdg_output_manager_v1_ && !obj->xdg_output_) {
         obj->xdg_output_ = std::make_unique<XdgOutput>(obj->zxdg_output_manager_v1_, obj->wl_output_);
     }
     SPDLOG_TRACE("--Output::handle_geometry()");

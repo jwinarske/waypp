@@ -114,7 +114,7 @@ void draw_frame(void *data, const uint32_t time) {
     auto buffer = window->next_buffer();
     if (!buffer) {
         spdlog::error("Failed to acquire a buffer");
-        abort();
+        exit(EXIT_FAILURE);
     }
 
     paint_pixels(buffer->get_shm_data(), 20, window->get_width(), window->get_height(), time);
@@ -127,8 +127,8 @@ void draw_frame(void *data, const uint32_t time) {
 
 class App : public PointerObserver, public KeyboardObserver, public SeatObserver {
 public:
-    explicit App(Configuration config) : logging_(std::make_unique<Logging>()),
-                                         gen_(rd_()) {
+    explicit App(const Configuration &config) : logging_(std::make_unique<Logging>()),
+                                                gen_(rd_()) {
 
         agl_shell_ = std::make_unique<AglShell>(config.disable_cursor);
         spdlog::info("AGL Shell Version: {}", agl_shell_->get_version());
@@ -154,8 +154,8 @@ public:
         surface_ = top_level_->get_surface();
         output_ = agl_shell_->get_primary_output();
         agl_shell_->set_background(surface_, output_);
-        agl_shell_->set_activate_area(output_, 0, 0, static_cast<uint32_t>(config.width),
-                                      static_cast<uint32_t>(config.height));
+        agl_shell_->set_activate_region(output_, 0, 0, static_cast<uint32_t>(config.width),
+                                        static_cast<uint32_t>(config.height));
         agl_shell_->ready();
 
         /// paint padding

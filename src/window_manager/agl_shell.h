@@ -18,18 +18,15 @@
 
 #include <list>
 
+#include "agl-shell-client-protocol.h"
 #include "registrar.h"
 #include "xdg_window_manager.h"
+
 
 class XdgWindowManager;
 
 class AglShell : public XdgWindowManager {
 public:
-    struct Geometry {
-        int width;
-        int height;
-    };
-
     explicit AglShell(bool disable_cursor = false, unsigned long ext_interface_count = 0,
                       const Registrar::RegistrarCallback *ext_interface_data = nullptr,
                       GMainContext *context = nullptr,
@@ -47,14 +44,14 @@ public:
 
     void set_panel(struct wl_surface *wl_surface, struct wl_output *wl_output, enum agl_shell_edge mode) const;
 
-    void set_activate_area(struct wl_output *wl_output, uint32_t x, uint32_t y, uint32_t width,
-                           uint32_t height) const;
+    void set_activate_region(struct wl_output *wl_output, uint32_t x, uint32_t y, uint32_t width,
+                             uint32_t height) const;
 
     void ready() const;
 
-    struct wl_output *find_output_by_name(const std::string &output_name);
-
     void process_app_status_event(const char *app_id, const std::string &event_type);
+
+    static std::string edge_to_string(const enum agl_shell_edge mode);
 
     // Disallow copy and assign.
     AglShell(const AglShell &) = delete;
@@ -67,7 +64,7 @@ private:
     bool bound_ok_;
 
     std::list<std::string> apps_stack_;
-    std::list<std::pair<const std::string, const std::string>> pending_app_list_;
+    std::list<std::pair<std::string, std::string>> pending_app_list_;
 
     /**
      * event sent if binding was ok
