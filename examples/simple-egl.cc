@@ -96,23 +96,26 @@ void handle_signal(int signal) {
 }
 
 GLuint load_shader(const GLchar *shaderSrc, const GLenum type) {
-    // Create the shader object
+
     const GLuint shader = glCreateShader(type);
     if (shader == 0)
         return 0;
+
     glShaderSource(shader, 1, &shaderSrc, nullptr);
     glCompileShader(shader);
+
     GLint compiled;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
     if (!compiled) {
-        GLint infoLen = 0;
-        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLen);
-        if (infoLen > 1) {
-            auto *infoLog = static_cast<GLchar *>(
-                    malloc(sizeof(char) * static_cast<unsigned long>(infoLen)));
-            glGetShaderInfoLog(shader, infoLen, nullptr, infoLog);
-            spdlog::error("Error compiling shader:\n{}", infoLog);
-            free(infoLog);
+        GLint len = 0;
+        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len);
+        if (len > 1) {
+            auto buf = std::make_unique<char[]>(static_cast<size_t>(len));
+            glGetShaderInfoLog(shader, len, nullptr, buf.get());
+            std::string res{buf.get(), static_cast<size_t>(len)};
+            buf.reset();
+            spdlog::error("[gl shader] {}", res.c_str());
+            exit(EXIT_FAILURE);
         }
         glDeleteShader(shader);
         return 0;
@@ -149,16 +152,15 @@ void initialize_scene(Window *window) {
     glAttachShader(program, vert);
     glLinkProgram(program);
 
-    GLint status;
-    glGetProgramiv(program, GL_LINK_STATUS, &status);
-    if (!status) {
-        GLsizei len;
-        auto buf = std::make_unique<char[]>(1024);
-        glGetProgramInfoLog(program, 1024, &len, buf.get());
+    GLint len = 0;
+    glGetProgramiv(program, GL_INFO_LOG_LENGTH, &len);
+    if (len > 1) {
+        auto buf = std::make_unique<char[]>(static_cast<size_t>(len));
+        glGetProgramInfoLog(program, len, nullptr, buf.get());
         std::string res{buf.get(), static_cast<size_t>(len)};
         buf.reset();
-        spdlog::error("Error: linking:\n{}", res.c_str());
-        exit(1);
+        spdlog::error("[gl] linking {}", res.c_str());
+        exit(EXIT_FAILURE);
     }
 
     glUseProgram(program);
@@ -522,6 +524,7 @@ int main(int argc, char **argv) {
                                          draw_frame,
                                          kEglContextAttribs.data(), kEglContextAttribs.size(),
                                          kEglConfigAttribs.data(), kEglConfigAttribs.size(),
+                                         Egl::OPENGL_ES_API,
                                          config.buffer_bpp, config.interval);
 
     top_level->start_frame_callbacks();

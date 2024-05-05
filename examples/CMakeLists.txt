@@ -14,14 +14,14 @@
 # limitations under the License.
 #
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(GLESv2 IMPORTED_TARGET glesv2)
 
 #
 # simple-egl
 #
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GLESv2 IMPORTED_TARGET glesv2)
+
 add_executable(simple-egl simple-egl.cc)
-target_include_directories(simple-egl PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
 
 target_compile_definitions(simple-egl PRIVATE EGL_NO_X11 MESA_EGL_NO_X11_HEADERS)
 
@@ -37,7 +37,6 @@ add_sanitizers(simple-egl)
 # simple-shm
 #
 add_executable(simple-shm simple-shm.cc)
-target_include_directories(simple-shm PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
 
 target_link_libraries(simple-shm PRIVATE waypp wayland-gen cxxopts::cxxopts)
 
@@ -52,7 +51,6 @@ add_sanitizers(simple-shm)
 #
 if (FALSE)
     add_executable(presentation-shm presentation-shm.cc)
-    target_include_directories(presentation-shm PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
 
     target_link_libraries(presentation-shm PRIVATE waypp wayland-gen cxxopts::cxxopts)
 
@@ -68,7 +66,6 @@ endif ()
 #
 if (HAS_WAYLAND_PROTOCOL_XDG_OUTPUT_UNSTABLE_V1)
     add_executable(simple-ext-protocol simple-ext-protocol.cc)
-    target_include_directories(simple-ext-protocol PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
 
     target_link_libraries(simple-ext-protocol PRIVATE waypp wayland-gen cxxopts::cxxopts)
 
@@ -83,7 +80,6 @@ endif ()
 # agl-simple-shm
 #
 add_executable(agl-simple-shm agl-simple-shm.cc)
-target_include_directories(agl-simple-shm PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
 
 target_link_libraries(agl-simple-shm PRIVATE waypp wayland-gen cxxopts::cxxopts)
 
@@ -94,7 +90,6 @@ endif ()
 add_sanitizers(agl-simple-shm)
 
 add_executable(agl-capture agl-capture.cc agl-capture.cc)
-target_include_directories(agl-capture PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
 
 target_link_libraries(agl-capture PRIVATE waypp wayland-gen cxxopts::cxxopts)
 
@@ -103,3 +98,17 @@ if (IPO_SUPPORT_RESULT)
 endif ()
 
 add_sanitizers(agl-capture)
+
+#
+# Vulkan
+#
+find_package(Vulkan)
+
+if (VULKAN_FOUND)
+    add_subdirectory(vk-shadertoy)
+endif ()
+
+#
+# GL
+#
+add_subdirectory(gl-shadertoy)

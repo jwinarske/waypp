@@ -137,21 +137,21 @@ public:
             seat.value()->register_observer(this);
         }
 
-        top_level_ = agl_shell_->create_top_level("agl-simple-shm",
-                                                  "org.freedesktop.gitlab.jwinarske.waypp.simple_shm",
-                                                  config.width,
-                                                  config.height,
-                                                  2,
-                                                  WL_SHM_FORMAT_XRGB8888,
-                                                  config.fullscreen,
-                                                  config.maximized,
-                                                  config.fullscreen_ratio,
-                                                  config.tearing,
-                                                  draw_frame
+        toplevel_ = agl_shell_->create_top_level("agl-simple-shm",
+                                                 "org.freedesktop.gitlab.jwinarske.waypp.simple_shm",
+                                                 config.width,
+                                                 config.height,
+                                                 2,
+                                                 WL_SHM_FORMAT_XRGB8888,
+                                                 config.fullscreen,
+                                                 config.maximized,
+                                                 config.fullscreen_ratio,
+                                                 config.tearing,
+                                                 draw_frame
         );
-        spdlog::info("XDG Window Version: {}", top_level_->get_version());
+        spdlog::info("XDG Window Version: {}", toplevel_->get_version());
 
-        surface_ = top_level_->get_surface();
+        surface_ = toplevel_->get_surface();
         output_ = agl_shell_->get_primary_output();
         agl_shell_->set_background(surface_, output_);
         agl_shell_->set_activate_region(output_, 0, 0, static_cast<uint32_t>(config.width),
@@ -159,17 +159,17 @@ public:
         agl_shell_->ready();
 
         /// paint padding
-        top_level_->set_surface_damage(0, 0, config.width, config.height);
-        top_level_->start_frame_callbacks();
+        toplevel_->set_surface_damage(0, 0, config.width, config.height);
+        toplevel_->start_frame_callbacks();
     }
 
     ~App() override {
-        top_level_->stop_frame_callbacks();
+        toplevel_->stop_frame_callbacks();
     }
 
     bool run() {
         /// display_dispatch is blocking
-        return (top_level_->is_valid() && agl_shell_->display_dispatch() != -1);
+        return (toplevel_->is_valid() && agl_shell_->display_dispatch() != -1);
     }
 
     void notify_seat_capabilities(Seat *seat, wl_seat * /* seat */, uint32_t /* caps */) override {
@@ -304,7 +304,7 @@ private:
     std::unique_ptr<Logging> logging_;
     std::unique_ptr<AglShell> agl_shell_;
     struct wl_output *output_;
-    XdgTopLevel *top_level_;
+    XdgTopLevel *toplevel_;
     struct wl_surface *surface_;
 
     std::random_device rd_;

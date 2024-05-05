@@ -25,6 +25,7 @@
 
 #include "window/window.h"
 #include "window_manager/xdg_window_manager.h"
+#include "egl.h"
 
 class Output;
 
@@ -41,7 +42,8 @@ public:
                 const std::function<void(void *, const uint32_t)> &frame_callback,
                 int buffer_bpp = 0, int swap_interval = 0,
                 const int32_t *context_attribs = nullptr, size_t context_attribs_size = 0,
-                const int32_t *config_attribs = nullptr, size_t config_attribs_size = 0);
+                const int32_t *config_attribs = nullptr, size_t config_attribs_size = 0,
+                enum Egl::api type = Egl::OPENGL_ES_API);
 
     ~XdgTopLevel();
 
@@ -54,8 +56,6 @@ public:
     [[nodiscard]] const std::string &get_title() const { return title_; }
 
     void set_title(const char *title) { xdg_toplevel_set_title(xdg_toplevel_, title); }
-
-    struct wl_surface *get_surface() const { return wl_surface_; }
 
     [[nodiscard]] bool get_fullscreen() const { return fullscreen_; }
 

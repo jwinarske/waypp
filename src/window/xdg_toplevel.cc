@@ -30,11 +30,12 @@ XdgTopLevel::XdgTopLevel(WindowManager *wm, const char *title, const char *app_i
                          const std::function<void(void *, const uint32_t)> &frame_callback,
                          int buffer_bpp, int swap_interval,
                          const int32_t *context_attribs, size_t context_attribs_size,
-                         const int32_t *config_attribs, size_t config_attribs_size) : Window(
+                         const int32_t *config_attribs, size_t config_attribs_size,
+                         enum Egl::api type) : Window(
         wm, title, buffer_count, buffer_format, frame_callback, width, height, fullscreen,
         maximized, fullscreen_ratio, tearing, buffer_bpp, swap_interval,
-        context_attribs, context_attribs_size, config_attribs, config_attribs_size), wm_(wm), title_(title),
-                                                                                      app_id_(app_id) {
+        context_attribs, context_attribs_size, config_attribs, config_attribs_size, type), wm_(wm), title_(title),
+                                               app_id_(app_id) {
     auto xwm = reinterpret_cast<XdgWindowManager *>(wm_);
     auto xdg_wm_base = xwm->get_xdg_wm_base();
     if (!xdg_wm_base) {

@@ -126,8 +126,8 @@ void draw_frame(void *data, const uint32_t time) {
 
 class App : public PointerObserver, public KeyboardObserver, public SeatObserver {
 public:
-    explicit App(const Configuration& config) : logging_(std::make_unique<Logging>()),
-                                         gen_(rd_()) {
+    explicit App(const Configuration &config) : logging_(std::make_unique<Logging>()),
+                                                gen_(rd_()) {
 
         wm_ = std::make_unique<XdgWindowManager>(config.disable_cursor);
         auto seat = wm_->get_seat();
@@ -137,32 +137,32 @@ public:
 
         spdlog::info("XDG Window Manager Version: {}", wm_->get_version());
 
-        top_level_ = wm_->create_top_level("simple-shm",
-                                           "org.freedesktop.gitlab.jwinarske.waypp.simple_shm",
-                                           config.width,
-                                           config.height,
-                                           2,
-                                           WL_SHM_FORMAT_XRGB8888,
-                                           config.fullscreen,
-                                           config.maximized,
-                                           config.fullscreen_ratio,
-                                           config.tearing,
-                                           draw_frame
+        toplevel_ = wm_->create_top_level("simple-shm",
+                                          "org.freedesktop.gitlab.jwinarske.waypp.simple_shm",
+                                          config.width,
+                                          config.height,
+                                          2,
+                                          WL_SHM_FORMAT_XRGB8888,
+                                          config.fullscreen,
+                                          config.maximized,
+                                          config.fullscreen_ratio,
+                                          config.tearing,
+                                          draw_frame
         );
-        spdlog::info("XDG Window Version: {}", top_level_->get_version());
+        spdlog::info("XDG Window Version: {}", toplevel_->get_version());
 
         /// paint padding
-        top_level_->set_surface_damage(0, 0, config.width, config.height);
-        top_level_->start_frame_callbacks();
+        toplevel_->set_surface_damage(0, 0, config.width, config.height);
+        toplevel_->start_frame_callbacks();
     }
 
     ~App() override {
-        top_level_->stop_frame_callbacks();
+        toplevel_->stop_frame_callbacks();
     }
 
     bool run() {
         /// display_dispatch is blocking
-        return (top_level_->is_valid() && wm_->display_dispatch() != -1);
+        return (toplevel_->is_valid() && wm_->display_dispatch() != -1);
     }
 
     void notify_seat_capabilities(Seat *seat, wl_seat * /* seat */, uint32_t /* caps */) override {
@@ -296,7 +296,7 @@ public:
 private:
     std::unique_ptr<Logging> logging_;
     std::unique_ptr<XdgWindowManager> wm_;
-    XdgTopLevel *top_level_;
+    XdgTopLevel *toplevel_;
     std::random_device rd_;
     std::mt19937 gen_;
 };

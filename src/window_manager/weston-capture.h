@@ -36,7 +36,8 @@ public:
 class WestonCapture {
 public:
     WestonCapture(struct weston_capture_v1 *weston_capture_v1, struct wl_output *output,
-                  enum weston_capture_v1_source source, WestonCaptureObserver *observer = nullptr, void *user_data = nullptr);
+                  enum weston_capture_v1_source source, WestonCaptureObserver *observer = nullptr,
+                  void *user_data = nullptr);
 
     ~WestonCapture();
 

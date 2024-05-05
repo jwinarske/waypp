@@ -24,7 +24,7 @@ Window::Window(WindowManager *wm, const char *name, int buffer_count, uint32_t b
                const std::function<void(void *, const uint32_t)> &frame_callback, int width, int height,
                bool fullscreen, bool maximized, bool fullscreen_ratio, bool tearing,
                int buffer_bpp, int swap_interval, const int32_t *context_attribs, size_t context_attribs_size,
-               const int32_t *config_attribs, size_t config_attribs_size) :
+               const int32_t *config_attribs, size_t config_attribs_size, enum Egl::api type) :
         wm_(wm), buffer_transform_(WL_OUTPUT_TRANSFORM_NORMAL), frame_callback_(frame_callback), name_(name),
         fullscreen_(fullscreen), maximized_(maximized), fullscreen_ratio_(fullscreen_ratio),
         runtime_mode_(WINDOW_RUNTIME_MODE_FEEDBACK), outputs_(wm->get_outputs()), valid_(true),
@@ -58,7 +58,7 @@ Window::Window(WindowManager *wm, const char *name, int buffer_count, uint32_t b
     if (context_attribs_size && config_attribs_size) {
 
         egl_ = std::make_unique<Egl>(wm->get_display(), wl_surface_, width, height, context_attribs,
-                                     context_attribs_size, config_attribs, config_attribs_size, buffer_bpp);
+                                     context_attribs_size, config_attribs, config_attribs_size, buffer_bpp, type);
         egl_->set_swap_interval(swap_interval);
     }
 

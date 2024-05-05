@@ -26,9 +26,16 @@ class SurfaceEgl;
 
 class Egl {
 public:
+
+    enum api {
+        OPENGL_ES_API = 0x30A0,
+        OPENGL_API = 0x30A2,
+    };
+
     explicit Egl(struct wl_display *display, struct wl_surface *wl_surface, int width, int height,
                  const int32_t *context_attribs, size_t context_attribs_size,
-                 const int32_t *config_attribs, size_t config_attribs_size, int buffer_bpp);
+                 const int32_t *config_attribs, size_t config_attribs_size, int buffer_bpp,
+                 enum api type = OPENGL_ES_API);
 
     ~Egl();
 

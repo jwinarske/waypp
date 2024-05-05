@@ -31,7 +31,7 @@
 Egl::Egl(struct wl_display *display, struct wl_surface *wl_surface, int width, int height,
          const int32_t *context_attribs, size_t context_attribs_size,
          const int32_t *config_attribs, size_t config_attribs_size,
-         int buffer_bpp) :
+         int buffer_bpp, enum api type) :
         dpy_(eglGetDisplay(display)),
         context_attribs_(context_attribs, context_attribs + context_attribs_size),
         config_attribs_(config_attribs, config_attribs + config_attribs_size),
@@ -45,7 +45,7 @@ Egl::Egl(struct wl_display *display, struct wl_surface *wl_surface, int width, i
     }
 
 
-    ret = eglBindAPI(EGL_OPENGL_ES_API);
+    ret = eglBindAPI(type);
     if (ret != EGL_TRUE) {
         throw std::runtime_error("eglBindAPI failed.");
     }
@@ -59,11 +59,17 @@ Egl::Egl(struct wl_display *display, struct wl_surface *wl_surface, int width, i
 
     EGLint n;
     ret = eglChooseConfig(dpy_, config_attribs_.data(), configs, count, &n);
+    if (n == 0) {
+        SPDLOG_DEBUG("EGL Config: Check Config Attributes");
+        exit(EXIT_FAILURE);
+    }
 
     EGLint red_size;
     for (EGLint i = 0; i < n; i++) {
         eglGetConfigAttrib(dpy_, configs[i], EGL_BUFFER_SIZE, &buffer_bpp);
         eglGetConfigAttrib(dpy_, configs[i], EGL_RED_SIZE, &red_size);
+        SPDLOG_DEBUG("EGL_BUFFER_SIZE: {}", buffer_bpp);
+        SPDLOG_DEBUG("EGL_RED_SIZE: {}", red_size);
         if ((buffer_bpp_ == 0 || buffer_bpp_ == buffer_bpp) && red_size < 10) {
             config_ = configs[i];
             break;
@@ -75,8 +81,7 @@ Egl::Egl(struct wl_display *display, struct wl_surface *wl_surface, int width, i
         exit(EXIT_FAILURE);
     }
 
-    context_ = eglCreateContext(dpy_, config_, EGL_NO_CONTEXT,
-                                context_attribs_.data());
+    context_ = eglCreateContext(dpy_, config_, EGL_NO_CONTEXT, context_attribs_.data());
 
 #if !defined(NDEBUG)
     egl_khr_debug_init();
