@@ -25,6 +25,8 @@
 
 #include <thread>
 
+static constexpr uint32_t kOffscreenBuffers = 4;
+
 void App::draw_frame(void * /* data */, const uint32_t /* time */) {
     // auto window = static_cast<Window *>(data);
 }
@@ -64,7 +66,7 @@ App::App(const Configuration &config) : handlers_(std::make_unique<Handlers>()),
     t1.join();
     t2.join();
 
-    backend_->CreateSurface(wm_->get_display(), toplevel_->get_surface(), config.width, config.height);
+    backend_->CreateSurface(wm_->get_display(), toplevel_->get_surface(), config.width, config.height, kOffscreenBuffers);
 
     /// paint padding
     toplevel_->set_surface_damage(0, 0, config.width, config.height);

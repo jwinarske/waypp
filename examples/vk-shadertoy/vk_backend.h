@@ -40,12 +40,15 @@ public:
 
     ~VulkanBackend();
 
-    void CreateSurface(struct wl_display *display, struct wl_surface *surface, int32_t width, int32_t height);
+    void CreateSurface(struct wl_display *display, struct wl_surface *surface, int32_t width, int32_t height,
+                       uint32_t command_buffer_count);
 
     void Resize(int32_t width, int32_t height);
 
 private:
     static constexpr VkPresentModeKHR kPreferredPresentMode = VK_PRESENT_MODE_FIFO_KHR;
+
+    const vk::DispatchLoaderDynamic &d_;
 
     std::string app_id_;
     std::vector<const char *> enabled_instance_extensions_{};
@@ -56,7 +59,9 @@ private:
 
     VkPhysicalDevice physical_device_{};
     VkPhysicalDeviceFeatures physical_device_features_{};
+    VkPhysicalDeviceProperties physical_device_properties_{};
     VkPhysicalDeviceMemoryProperties physical_device_memory_properties_{};
+
     VkDevice device_{};
     uint32_t queue_family_index_{};
     VkQueue queue_{};
@@ -67,10 +72,14 @@ private:
     VkSurfaceFormatKHR surface_format_{};
     VkSwapchainKHR swapchain_{};
     VkCommandPool swapchain_command_pool_{};
+    uint32_t swapchain_command_buffers_count_{};
+    VkCommandBuffer swapchain_buffers_{};
     std::vector<VkImage> swapchain_images_;
     std::vector<VkCommandBuffer> present_transition_buffers_;
-    VkSemaphore present_transition_semaphore_{};
-    VkFence image_ready_fence_{};
+
+    VkSemaphore post_acquire_semaphore_{};
+    VkSemaphore pre_submit_semaphore_{};
+    VkFence exec_fence_{};
 
     bool resize_pending_;
 

@@ -31,7 +31,9 @@ add_executable(vk-shadertoy
         app.cc
         handlers.cc
         main.cc
-        vulkan_backend.cc
+        vk_backend.cc
+        vk_image.cc
+        vk_buffer.cc
 )
 
 append_glsl_to_target(vk-shadertoy "${SHADER_SOURCES}" 100)

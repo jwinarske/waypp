@@ -24,7 +24,7 @@
 #include "handlers.h"
 #include "logging.h"
 #include "window/xdg_toplevel.h"
-#include "vulkan_backend.h"
+#include "vk_backend.h"
 
 class App {
 public:

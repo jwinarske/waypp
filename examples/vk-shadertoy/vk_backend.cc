@@ -21,7 +21,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include "vulkan_backend.h"
+#include "vk_backend.h"
 
 #include <utility>
 
@@ -41,7 +41,7 @@ const auto &d = vk::defaultDispatchLoaderDynamic;
   } while (0)
 
 VulkanBackend::VulkanBackend(std::string app_id,
-                             bool enable_validation_layers) : app_id_(std::move(app_id)),
+                             bool enable_validation_layers) : d_(d), app_id_(std::move(app_id)),
                                                               width_(0),
                                                               height_(0),
                                                               enable_validation_layers_(enable_validation_layers),
@@ -52,31 +52,34 @@ VulkanBackend::VulkanBackend(std::string app_id,
 }
 
 VulkanBackend::~VulkanBackend() {
-    if (device_ != nullptr) {
-        if (swapchain_command_pool_ != nullptr) {
-            d.vkDestroyCommandPool(device_, swapchain_command_pool_, nullptr);
+    if (device_ != VK_NULL_HANDLE) {
+        if (swapchain_command_pool_) {
+            d_.vkDestroyCommandPool(device_, swapchain_command_pool_, nullptr);
         }
-        if (present_transition_semaphore_ != nullptr) {
-            d.vkDestroySemaphore(device_, present_transition_semaphore_, nullptr);
+        if (post_acquire_semaphore_) {
+            d_.vkDestroySemaphore(device_, post_acquire_semaphore_, nullptr);
         }
-        if (image_ready_fence_ != nullptr) {
-            d.vkDestroyFence(device_, image_ready_fence_, nullptr);
+        if (pre_submit_semaphore_) {
+            d_.vkDestroySemaphore(device_, pre_submit_semaphore_, nullptr);
         }
-        d.vkDestroyDevice(device_, nullptr);
+        if (exec_fence_) {
+            d_.vkDestroyFence(device_, exec_fence_, nullptr);
+        }
+        d_.vkDestroyDevice(device_, nullptr);
     }
-    if (surface_ != nullptr) {
-        d.vkDestroySurfaceKHR(instance_, surface_, nullptr);
+    if (surface_ != VK_NULL_HANDLE) {
+        d_.vkDestroySurfaceKHR(instance_, surface_, nullptr);
     }
     if (enable_validation_layers_) {
         if (mDebugCallback) {
-            d.vkDestroyDebugReportCallbackEXT(instance_, mDebugCallback, VKALLOC);
+            d_.vkDestroyDebugReportCallbackEXT(instance_, mDebugCallback, VKALLOC);
         }
         if (mDebugMessenger) {
-            d.vkDestroyDebugUtilsMessengerEXT(instance_, mDebugMessenger, VKALLOC);
+            d_.vkDestroyDebugUtilsMessengerEXT(instance_, mDebugMessenger, VKALLOC);
         }
     }
     if (instance_ != nullptr) {
-        d.vkDestroyInstance(instance_, nullptr);
+        d_.vkDestroyInstance(instance_, nullptr);
     }
     if (!enabled_instance_extensions_.empty()) {
         for (auto it: enabled_instance_extensions_) {
@@ -93,12 +96,11 @@ VulkanBackend::~VulkanBackend() {
 void VulkanBackend::createInstance() {
     auto instance_extensions = vk::enumerateInstanceExtensionProperties();
     spdlog::debug("Vulkan Instance Extensions:");
-    bool supports_minimum_required{};
+    bool supports_minimum_required[2]{};
     for (const auto &l: instance_extensions.value) {
         spdlog::debug("\t{}: version: {}", l.extensionName, l.specVersion);
         if (enable_validation_layers_) {
-            if (strcmp(l.extensionName, VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME) ==
-                0) {
+            if (strcmp(l.extensionName, VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME) == 0) {
                 enabled_instance_extensions_.push_back(strdup(l.extensionName));
             }
             if (strcmp(l.extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0) {
@@ -110,27 +112,26 @@ void VulkanBackend::createInstance() {
             }
         }
         if (strcmp(l.extensionName, VK_KHR_SURFACE_EXTENSION_NAME) == 0) {
-            supports_minimum_required = true;
+            supports_minimum_required[0] = true;
             enabled_instance_extensions_.push_back(strdup(l.extensionName));
         }
         if (strcmp(l.extensionName, VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME) == 0) {
-            supports_minimum_required = true;
+            supports_minimum_required[1] = true;
             enabled_instance_extensions_.push_back(strdup(l.extensionName));
         }
     }
 
-    if (!supports_minimum_required) {
-        spdlog::critical(
-                "The Vulkan driver does not support the required instance extensions");
+    if (!supports_minimum_required[0] && !supports_minimum_required[1]) {
+        spdlog::critical("The Vulkan driver does not support the required instance extensions");
         exit(EXIT_FAILURE);
     }
 
-    std::stringstream ss;
+    std::ostringstream ss;
     ss << "Enabling " << enabled_instance_extensions_.size() << " instance extensions";
     if (!enabled_instance_extensions_.empty()) {
         ss << ":";
     }
-    spdlog::info(ss.str());
+    spdlog::info(ss.str().c_str());
     for (auto &extension: enabled_instance_extensions_) {
         spdlog::debug("\t{}", extension);
     }
@@ -146,19 +147,16 @@ void VulkanBackend::createInstance() {
     VkInstanceCreateInfo info{};
     info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     info.pApplicationInfo = &app_info;
-    info.enabledExtensionCount =
-            static_cast<uint32_t>(enabled_instance_extensions_.size());
+    info.enabledExtensionCount = static_cast<uint32_t>(enabled_instance_extensions_.size());
     info.ppEnabledExtensionNames = enabled_instance_extensions_.data();
 
-    static constexpr char VK_LAYER_KHRONOS_VALIDATION_NAME[] =
-            "VK_LAYER_KHRONOS_validation";
+    static constexpr char VK_LAYER_KHRONOS_VALIDATION_NAME[] = "VK_LAYER_KHRONOS_validation";
 
     auto available_layers = vk::enumerateInstanceLayerProperties();
     SPDLOG_DEBUG("Vulkan Instance Layers:");
     for (const auto &l: available_layers.value) {
         SPDLOG_DEBUG("\t{} - {}", l.layerName, l.description);
-        if (enable_validation_layers_ &&
-            strcmp(l.layerName, VK_LAYER_KHRONOS_VALIDATION_NAME) == 0) {
+        if (enable_validation_layers_ && strcmp(l.layerName, VK_LAYER_KHRONOS_VALIDATION_NAME) == 0) {
             enabled_layer_extensions_.push_back(VK_LAYER_KHRONOS_VALIDATION_NAME);
             break;
         }
@@ -175,11 +173,10 @@ void VulkanBackend::createInstance() {
     }
     spdlog::info(ss.str());
 
-    info.enabledLayerCount =
-            static_cast<uint32_t>(enabled_layer_extensions_.size());
+    info.enabledLayerCount = static_cast<uint32_t>(enabled_layer_extensions_.size());
     info.ppEnabledLayerNames = enabled_layer_extensions_.data();
 
-    CHECK_VK_RESULT(d.vkCreateInstance(&info, nullptr, &instance_) != VK_SUCCESS);
+    CHECK_VK_RESULT(d_.vkCreateInstance(&info, nullptr, &instance_) != VK_SUCCESS);
 
     VULKAN_HPP_DEFAULT_DISPATCHER.init(vk::Instance(instance_));
 }
@@ -199,27 +196,23 @@ void VulkanBackend::setupDebugMessenger() {
                                  VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
         createInfo.pfnUserCallback = debugUtilsCallback;
 
-        CHECK_VK_RESULT(d.vkCreateDebugUtilsMessengerEXT(
-                instance_, &createInfo, VKALLOC, &mDebugMessenger) !=
-                        VK_SUCCESS);
-    } else if (d.vkCreateDebugReportCallbackEXT) {
+        CHECK_VK_RESULT(d_.vkCreateDebugUtilsMessengerEXT(
+                instance_, &createInfo, VKALLOC, &mDebugMessenger) != VK_SUCCESS);
+    } else if (d_.vkCreateDebugReportCallbackEXT) {
         VkDebugReportCallbackCreateInfoEXT cb_info{};
         cb_info.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
-        cb_info.flags =
-                VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_ERROR_BIT_EXT;
+        cb_info.flags = VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_ERROR_BIT_EXT;
         cb_info.pfnCallback = debugReportCallback;
-        CHECK_VK_RESULT(d.vkCreateDebugReportCallbackEXT(
-                instance_, &cb_info, VKALLOC, &mDebugCallback) !=
-                        VK_SUCCESS);
+        CHECK_VK_RESULT(d_.vkCreateDebugReportCallbackEXT(
+                instance_, &cb_info, VKALLOC, &mDebugCallback) != VK_SUCCESS);
     }
 }
 
 void VulkanBackend::findPhysicalDevice() {
     uint32_t count;
-    CHECK_VK_RESULT(d.vkEnumeratePhysicalDevices(instance_, &count, nullptr));
+    CHECK_VK_RESULT(d_.vkEnumeratePhysicalDevices(instance_, &count, nullptr));
     std::vector<VkPhysicalDevice> physical_devices(count);
-    CHECK_VK_RESULT(
-            d.vkEnumeratePhysicalDevices(instance_, &count, physical_devices.data()));
+    CHECK_VK_RESULT(d_.vkEnumeratePhysicalDevices(instance_, &count, physical_devices.data()));
 
     SPDLOG_DEBUG("Enumerating {} physical device(s).", count);
 
@@ -227,8 +220,8 @@ void VulkanBackend::findPhysicalDevice() {
     for (const auto &physical_device: physical_devices) {
         VkPhysicalDeviceProperties properties;
         VkPhysicalDeviceFeatures features;
-        d.vkGetPhysicalDeviceProperties(physical_device, &properties);
-        d.vkGetPhysicalDeviceFeatures(physical_device, &features);
+        d_.vkGetPhysicalDeviceProperties(physical_device, &properties);
+        d_.vkGetPhysicalDeviceFeatures(physical_device, &features);
 
         SPDLOG_DEBUG("Checking device: {}", properties.deviceName);
 
@@ -236,18 +229,18 @@ void VulkanBackend::findPhysicalDevice() {
         std::vector<const char *> supported_extensions;
 
         uint32_t qfp_count;
-        d.vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &qfp_count,
-                                                   nullptr);
+        d_.vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &qfp_count, nullptr);
         std::vector<VkQueueFamilyProperties> qfp(qfp_count);
-        d.vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &qfp_count,
-                                                   qfp.data());
+        d_.vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &qfp_count, qfp.data());
         std::optional<uint32_t> graphics_queue_family;
         for (uint32_t i = 0; i < qfp.size(); i++) {
+            SPDLOG_DEBUG("Queue Count: {}", qfp[i].queueCount);
+
             // Only pick graphics queues that can also present to the surface.
             // Graphics queues that can't present are rare if not nonexistent, but
             // the spec allows for this, so check it anyhow.
             VkBool32 surface_present_supported;
-            CHECK_VK_RESULT(d.vkGetPhysicalDeviceSurfaceSupportKHR(
+            CHECK_VK_RESULT(d_.vkGetPhysicalDeviceSurfaceSupportKHR(
                     physical_device, i, surface_, &surface_present_supported));
 
             if (!graphics_queue_family.has_value() &&
@@ -269,33 +262,28 @@ void VulkanBackend::findPhysicalDevice() {
         }
 
         uint32_t extension_count;
-        CHECK_VK_RESULT(d.vkEnumerateDeviceExtensionProperties(
+        CHECK_VK_RESULT(d_.vkEnumerateDeviceExtensionProperties(
                 physical_device, nullptr, &extension_count, nullptr));
         std::vector<VkExtensionProperties> available_extensions(extension_count);
-        CHECK_VK_RESULT(d.vkEnumerateDeviceExtensionProperties(
+        CHECK_VK_RESULT(d_.vkEnumerateDeviceExtensionProperties(
                 physical_device, nullptr, &extension_count,
                 available_extensions.data()));
 
         bool supports_swapchain = false;
         for (const auto &available_extension: available_extensions) {
-            if (strcmp(VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-                       available_extension.extensionName) == 0) {
+            if (strcmp(VK_KHR_SWAPCHAIN_EXTENSION_NAME, available_extension.extensionName) == 0) {
                 supports_swapchain = true;
                 supported_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
             }
                 // The spec requires VK_KHR_portability_subset be enabled whenever it's
-                // available on a device. It's present on compatibility ICDs like
-                // MoltenVK.
-            else if (strcmp("VK_KHR_portability_subset",
-                            available_extension.extensionName) == 0) {
+                // available on a device. It's present on compatibility ICDs like MoltenVK.
+            else if (strcmp("VK_KHR_portability_subset", available_extension.extensionName) == 0) {
                 supported_extensions.push_back("VK_KHR_portability_subset");
             }
                 // Prefer GPUs that support VK_KHR_get_memory_requirements2.
-            else if (strcmp(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME,
-                            available_extension.extensionName) == 0) {
+            else if (strcmp(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME, available_extension.extensionName) == 0) {
                 score += 1 << 29;
-                supported_extensions.push_back(
-                        VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
+                supported_extensions.push_back(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
             }
         }
 
@@ -315,34 +303,26 @@ void VulkanBackend::findPhysicalDevice() {
             physical_device_ = physical_device;
             enabled_device_extensions_ = supported_extensions;
             spdlog::debug("supported extensions: {}", supported_extensions.size());
-            for (auto &extension: supported_extensions) {
+            for (auto &extension: supported_extensions)
                 spdlog::debug("\t{}", extension);
-            }
-            queue_family_index_ =
-                    graphics_queue_family.value_or(std::numeric_limits<uint32_t>::max());
+            queue_family_index_ = graphics_queue_family.value_or(std::numeric_limits<uint32_t>::max());
 
-            // Bingo, we finally found a physical device that supports everything we
-            // need.
-            d.vkGetPhysicalDeviceFeatures(physical_device,
-                                          &physical_device_features_);
-            d.vkGetPhysicalDeviceMemoryProperties(
-                    physical_device, &physical_device_memory_properties_);
+            // Bingo, we finally found a physical device that supports everything we need.
+            d_.vkGetPhysicalDeviceFeatures(physical_device, &physical_device_features_);
+            d_.vkGetPhysicalDeviceProperties(physical_device, &physical_device_properties_);
+            d_.vkGetPhysicalDeviceMemoryProperties(physical_device, &physical_device_memory_properties_);
 
             // Print some driver or MoltenVK information if it is available.
-            if (d.vkGetPhysicalDeviceProperties2KHR) {
+            if (d_.vkGetPhysicalDeviceProperties2KHR) {
                 VkPhysicalDeviceDriverProperties driverProperties{};
-                driverProperties.sType =
-                        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES;
+                driverProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES;
 
                 VkPhysicalDeviceProperties2 physicalDeviceProperties2{};
-                physicalDeviceProperties2.sType =
-                        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+                physicalDeviceProperties2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
                 physicalDeviceProperties2.pNext = &driverProperties;
 
-                d.vkGetPhysicalDeviceProperties2KHR(physical_device_,
-                                                    &physicalDeviceProperties2);
-                spdlog::info("Vulkan device driver: {} {}", driverProperties.driverName,
-                             driverProperties.driverInfo);
+                d_.vkGetPhysicalDeviceProperties2KHR(physical_device_, &physicalDeviceProperties2);
+                spdlog::info("Vulkan device driver: {} {}", driverProperties.driverName, driverProperties.driverInfo);
             }
 
             // Print out some properties of the GPU for diagnostic purposes.
@@ -362,12 +342,12 @@ void VulkanBackend::findPhysicalDevice() {
 }
 
 void VulkanBackend::createLogicalDevice() {
-    std::stringstream ss;
+    std::ostringstream ss;
     ss << "Enabling " << enabled_device_extensions_.size() << " device extensions";
     if (!enabled_device_extensions_.empty()) {
         ss << ":";
     }
-    spdlog::debug(ss.str());
+    spdlog::debug(ss.str().c_str());
     for (const char *extension: enabled_device_extensions_) {
         spdlog::debug("\t{}", extension);
     }
@@ -376,7 +356,7 @@ void VulkanBackend::createLogicalDevice() {
     VkDeviceQueueCreateInfo queue_info{};
     queue_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
     queue_info.queueFamilyIndex = queue_family_index_;
-    queue_info.queueCount = 1;
+    queue_info.queueCount = 1; //TODO - driver can support more than one
     queue_info.pQueuePriorities = &priority;
 
     VkPhysicalDeviceFeatures device_features{};
@@ -384,26 +364,24 @@ void VulkanBackend::createLogicalDevice() {
     device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     device_info.queueCreateInfoCount = 1;
     device_info.pQueueCreateInfos = &queue_info;
-    device_info.enabledExtensionCount =
-            static_cast<uint32_t>(enabled_device_extensions_.size());
+    device_info.enabledExtensionCount = static_cast<uint32_t>(enabled_device_extensions_.size());
     device_info.ppEnabledExtensionNames = enabled_device_extensions_.data();
     device_info.pEnabledFeatures = &device_features;
 
-    CHECK_VK_RESULT(
-            d.vkCreateDevice(physical_device_, &device_info, nullptr, &device_));
+    CHECK_VK_RESULT(d_.vkCreateDevice(physical_device_, &device_info, nullptr, &device_));
 
-    d.vkGetDeviceQueue(device_, queue_family_index_, 0, &queue_);
+    d_.vkGetDeviceQueue(device_, queue_family_index_, 0, &queue_);
 }
 
 bool VulkanBackend::InitializeSwapChain() {
     if (resize_pending_) {
         resize_pending_ = false;
-        d.vkDestroySwapchainKHR(device_, swapchain_, nullptr);
+        d_.vkDestroySwapchainKHR(device_, swapchain_, nullptr);
 
-        CHECK_VK_RESULT(d.vkQueueWaitIdle(queue_));
+        CHECK_VK_RESULT(d_.vkQueueWaitIdle(queue_));
         CHECK_VK_RESULT(
-                d.vkResetCommandPool(device_, swapchain_command_pool_,
-                                     VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT));
+                d_.vkResetCommandPool(device_, swapchain_command_pool_,
+                                      VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT));
     }
 
     // --------------------------------------------------------------------------
@@ -412,11 +390,9 @@ bool VulkanBackend::InitializeSwapChain() {
     // --------------------------------------------------------------------------
 
     uint32_t format_count;
-    CHECK_VK_RESULT(d.vkGetPhysicalDeviceSurfaceFormatsKHR(
-            physical_device_, surface_, &format_count, nullptr));
+    CHECK_VK_RESULT(d_.vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device_, surface_, &format_count, nullptr));
     std::vector<VkSurfaceFormatKHR> formats(format_count);
-    CHECK_VK_RESULT(d.vkGetPhysicalDeviceSurfaceFormatsKHR(
-            physical_device_, surface_, &format_count, formats.data()));
+    CHECK_VK_RESULT(d_.vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device_, surface_, &format_count, formats.data()));
 
     surface_format_ = formats[0];
     for (const auto &format: formats) {
@@ -435,8 +411,7 @@ bool VulkanBackend::InitializeSwapChain() {
     VkExtent2D clientSize;
 
     VkSurfaceCapabilitiesKHR surface_capabilities;
-    CHECK_VK_RESULT(d.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
-            physical_device_, surface_, &surface_capabilities));
+    CHECK_VK_RESULT(d_.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device_, surface_, &surface_capabilities));
 
     if (surface_capabilities.currentExtent.width != UINT32_MAX) {
         // If the surface reports a specific extent, we must use it.
@@ -477,11 +452,10 @@ bool VulkanBackend::InitializeSwapChain() {
     // --------------------------------------------------------------------------
 
     uint32_t mode_count;
-    CHECK_VK_RESULT(d.vkGetPhysicalDeviceSurfacePresentModesKHR(
-            physical_device_, surface_, &mode_count, nullptr));
+    CHECK_VK_RESULT(d_.vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device_, surface_, &mode_count, nullptr));
     std::vector<VkPresentModeKHR> modes(mode_count);
-    CHECK_VK_RESULT(d.vkGetPhysicalDeviceSurfacePresentModesKHR(
-            physical_device_, surface_, &mode_count, modes.data()));
+    CHECK_VK_RESULT(
+            d_.vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device_, surface_, &mode_count, modes.data()));
     assert(!formats.empty());  // Shouldn't be possible.
 
     // If the preferred mode isn't available, just choose the first one.
@@ -518,7 +492,7 @@ bool VulkanBackend::InitializeSwapChain() {
     info.presentMode = present_mode;
     info.clipped = VK_TRUE;
 
-    auto result = d.vkCreateSwapchainKHR(device_, &info, VKALLOC, &swapchain_);
+    auto result = d_.vkCreateSwapchainKHR(device_, &info, VKALLOC, &swapchain_);
     CHECK_VK_RESULT(result);
     if (result != VK_SUCCESS) {
         return false;
@@ -529,12 +503,12 @@ bool VulkanBackend::InitializeSwapChain() {
     // --------------------------------------------------------------------------
 
     uint32_t image_count;
-    CHECK_VK_RESULT(
-            d.vkGetSwapchainImagesKHR(device_, swapchain_, &image_count, nullptr));
+    CHECK_VK_RESULT(d_.vkGetSwapchainImagesKHR(device_, swapchain_, &image_count, nullptr));
     swapchain_images_.reserve(image_count);
+    CHECK_VK_RESULT(d_.vkGetSwapchainImagesKHR(device_, swapchain_, &image_count, swapchain_images_.data()));
     swapchain_images_.resize(image_count);
-    CHECK_VK_RESULT(d.vkGetSwapchainImagesKHR(device_, swapchain_, &image_count,
-                                              swapchain_images_.data()));
+
+    SPDLOG_DEBUG("Swapchain Image Count: {}", swapchain_images_.size());
 
     // --------------------------------------------------------------------------
     // Record a command buffer for each of the images to be executed prior to
@@ -547,11 +521,9 @@ bool VulkanBackend::InitializeSwapChain() {
     buffers_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     buffers_info.commandPool = swapchain_command_pool_;
     buffers_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    buffers_info.commandBufferCount =
-            static_cast<uint32_t>(present_transition_buffers_.size());
+    buffers_info.commandBufferCount = static_cast<uint32_t>(present_transition_buffers_.size());
 
-    CHECK_VK_RESULT(d.vkAllocateCommandBuffers(
-            device_, &buffers_info, present_transition_buffers_.data()));
+    CHECK_VK_RESULT(d_.vkAllocateCommandBuffers(device_, &buffers_info, present_transition_buffers_.data()));
 
     for (size_t i = 0; i < swapchain_images_.size(); i++) {
         auto image = swapchain_images_[i];
@@ -559,7 +531,7 @@ bool VulkanBackend::InitializeSwapChain() {
 
         VkCommandBufferBeginInfo begin_info{};
         begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        CHECK_VK_RESULT(d.vkBeginCommandBuffer(buffer, &begin_info));
+        CHECK_VK_RESULT(d_.vkBeginCommandBuffer(buffer, &begin_info));
 
         // Filament Engine hands back the image after writing to it
         VkImageMemoryBarrier barrier{};
@@ -578,12 +550,12 @@ bool VulkanBackend::InitializeSwapChain() {
                 .baseArrayLayer = 0,
                 .layerCount = 1,
         };
-        d.vkCmdPipelineBarrier(buffer,
-                               VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                               VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr,
-                               0, nullptr, 1, &barrier);
+        d_.vkCmdPipelineBarrier(buffer,
+                                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr,
+                                0, nullptr, 1, &barrier);
 
-        CHECK_VK_RESULT(d.vkEndCommandBuffer(buffer));
+        CHECK_VK_RESULT(d_.vkEndCommandBuffer(buffer));
     }
 
     return true;
@@ -648,54 +620,66 @@ void VulkanBackend::Resize(int32_t width,
 void VulkanBackend::CreateSurface(struct wl_display *display,
                                   struct wl_surface *surface,
                                   int32_t width,
-                                  int32_t height) {
+                                  int32_t height,
+                                  uint32_t command_buffer_count) {
     SPDLOG_DEBUG("CreateSurface");
+
+    if (surface_ != VK_NULL_HANDLE) {
+        spdlog::error("Vulkan Surface already exists");
+        return;
+    }
+
+    assert(instance_ != VK_NULL_HANDLE);
+    assert(surface != nullptr);
 
     wl_display_ = display;
     wl_surface_ = surface;
-
     width_ = static_cast<uint32_t>(width);
     height_ = static_cast<uint32_t>(height);
-
-    assert(instance_ != VK_NULL_HANDLE);
-    assert(surface_ == VK_NULL_HANDLE);
-    assert(surface != nullptr);
-
-    surface_ = VK_NULL_HANDLE;
+    swapchain_command_buffers_count_ = command_buffer_count;
 
     VkWaylandSurfaceCreateInfoKHR createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
     createInfo.display = wl_display_;
-    createInfo.surface = surface;
+    createInfo.surface = wl_surface_;
 
     CHECK_VK_RESULT(
-            d.vkCreateWaylandSurfaceKHR(instance_, &createInfo, nullptr, &surface_));
+            d_.vkCreateWaylandSurfaceKHR(instance_, &createInfo, nullptr, &surface_));
 
     findPhysicalDevice();
     createLogicalDevice();
 
     // --------------------------------------------------------------------------
-    // Create sync primitives and command pool to use in the render loop
-    // callbacks.
+    // Create command pool, buffers, and sync primitives
     // --------------------------------------------------------------------------
-
-    VkFenceCreateInfo f_info{};
-    f_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    d.vkCreateFence(device_, &f_info, nullptr, &image_ready_fence_);
 
     VkSemaphoreCreateInfo s_info{};
     s_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    d.vkCreateSemaphore(device_, &s_info, nullptr,
-                        &present_transition_semaphore_);
+    d_.vkCreateSemaphore(device_, &s_info, nullptr, &post_acquire_semaphore_);
+    d_.vkCreateSemaphore(device_, &s_info, nullptr, &pre_submit_semaphore_);
 
     VkCommandPoolCreateInfo pool_info{};
     pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     pool_info.queueFamilyIndex = queue_family_index_;
-    d.vkCreateCommandPool(device_, &pool_info, nullptr, &swapchain_command_pool_);
+    d_.vkCreateCommandPool(device_, &pool_info, nullptr, &swapchain_command_pool_);
+
+    VkFenceCreateInfo f_info{};
+    f_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    d_.vkCreateFence(device_, &f_info, nullptr, &exec_fence_);
+
+    if (swapchain_command_buffers_count_) {
+        VkCommandBufferAllocateInfo buffer_info{};
+        buffer_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        buffer_info.commandPool = swapchain_command_pool_;
+        buffer_info.commandBufferCount = swapchain_command_buffers_count_;
+        buffer_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        d_.vkAllocateCommandBuffers(device_, &buffer_info, &swapchain_buffers_);
+        spdlog::debug("Created {} command buffers", swapchain_command_buffers_count_);
+    }
 
     if (!InitializeSwapChain()) {
         spdlog::critical("Failed to create swapchain.");
         exit(EXIT_FAILURE);
     }
 }
-
