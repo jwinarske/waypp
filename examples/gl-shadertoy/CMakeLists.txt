@@ -18,7 +18,7 @@ add_executable(gl-shadertoy shadertoy.cc)
 
 target_compile_definitions(gl-shadertoy PRIVATE EGL_NO_X11 MESA_EGL_NO_X11_HEADERS)
 
-target_include_directories(gl-shadertoy PRIVATE ${CMAKE_SOURCE_DIR}/third_party)
+target_include_directories(gl-shadertoy PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
 
 target_link_libraries(gl-shadertoy PRIVATE waypp wayland-gen PkgConfig::GLESv2 cxxopts::cxxopts)
 
