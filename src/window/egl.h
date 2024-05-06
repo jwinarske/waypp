@@ -22,8 +22,6 @@
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
-class SurfaceEgl;
-
 class Egl {
 public:
 
@@ -61,8 +59,6 @@ public:
     Egl &operator=(const Egl &) = delete;
 
 private:
-    friend class SurfaceEgl;
-
     std::vector<EGLint> context_attribs_;
     std::vector<EGLint> config_attribs_;
     int buffer_bpp_;

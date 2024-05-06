@@ -1,6 +1,7 @@
 
 #include "vk_image.h"
 
+#include <cmath>
 #include "vk_common.h"
 
 

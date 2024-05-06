@@ -221,6 +221,7 @@ std::string AglShell::edge_to_string(const enum agl_shell_edge mode) {
         case AGL_SHELL_EDGE_RIGHT:
             return "AGL_SHELL_EDGE_RIGHT";
     }
+    return {};
 }
 
 void

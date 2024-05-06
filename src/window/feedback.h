@@ -6,8 +6,6 @@
 
 class Feedback;
 
-class Window;
-
 class FeedbackObserver {
 public:
     virtual ~FeedbackObserver() = default;
@@ -42,8 +40,6 @@ public:
     ~Feedback();
 
 private:
-    friend Window;
-
     static unsigned sequence_;
 
     struct wp_presentation *wp_presentation_;

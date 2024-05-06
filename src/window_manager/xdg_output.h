@@ -20,8 +20,6 @@
 
 #include "output.h"
 
-class Output;
-
 class XdgOutput {
 public:
     XdgOutput(struct zxdg_output_manager_v1 *zxdg_output_manager_v1, struct wl_output *wl_output);
@@ -52,7 +50,6 @@ public:
     XdgOutput &operator=(const XdgOutput &) = delete;
 
 private:
-    friend Output;
     struct zxdg_output_manager_v1 *zxdg_output_manager_v1_;
 
     struct zxdg_output_v1 *zxdg_output_v1_;

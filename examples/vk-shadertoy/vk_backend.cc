@@ -23,6 +23,7 @@
 
 #include "vk_backend.h"
 
+#include <optional>
 #include <utility>
 
 #include "logging.h"

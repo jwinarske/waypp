@@ -25,8 +25,6 @@
 #include "window_manager.h"
 #include "window/egl.h"
 
-class AglShell;
-
 class XdgTopLevel;
 
 
@@ -56,8 +54,6 @@ public:
     XdgWindowManager &operator=(const XdgWindowManager &) = delete;
 
 private:
-    friend AglShell;
-
     struct xdg_wm_base *xdg_wm_base_;
     std::unique_ptr<XdgTopLevel> xdg_top_level_;
 

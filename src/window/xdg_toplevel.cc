@@ -43,10 +43,12 @@ XdgTopLevel::XdgTopLevel(WindowManager *wm, const char *title, const char *app_i
         exit(EXIT_FAILURE);
     }
 
-    window_size_.width = width;
-    window_size_.height = height;
+    set_window_width(width);
+    set_window_height(height);
 
-    xdg_surface_ = xdg_wm_base_get_xdg_surface(xdg_wm_base, wl_surface_);
+    auto surface = get_surface();
+
+    xdg_surface_ = xdg_wm_base_get_xdg_surface(xdg_wm_base, surface);
     xdg_surface_add_listener(xdg_surface_, &xdg_surface_listener_, this);
 
     xdg_toplevel_ = xdg_surface_get_toplevel(xdg_surface_);
@@ -62,7 +64,7 @@ XdgTopLevel::XdgTopLevel(WindowManager *wm, const char *title, const char *app_i
     }
 
     wait_for_configure_ = true;
-    wl_surface_commit(wl_surface_);
+    wl_surface_commit(surface);
 
     // this makes the start-up from the beginning with the correct dimensions
     // like starting as maximized/fullscreen, rather than starting up as floating
@@ -136,46 +138,46 @@ void XdgTopLevel::handle_xdg_toplevel_configure(
         return;
     }
 
-    tl->fullscreen_ = false;
-    tl->maximized_ = false;
-    tl->resize_ = false;
-    tl->activated_ = false;
+    tl->Window::set_fullscreen(false);
+    tl->set_maximized(false);
+    tl->set_resize(false);
+    tl->set_activated(false);
 
     const uint32_t *state;
     WL_ARRAY_FOR_EACH(state, states, const uint32_t*) {
         switch (*state) {
             case XDG_TOPLEVEL_STATE_FULLSCREEN:
                 SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_FULLSCREEN");
-                tl->fullscreen_ = true;
+                tl->Window::set_fullscreen(true);
                 break;
             case XDG_TOPLEVEL_STATE_MAXIMIZED:
                 SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_MAXIMIZED");
-                tl->maximized_ = true;
+                tl->set_maximized(true);
                 break;
             case XDG_TOPLEVEL_STATE_RESIZING:
                 SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_RESIZING");
-                tl->resize_ = true;
+                tl->set_resize(true);
                 break;
             case XDG_TOPLEVEL_STATE_ACTIVATED:
                 SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_ACTIVATED");
-                tl->activated_ = true;
+                tl->set_activated(true);
                 break;
         }
     }
 
     if (width > 0 && height > 0) {
-        if (!tl->fullscreen_ && !tl->maximized_) {
-            tl->init_width_ = width;
-            tl->init_height_ = height;
+        if (!tl->get_fullscreen() && !tl->get_maximized()) {
+            tl->set_init_width(width);
+            tl->set_init_height(height);
         }
-        tl->width_ = width;
-        tl->height_ = height;
-    } else if (!tl->fullscreen_ && !tl->maximized_) {
-        tl->width_ = tl->init_width_;
-        tl->height_ = tl->init_height_;
+        tl->set_width(width);
+        tl->set_height(height);
+    } else if (!tl->get_fullscreen() && !tl->get_maximized()) {
+        tl->set_width(tl->get_init_width());
+        tl->set_height(tl->get_init_height());
     }
 
-    tl->needs_buffer_geometry_update_ = true;
+    tl->set_needs_buffer_geometry_update(true);
 }
 
 /**
@@ -197,7 +199,7 @@ void XdgTopLevel::handle_xdg_toplevel_close(
     if (w->xdg_toplevel_ != xdg_toplevel) {
         return;
     }
-    w->valid_ = false;
+    w->set_valid(false);
 }
 
 /**
@@ -218,8 +220,8 @@ void XdgTopLevel::handle_xdg_toplevel_configure_bounds(void *data,
         return;
     }
     SPDLOG_DEBUG("Configure Bounds: {}x{}", width, height);
-    w->max_width_ = width;
-    w->max_height_ = height;
+    w->set_max_width(width);
+    w->set_max_height(height);
 }
 
 #endif

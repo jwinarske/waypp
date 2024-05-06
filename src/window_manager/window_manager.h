@@ -21,12 +21,7 @@
 #include "registrar.h"
 #include "window_manager_observer.h"
 
-class AglShell;
-
 class Registrar;
-
-class XdgWindowManager;
-
 
 class WindowManager : public Registrar {
 public:
@@ -47,7 +42,7 @@ public:
 
     [[nodiscard]] int display_dispatch() const;
 
-    [[nodiscard]] bool has_subcompositor() const { return wl_subcompositor_; }
+    [[nodiscard]] bool has_subcompositor() const { return get_compositor(); }
 
     void register_task_observer(WindowManagerObserver *observer) {
         observers_.push_back(observer);
@@ -67,8 +62,6 @@ public:
     WindowManager &operator=(const WindowManager &) = delete;
 
 private:
-    friend XdgWindowManager;
-
     GMainContext *context_;
 
     std::list<WindowManagerObserver *> observers_{};

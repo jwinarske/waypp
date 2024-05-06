@@ -33,8 +33,6 @@
 #include "drm_lease_device_v1.h"
 #endif
 
-class WindowManager;
-
 class Registrar {
 public:
     typedef void (*RegistrarGlobalCallback)(
@@ -129,8 +127,6 @@ public:
     Registrar &operator=(const Registrar &) = delete;
 
 private:
-    friend WindowManager;
-
     std::unique_ptr<std::map<std::string, RegistrarGlobalCallback>> registrar_global_;
     std::unique_ptr<std::map<uint32_t, RegistrarGlobalRemoveCallback>> registrar_global_remove_;
 

@@ -57,11 +57,7 @@ public:
 
     void set_title(const char *title) { xdg_toplevel_set_title(xdg_toplevel_, title); }
 
-    [[nodiscard]] bool get_fullscreen() const { return fullscreen_; }
-
     void set_fullscreen() { xdg_toplevel_set_fullscreen(xdg_toplevel_, nullptr); }
-
-    [[nodiscard]] bool get_maximize() const { return maximized_; }
 
     void set_maximize() { xdg_toplevel_set_maximized(xdg_toplevel_); }
 
@@ -74,7 +70,7 @@ public:
     void resize(int width, int height);
 
     void set_surface_damage(int x, int y, int width, int height) {
-        wl_surface_damage(wl_surface_, x, y, width, height);
+        wl_surface_damage(get_surface(), x, y, width, height);
     }
 
     // Disallow copy and assign.

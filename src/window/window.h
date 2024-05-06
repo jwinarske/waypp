@@ -39,8 +39,6 @@ class Output;
 
 class WindowManager;
 
-class XdgTopLevel;
-
 class Window {
 public:
 
@@ -85,9 +83,45 @@ public:
 
     [[nodiscard]] int get_height() const { return logical_size_.height; }
 
+    void set_max_width(int width) { max_width_ = width; }
+
+    void set_max_height(int height) { max_height_ = height; }
+
+    void set_window_width(int width) { window_size_.width = width; }
+
+    void set_window_height(int height) { window_size_.height = height; }
+
+    void set_init_width(int width) { init_width_ = width; }
+
+    void set_init_height(int height) { init_height_ = height; }
+
+    void set_width(int width) { width_ = width; }
+
+    void set_height(int height) { height_ = height; }
+
+    [[nodiscard]] int get_init_width() const { return init_width_; }
+
+    [[nodiscard]] int get_init_height() const { return init_height_; }
+
+    void set_fullscreen(bool fullscreen) { fullscreen_ = fullscreen; }
+
+    void set_maximized(bool maximized) { maximized_ = maximized; }
+
+    void set_resize(bool resize) { resize_ = resize; }
+
+    void set_activated(bool activated) { activated_ = activated; }
+
+    void set_valid(bool valid) { valid_ = valid; }
+
+    void set_needs_buffer_geometry_update(bool value) { needs_buffer_geometry_update_ = value; }
+
     [[nodiscard]] int32_t get_max_width() const { return max_width_; }
 
     [[nodiscard]] int32_t get_max_height() const { return max_height_; }
+
+    [[nodiscard]] bool get_fullscreen() const { return fullscreen_; }
+
+    [[nodiscard]] bool get_maximized() const { return maximized_; }
 
     [[nodiscard]] void *get_user_data() const { return user_data_; }
 
@@ -131,8 +165,6 @@ public:
     Window &operator=(const Window &) = delete;
 
 private:
-    friend XdgTopLevel;
-
     WindowManager *wm_;
     const std::map<struct wl_output *, std::unique_ptr<Output>> &outputs_;
     struct wp_tearing_control_v1 *tearing_control_{};
