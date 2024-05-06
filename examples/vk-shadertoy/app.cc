@@ -35,12 +35,18 @@ App::App(const Configuration &config) : handlers_(std::make_unique<Handlers>()),
 
     spdlog::info("{}", kAppTitle);
 
+    display_ = wl_display_connect(nullptr);
+    if (!display_) {
+        spdlog::critical("Unable to connect to Wayland socket.");
+        exit(EXIT_FAILURE);
+    }
+
     std::thread t1([&] {
         backend_ = std::make_unique<VulkanBackend>(kAppId, config.debug_enable);
     });
 
     std::thread t2([&] {
-        wm_ = std::make_unique<XdgWindowManager>(config.disable_cursor);
+        wm_ = std::make_unique<XdgWindowManager>(display_, config.disable_cursor);
         auto seat = wm_->get_seat();
         if (seat.has_value()) {
             seat.value()->register_observer(handlers_.get());
@@ -66,7 +72,8 @@ App::App(const Configuration &config) : handlers_(std::make_unique<Handlers>()),
     t1.join();
     t2.join();
 
-    backend_->CreateSurface(wm_->get_display(), toplevel_->get_surface(), config.width, config.height, kOffscreenBuffers);
+    backend_->CreateSurface(wm_->get_display(), toplevel_->get_surface(), config.width, config.height,
+                            kOffscreenBuffers);
 
     /// paint padding
     toplevel_->set_surface_damage(0, 0, config.width, config.height);
@@ -75,6 +82,8 @@ App::App(const Configuration &config) : handlers_(std::make_unique<Handlers>()),
 
 App::~App() {
     toplevel_->stop_frame_callbacks();
+    wl_display_flush(display_);
+    wl_display_flush(display_);
 }
 
 bool App::run() {

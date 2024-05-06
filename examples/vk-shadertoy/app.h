@@ -50,6 +50,7 @@ public:
     bool run();
 
 private:
+    struct wl_display *display_;
     std::unique_ptr<Logging> logging_;
     std::unique_ptr<Handlers> handlers_;
     std::unique_ptr<XdgWindowManager> wm_;

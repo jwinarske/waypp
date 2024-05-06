@@ -19,22 +19,26 @@
 #include "logging.h"
 #include "window/xdg_toplevel.h"
 
-
 /**
  * @class XdgWindowManager
  *
  * @brief XdgWm represents a surface manager for a Wayland-based display.
  *
- * The XdgWm class is responsible for managing application windows using the XDG Shell protocol.
+ * The XdgWm class is responsible for managing application windows using the XDG
+ * Shell protocol.
  */
 
-XdgWindowManager::XdgWindowManager(bool disable_cursor, const unsigned long ext_interface_count,
-                                   const Registrar::RegistrarCallback *ext_interface_data,
-                                   GMainContext *context,
-                                   const char *display_name) : WindowManager(disable_cursor,
-                                                                             ext_interface_count,
-                                                                             ext_interface_data,
-                                                                             context, display_name) {
+XdgWindowManager::XdgWindowManager(
+        struct wl_display *display,
+        bool disable_cursor,
+        const unsigned long ext_interface_count,
+        const Registrar::RegistrarCallback *ext_interface_data,
+        GMainContext *context)
+        : WindowManager(display,
+                        disable_cursor,
+                        ext_interface_count,
+                        ext_interface_data,
+                        context) {
     SPDLOG_TRACE("++XdgWindowManager::XdgWindowManager()");
     xdg_wm_base_ = get_xdg_wm_base();
     if (!xdg_wm_base_) {
@@ -51,10 +55,12 @@ XdgWindowManager::XdgWindowManager(bool disable_cursor, const unsigned long ext_
  *
  * @brief The XdgWm class represents a Wayland shell surface manager.
  *
- * The XdgWm class manages the creation, destruction, configuration, and behavior of a Wayland shell surface manager.
+ * The XdgWm class manages the creation, destruction, configuration, and
+ * behavior of a Wayland shell surface manager.
  *
- * It is responsible for handling interactions with the Wayland registry, creating and destroying the surface manager base,
- * surface, and toplevel objects, and implementing the necessary event handling functions.
+ * It is responsible for handling interactions with the Wayland registry,
+ * creating and destroying the surface manager base, surface, and toplevel
+ * objects, and implementing the necessary event handling functions.
  */
 XdgWindowManager::~XdgWindowManager() = default;
 
@@ -76,19 +82,31 @@ void XdgWindowManager::xdg_wm_base_ping(void *data,
     xdg_wm_base_pong(xdg_wm_base, serial);
 }
 
-XdgTopLevel *
-XdgWindowManager::create_top_level(const char *title, const char *app_id, int width, int height, int buffer_count,
-                                   uint32_t buffer_format, bool fullscreen, bool maximized, bool fullscreen_ratio,
-                                   bool tearing, const std::function<void(void *, const uint32_t)> &frame_callback,
-                                   const int32_t *context_attribs, size_t context_attribs_size,
-                                   const int32_t *config_attribs, size_t config_attribs_size,
-                                   enum Egl::api type, int buffer_bpp, int swap_interval) {
+XdgTopLevel *XdgWindowManager::create_top_level(
+        const char *title,
+        const char *app_id,
+        int width,
+        int height,
+        int buffer_count,
+        uint32_t buffer_format,
+        bool fullscreen,
+        bool maximized,
+        bool fullscreen_ratio,
+        bool tearing,
+        const std::function<void(void *, const uint32_t)> &frame_callback,
+        const int32_t *context_attribs,
+        size_t context_attribs_size,
+        const int32_t *config_attribs,
+        size_t config_attribs_size,
+        enum Egl::api type,
+        int buffer_bpp,
+        int swap_interval) {
     auto wm = reinterpret_cast<WindowManager *>(this);
 
-    xdg_top_level_ = std::make_unique<XdgTopLevel>(wm, title, app_id, width, height, buffer_count, buffer_format,
-                                                   fullscreen, maximized, fullscreen_ratio, tearing,
-                                                   frame_callback, buffer_bpp, swap_interval,
-                                                   context_attribs, context_attribs_size,
-                                                   config_attribs, config_attribs_size, type);
+    xdg_top_level_ = std::make_unique<XdgTopLevel>(
+            wm, title, app_id, width, height, buffer_count, buffer_format, fullscreen,
+            maximized, fullscreen_ratio, tearing, frame_callback, buffer_bpp,
+            swap_interval, context_attribs, context_attribs_size, config_attribs,
+            config_attribs_size, type);
     return xdg_top_level_.get();
 }

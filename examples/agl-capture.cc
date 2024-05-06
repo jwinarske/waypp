@@ -46,7 +46,13 @@ class App : public WestonCaptureObserver {
 public:
     explicit App(const Configuration &config) : logging_(std::make_unique<Logging>()), weston_capture_v1_(nullptr) {
 
-        agl_shell_ = std::make_unique<AglShell>(false);
+        display_ = wl_display_connect(nullptr);
+        if (!display_) {
+            spdlog::critical("Unable to connect to Wayland socket.");
+            exit(EXIT_FAILURE);
+        }
+
+        agl_shell_ = std::make_unique<AglShell>(display_, false);
         auto d = agl_shell_->get_display();
 
         // required when not creating a window
@@ -141,7 +147,12 @@ public:
         spdlog::debug("failed: {}", msg);
     }
 
-    ~App() override = default;
+    ~App() override {
+        if (display_) {
+            wl_display_flush(display_);
+            wl_display_disconnect(display_);
+        }
+    };
 
     bool run() {
         /// display_dispatch is blocking
@@ -149,6 +160,7 @@ public:
     }
 
 private:
+    struct wl_display *display_;
     std::unique_ptr<Logging> logging_;
     std::unique_ptr<AglShell> agl_shell_;
     std::list<std::unique_ptr<WestonCapture>> weston_capture_list_;

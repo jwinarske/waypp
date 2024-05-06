@@ -25,10 +25,12 @@ class Registrar;
 
 class WindowManager : public Registrar {
 public:
-    explicit WindowManager(bool disable_cursor = false, unsigned long ext_interface_count = 0,
-                           const Registrar::RegistrarCallback *ext_interface_data = nullptr,
-                           GMainContext *context = nullptr,
-                           const char *display_name = nullptr);
+    explicit WindowManager(
+            struct wl_display *display,
+            bool disable_cursor = false,
+            unsigned long ext_interface_count = 0,
+            const Registrar::RegistrarCallback *ext_interface_data = nullptr,
+            GMainContext *context = nullptr);
 
     ~WindowManager();
 
@@ -38,7 +40,9 @@ public:
 
     [[maybe_unused]] [[nodiscard]] int dispatch(int timeout) const;
 
-    [[nodiscard]] int dispatch_pending() const { return wl_display_dispatch_pending(wl_display_); }
+    [[nodiscard]] int dispatch_pending() const {
+        return wl_display_dispatch_pending(wl_display_);
+    }
 
     [[nodiscard]] int display_dispatch() const;
 

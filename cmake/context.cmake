@@ -14,6 +14,12 @@
 # limitations under the License.
 #
 
+if (CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    set(BUILD_STANDALONE ON)
+else()
+    set(BUILD_STANDALONE OFF)
+endif()
+
 #
 # Branch
 #

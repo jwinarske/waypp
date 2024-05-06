@@ -453,6 +453,12 @@ int main(int argc, char **argv) {
 
     auto logging = std::make_unique<Logging>();
 
+    auto display = wl_display_connect(nullptr);
+    if (!display) {
+        spdlog::critical("Unable to connect to Wayland socket.");
+        exit(EXIT_FAILURE);
+    }
+
     std::signal(SIGINT, handle_signal);
 
     cxxopts::Options options("simple-egl", "Weston simple-egl example");
@@ -502,7 +508,7 @@ int main(int argc, char **argv) {
 
     auto keyboard_handler = std::make_unique<KeyboardHandler>();
 
-    XdgWindowManager wm;
+    XdgWindowManager wm(display);
     auto seat = wm.get_seat();
     if (seat.has_value()) {
         auto keyboard = seat.value()->get_keyboard();
@@ -532,6 +538,9 @@ int main(int argc, char **argv) {
     while (running && top_level->is_valid() && wm.display_dispatch() != -1) {}
 
     top_level->stop_frame_callbacks();
+
+    wl_display_flush(display);
+    wl_display_disconnect(display);
 
     return EXIT_SUCCESS;
 }

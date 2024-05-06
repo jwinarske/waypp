@@ -35,16 +35,16 @@ class Registrar;
  * @see Window
  * @see XdgWm
  */
-WindowManager::WindowManager(bool disable_cursor,
+WindowManager::WindowManager(struct wl_display *display, bool disable_cursor,
                              const unsigned long ext_interface_count,
                              const Registrar::RegistrarCallback *ext_interface_data,
-                             GMainContext *context,
-                             const char *display_name) : Registrar(get_display(display_name),
-                                                                   ext_interface_count,
-                                                                   ext_interface_data,
-                                                                   disable_cursor),
-                                                         context_(context),
-                                                         outputs_(get_outputs()) {
+                             GMainContext *context) : Registrar(display,
+                                                                ext_interface_count,
+                                                                ext_interface_data,
+                                                                disable_cursor),
+                                                      wl_display_(display),
+                                                      context_(context),
+                                                      outputs_(get_outputs()) {
     SPDLOG_TRACE("++WindowManager::WindowManager()");
     SPDLOG_TRACE("--WindowManager::WindowManager()");
 }
@@ -57,20 +57,7 @@ WindowManager::WindowManager(bool disable_cursor,
  */
 WindowManager::~WindowManager() {
     SPDLOG_TRACE("++WindowManager::~WindowManager()");
-//    wl_display_flush(wl_display_);
-//    wl_display_disconnect(wl_display_);
     SPDLOG_TRACE("--WindowManager::~WindowManager()");
-}
-
-struct wl_display *WindowManager::get_display(const char *name) {
-    SPDLOG_TRACE("++WindowManager::get_display()");
-    wl_display_ = (wl_display_connect(name));
-    if (wl_display_ == nullptr) {
-        spdlog::critical("Failed to connect to Wayland display. {}", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
-    SPDLOG_TRACE("--WindowManager::get_display()");
-    return wl_display_;
 }
 
 /**

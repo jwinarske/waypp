@@ -30,10 +30,10 @@ class XdgTopLevel;
 
 class XdgWindowManager : public WindowManager {
 public:
-    explicit XdgWindowManager(bool disable_cursor = false, unsigned long ext_interface_count = 0,
+    explicit XdgWindowManager(struct wl_display *display, bool disable_cursor = false,
+                              unsigned long ext_interface_count = 0,
                               const Registrar::RegistrarCallback *ext_interface_data = nullptr,
-                              GMainContext *context = nullptr,
-                              const char *display_name = nullptr);
+                              GMainContext *context = nullptr);
 
     ~XdgWindowManager();
 

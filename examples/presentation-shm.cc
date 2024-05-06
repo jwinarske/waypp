@@ -64,6 +64,7 @@ struct Feedback {
 };
 
 struct Context {
+    struct wl_display *display;
     std::unique_ptr<XdgWindowManager> wm;
     Configuration config;
     XdgTopLevel *toplevel;
@@ -280,7 +281,13 @@ int main(int argc, char **argv) {
 
     ctx->config.refresh_nsec = kNanoSecondPerSecond / 60;
 
-    ctx->wm = std::make_unique<XdgWindowManager>();
+    ctx->display = wl_display_connect(nullptr);
+    if (!ctx->display) {
+        spdlog::critical("Unable to connect to Wayland socket.");
+        exit(EXIT_FAILURE);
+    }
+
+    ctx->wm = std::make_unique<XdgWindowManager>(ctx->display);
 
     spdlog::info("XDG Window Manager Version: {}", ctx->wm->get_version());
 
@@ -334,6 +341,9 @@ int main(int argc, char **argv) {
     while (running && ctx->toplevel->is_valid() && ctx->wm->display_dispatch() != -1) {}
 
     ctx->toplevel->stop_frame_callbacks();
+
+    wl_display_flush(ctx->display);
+    wl_display_disconnect(ctx->display);
 
     return EXIT_SUCCESS;
 }

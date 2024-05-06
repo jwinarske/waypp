@@ -97,8 +97,7 @@ void Keyboard::handle_keymap(void *data,
         close(fd);
         xkb_state_unref(obj->xkb_state_);
         obj->xkb_state_ = xkb_state_new(obj->xkb_keymap_);
-    }
-    else {
+    } else {
         spdlog::warn("Usage without libxkbcommon is currently not supported.");
     }
 

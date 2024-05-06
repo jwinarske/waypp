@@ -151,6 +151,12 @@ int main(int argc, char **argv) {
 
     auto logging = std::make_unique<Logging>();
 
+    auto display = wl_display_connect(nullptr);
+    if (!display) {
+        spdlog::critical("Unable to connect to Wayland socket.");
+        exit(EXIT_FAILURE);
+    }
+
     std::signal(SIGINT, handle_signal);
 
     cxxopts::Options options("simple-shm", "Weston simple-shm example");
@@ -172,7 +178,7 @@ int main(int argc, char **argv) {
             .tearing = result["tearing"].as<bool>(),
     };
 
-    XdgWindowManager wm = XdgWindowManager(false, ext_interfaces.size(),
+    XdgWindowManager wm = XdgWindowManager(display, false, ext_interfaces.size(),
                                            ext_interfaces.data()
     );
     spdlog::info("XDG Window Manager Version: {}", wm.get_version());
@@ -198,6 +204,9 @@ int main(int argc, char **argv) {
     while (running && top_level->is_valid() && wm.display_dispatch() != -1) {}
 
     top_level->stop_frame_callbacks();
+
+    wl_display_flush(display);
+    wl_display_disconnect(display);
 
     return EXIT_SUCCESS;
 }

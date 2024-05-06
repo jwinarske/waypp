@@ -49,8 +49,10 @@ public:
 
 class Seat {
 public:
-    explicit Seat(struct wl_seat *seat, struct wl_shm *wl_shm,
-                  struct wl_compositor *wl_compositor, bool disable_cursor = false);
+    explicit Seat(struct wl_seat *seat,
+                  struct wl_shm *wl_shm,
+                  struct wl_compositor *wl_compositor,
+                  bool disable_cursor = false);
 
     ~Seat();
 

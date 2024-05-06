@@ -130,7 +130,13 @@ public:
     explicit App(const Configuration &config) : logging_(std::make_unique<Logging>()),
                                                 gen_(rd_()) {
 
-        agl_shell_ = std::make_unique<AglShell>(config.disable_cursor);
+        display_ = wl_display_connect(nullptr);
+        if (!display_) {
+            spdlog::critical("Unable to connect to Wayland socket.");
+            exit(EXIT_FAILURE);
+        }
+
+        agl_shell_ = std::make_unique<AglShell>(display_, config.disable_cursor);
         spdlog::info("AGL Shell Version: {}", agl_shell_->get_version());
         auto seat = agl_shell_->get_seat();
         if (seat.has_value()) {
@@ -165,6 +171,11 @@ public:
 
     ~App() override {
         toplevel_->stop_frame_callbacks();
+
+        if (display_) {
+            wl_display_flush(display_);
+            wl_display_disconnect(display_);
+        }
     }
 
     bool run() {
@@ -301,6 +312,7 @@ public:
     }
 
 private:
+    struct wl_display *display_;
     std::unique_ptr<Logging> logging_;
     std::unique_ptr<AglShell> agl_shell_;
     struct wl_output *output_;

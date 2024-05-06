@@ -139,12 +139,12 @@ private:
 
     std::vector<uint32_t> wl_shm_formats_{};
 
-    struct wl_compositor *wl_compositor_;
-    struct wl_shm *wl_shm_;
-    struct wl_subcompositor *wl_subcompositor_;
-    struct xdg_wm_base *xdg_wm_base_;
-    struct agl_shell *agl_shell_;
-    struct ivi_wm *ivi_wm_;
+    struct wl_compositor *wl_compositor_{};
+    struct wl_shm *wl_shm_{};
+    struct wl_subcompositor *wl_subcompositor_{};
+    struct xdg_wm_base *xdg_wm_base_{};
+    struct agl_shell *agl_shell_{};
+    struct ivi_wm *ivi_wm_{};
 
 #if ENABLE_DRM_LEASE_CLIENT
     std::unique_ptr<DrmLeaseDevice_v1> drm_lease_device_v1_;
@@ -156,7 +156,7 @@ private:
     struct {
         struct wp_presentation *wp_presentation;
         clockid_t clk_id;
-    } presentation_time_;
+    } presentation_time_{};
 
     struct wp_tearing_control_manager_v1 *wp_tearing_control_manager_{};
     struct wp_viewporter *wp_viewporter_{};
@@ -181,7 +181,7 @@ private:
 
     static constexpr const wl_registry_listener listener_ = {
             .global = registry_handle_global,
-            .global_remove = registry_handle_global_remove,
+            .global_remove = nullptr,
     };
 
     // Handles shm format events.

@@ -37,8 +37,5 @@ static constexpr uint32_t kFractionalScaleManagerMinVersion = UINT32_C(1);
 static constexpr uint32_t kXdgDecorationManagerMinVersion = UINT32_C(1);
 static constexpr uint32_t kWestonCaptureV1MinVersion = UINT32_C(1);
 
-/// Logging Constants
-static constexpr int64_t kLogFlushInterval = INT64_C(5);
-
 
 #endif // INCLUDE_CONFIG_H_

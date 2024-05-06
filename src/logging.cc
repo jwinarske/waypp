@@ -18,6 +18,8 @@
 
 #include "config.h"
 
+static constexpr int32_t kLogFlushInterval = INT32_C(5);
+
 Logging::Logging() {
     console_sink_ = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     logger_ = std::make_shared<spdlog::logger>("waypp", console_sink_);

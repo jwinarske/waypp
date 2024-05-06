@@ -71,7 +71,6 @@ endmacro()
 set(WAYLAND_PROTOCOL_SOURCES)
 
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/protocols)
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/protocols)
 
 add_protocol(${WAYLAND_PROTOCOLS_BASE}/stable/xdg-shell/xdg-shell.xml)
 add_protocol(${CMAKE_CURRENT_SOURCE_DIR}/third_party/agl/protocol/agl-shell.xml)
@@ -121,6 +120,10 @@ configure_file(cmake/wayland-protocols.h.in ${CMAKE_CURRENT_BINARY_DIR}/protocol
 
 add_library(wayland-gen STATIC ${WAYLAND_PROTOCOL_SOURCES})
 target_link_libraries(wayland-gen PUBLIC PkgConfig::WAYLAND)
+target_include_directories(wayland-gen PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_BINARY_DIR}/protocols
+)
 
 if (IPO_SUPPORT_RESULT)
     set_property(TARGET wayland-gen PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)

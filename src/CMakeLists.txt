@@ -47,8 +47,12 @@ add_library(waypp
         ${SEAT_SRC}
         ${WINDOW_SRC}
         command.cc
-        logging.cc
 )
+
+if (BUILD_STANDALONE)
+    target_sources(waypp PRIVATE
+            logging.cc)
+endif ()
 
 if (ENABLE_XDG_CLIENT)
     target_sources(waypp PRIVATE

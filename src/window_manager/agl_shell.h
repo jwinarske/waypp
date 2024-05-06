@@ -22,15 +22,16 @@
 #include "registrar.h"
 #include "xdg_window_manager.h"
 
-
 class XdgWindowManager;
 
 class AglShell : public XdgWindowManager {
 public:
-    explicit AglShell(bool disable_cursor = false, unsigned long ext_interface_count = 0,
-                      const Registrar::RegistrarCallback *ext_interface_data = nullptr,
-                      GMainContext *context = nullptr,
-                      const char *display_name = nullptr);
+    explicit AglShell(
+            struct wl_display *display,
+            bool disable_cursor = false,
+            unsigned long ext_interface_count = 0,
+            const Registrar::RegistrarCallback *ext_interface_data = nullptr,
+            GMainContext *context = nullptr);
 
     ~AglShell();
 
@@ -40,16 +41,23 @@ public:
 
     void deactivate_app(const std::string &app_id);
 
-    void set_background(struct wl_surface *wl_surface, struct wl_output *wl_output) const;
+    void set_background(struct wl_surface *wl_surface,
+                        struct wl_output *wl_output) const;
 
-    void set_panel(struct wl_surface *wl_surface, struct wl_output *wl_output, enum agl_shell_edge mode) const;
+    void set_panel(struct wl_surface *wl_surface,
+                   struct wl_output *wl_output,
+                   enum agl_shell_edge mode) const;
 
-    void set_activate_region(struct wl_output *wl_output, uint32_t x, uint32_t y, uint32_t width,
+    void set_activate_region(struct wl_output *wl_output,
+                             uint32_t x,
+                             uint32_t y,
+                             uint32_t width,
                              uint32_t height) const;
 
     void ready() const;
 
-    void process_app_status_event(const char *app_id, const std::string &event_type);
+    void process_app_status_event(const char *app_id,
+                                  const std::string &event_type);
 
     static std::string edge_to_string(const enum agl_shell_edge mode);
 
@@ -74,8 +82,7 @@ private:
      * event before continuing further.
      * @since 2
      */
-    static void handle_bound_ok(void *data,
-                                struct agl_shell *agl_shell);
+    static void handle_bound_ok(void *data, struct agl_shell *agl_shell);
 
     /**
      * event sent if binding was nok
@@ -85,8 +92,7 @@ private:
      * continuing further.
      * @since 2
      */
-    static void handle_bound_fail(void *data,
-                                  struct agl_shell *agl_shell);
+    static void handle_bound_fail(void *data, struct agl_shell *agl_shell);
 
     /**
      * event sent when an application suffered state modification
@@ -117,7 +123,6 @@ private:
                                      struct agl_shell *agl_shell,
                                      const char *app_id,
                                      const char *output_name);
-
 
     void add_app_to_stack(const std::string &app_id);
 

@@ -28,6 +28,7 @@
 
 #include <cxxopts.hpp>
 
+#include <wayland-client.h>
 #include "window/xdg_toplevel.h"
 #include "logging.h"
 
@@ -129,7 +130,13 @@ public:
     explicit App(const Configuration &config) : logging_(std::make_unique<Logging>()),
                                                 gen_(rd_()) {
 
-        wm_ = std::make_unique<XdgWindowManager>(config.disable_cursor);
+        wl_display_ = wl_display_connect(nullptr);
+        if (!wl_display_) {
+            spdlog::critical("Unable to connect to Wayland socket.");
+            exit(EXIT_FAILURE);
+        }
+
+        wm_ = std::make_unique<XdgWindowManager>(wl_display_, config.disable_cursor);
         auto seat = wm_->get_seat();
         if (seat.has_value()) {
             seat.value()->register_observer(this);
@@ -158,6 +165,11 @@ public:
 
     ~App() override {
         toplevel_->stop_frame_callbacks();
+
+        if (wl_display_) {
+            wl_display_flush(wl_display_);
+            wl_display_disconnect(wl_display_);
+        }
     }
 
     bool run() {
@@ -294,6 +306,7 @@ public:
     }
 
 private:
+    struct wl_display *wl_display_;
     std::unique_ptr<Logging> logging_;
     std::unique_ptr<XdgWindowManager> wm_;
     XdgTopLevel *toplevel_;
