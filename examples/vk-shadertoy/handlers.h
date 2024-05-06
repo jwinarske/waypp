@@ -47,8 +47,8 @@ private:
 
     void notify_keyboard_keymap(Keyboard *, wl_keyboard *, uint32_t, int32_t, uint32_t) override;
 
-    void notify_keyboard_key(Keyboard *, wl_keyboard *, uint32_t, uint32_t, uint32_t, bool, uint32_t, int,
-                             const xkb_keysym_t *) override;
+    void notify_keyboard_xkb_v1_key(Keyboard *, wl_keyboard *, uint32_t, uint32_t, uint32_t, bool, uint32_t, int,
+                                    const xkb_keysym_t *) override;
 
     void notify_pointer_enter(Pointer *, wl_pointer *, uint32_t, wl_surface *, double, double) override;
 

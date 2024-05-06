@@ -22,6 +22,7 @@
 #include <mutex>
 
 #include <glib-2.0/glib.h>
+#include <wayland-client-protocol.h>
 #include <xkbcommon/xkbcommon.h>
 
 class Keyboard;
@@ -52,15 +53,15 @@ public:
                                         int32_t fd,
                                         uint32_t size) = 0;
 
-    virtual void notify_keyboard_key(Keyboard *keyboard,
-                                     struct wl_keyboard *wl_keyboard,
-                                     uint32_t serial,
-                                     uint32_t time,
-                                     uint32_t xkb_scancode,
-                                     bool keymap_key_repeats,
-                                     uint32_t state,
-                                     int xdg_key_symbol_count,
-                                     const xkb_keysym_t *xdg_key_symbols) = 0;
+    virtual void notify_keyboard_xkb_v1_key(Keyboard *keyboard,
+                                            struct wl_keyboard *wl_keyboard,
+                                            uint32_t serial,
+                                            uint32_t time,
+                                            uint32_t xkb_scancode,
+                                            bool keymap_key_repeats,
+                                            uint32_t state,
+                                            int xdg_key_symbol_count,
+                                            const xkb_keysym_t *xdg_key_symbols) = 0;
 };
 
 class Keyboard {
@@ -92,6 +93,7 @@ private:
     struct xkb_context *xkb_context_;
     struct xkb_keymap *xkb_keymap_{};
     struct xkb_state *xkb_state_{};
+    enum wl_keyboard_keymap_format format_{};
     std::list<KeyboardObserver *> observers_{};
 
     struct {
@@ -118,7 +120,7 @@ private:
      * This function is called by the kernel.
      *
      */
-    static void repeat_callback(int sig, siginfo_t *si, void *uc);
+    static void repeat_xkb_v1_key_callback(int, siginfo_t *si, void *);
 
     /**
      * keyboard mapping

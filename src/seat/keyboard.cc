@@ -79,27 +79,28 @@ void Keyboard::handle_keymap(void *data,
         return;
     }
 
-    if (format != WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
-        spdlog::critical(
-                "Usage with a libxkbcommon is currently required.  Please file a bug with configuration information to enable support.");
-        abort();
-    }
+    obj->format_ = static_cast<enum wl_keyboard_keymap_format>(format);
 
-    char *keymap_string;
-    /// From version 7 onwards, the fd must be mapped with MAP_PRIVATE by the recipient, as MAP_SHARED may fail.
-    if (wl_keyboard_get_version(wl_keyboard) >= 7) {
-        keymap_string = static_cast<char *>(mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0));
-    } else {
-        keymap_string = static_cast<char *>(mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0));
+    if (obj->format_ == WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
+        char *keymap_string;
+        /// From version 7 onwards, the fd must be mapped with MAP_PRIVATE by the recipient, as MAP_SHARED may fail.
+        if (wl_keyboard_get_version(wl_keyboard) >= 7) {
+            keymap_string = static_cast<char *>(mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0));
+        } else {
+            keymap_string = static_cast<char *>(mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0));
+        }
+        xkb_keymap_unref(obj->xkb_keymap_);
+        obj->xkb_keymap_ = xkb_keymap_new_from_string(obj->xkb_context_, keymap_string,
+                                                      XKB_KEYMAP_FORMAT_TEXT_V1,
+                                                      XKB_KEYMAP_COMPILE_NO_FLAGS);
+        munmap(keymap_string, size);
+        close(fd);
+        xkb_state_unref(obj->xkb_state_);
+        obj->xkb_state_ = xkb_state_new(obj->xkb_keymap_);
     }
-    xkb_keymap_unref(obj->xkb_keymap_);
-    obj->xkb_keymap_ = xkb_keymap_new_from_string(obj->xkb_context_, keymap_string,
-                                                  XKB_KEYMAP_FORMAT_TEXT_V1,
-                                                  XKB_KEYMAP_COMPILE_NO_FLAGS);
-    munmap(keymap_string, size);
-    close(fd);
-    xkb_state_unref(obj->xkb_state_);
-    obj->xkb_state_ = xkb_state_new(obj->xkb_keymap_);
+    else {
+        spdlog::warn("Usage without libxkbcommon is currently not supported.");
+    }
 
     for (auto observer: obj->observers_) {
         observer->notify_keyboard_keymap(obj, wl_keyboard, format, fd, size);
@@ -120,10 +121,12 @@ void Keyboard::handle_enter(void *data,
 
     obj->wl_surface = wl_surface;
 
-    if (keys->size) {
-        const uint32_t *key;
-        WL_ARRAY_FOR_EACH(key, keys, const uint32_t*) {
-            handle_key(data, wl_keyboard, serial, 0, *key, WL_KEYBOARD_KEY_STATE_PRESSED);
+    if (obj->format_ == WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
+        if (keys->size) {
+            const uint32_t *key;
+            WL_ARRAY_FOR_EACH(key, keys, const uint32_t*) {
+                handle_key(data, wl_keyboard, serial, 0, *key, WL_KEYBOARD_KEY_STATE_PRESSED);
+            }
         }
     }
 
@@ -163,43 +166,46 @@ void Keyboard::handle_key(void *data,
     if (!obj->xkb_state_)
         return;
 
-    /// translate scancode to XKB scancode
-    auto xkb_scancode = key + 8;
-    auto key_repeats = xkb_keymap_key_repeats(obj->xkb_keymap_, xkb_scancode);
+    if (obj->format_ == WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
 
-    const xkb_keysym_t *key_syms;
-    auto xdg_keysym_count = xkb_state_key_get_syms(obj->xkb_state_, xkb_scancode, &key_syms);
+        /// translate scancode to XKB scancode
+        auto xkb_scancode = key + 8;
+        auto key_repeats = xkb_keymap_key_repeats(obj->xkb_keymap_, xkb_scancode);
 
-    if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
-        if (key_repeats) {
-            // start/restart timer
-            struct itimerspec in{};
-            in.it_value.tv_nsec = obj->repeat_.delay * 1000000;
-            in.it_interval.tv_nsec = obj->repeat_.rate * 1000000;
-            timer_settime(obj->repeat_.timer, 0, &in, nullptr);
+        const xkb_keysym_t *key_syms;
+        auto xdg_keysym_count = xkb_state_key_get_syms(obj->xkb_state_, xkb_scancode, &key_syms);
 
-            // update notify values
-            obj->repeat_.notify = {
-                    .serial = serial,
-                    .time = time,
-                    .xkb_scancode = xkb_scancode,
-                    .key_repeats = key_repeats,
-                    .xdg_keysym_count = xdg_keysym_count,
-                    .key_syms = key_syms,
-            };
+        if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+            if (key_repeats) {
+                // start/restart timer
+                struct itimerspec in{};
+                in.it_value.tv_nsec = obj->repeat_.delay * 1000000;
+                in.it_interval.tv_nsec = obj->repeat_.rate * 1000000;
+                timer_settime(obj->repeat_.timer, 0, &in, nullptr);
+
+                // update notify values
+                obj->repeat_.notify = {
+                        .serial = serial,
+                        .time = time,
+                        .xkb_scancode = xkb_scancode,
+                        .key_repeats = key_repeats,
+                        .xdg_keysym_count = xdg_keysym_count,
+                        .key_syms = key_syms,
+                };
+            }
+
+        } else if (state == WL_KEYBOARD_KEY_STATE_RELEASED) {
+            if (obj->repeat_.notify.xkb_scancode == xkb_scancode) {
+                // stop timer
+                struct itimerspec its{};
+                timer_settime(obj->repeat_.timer, 0, &its, nullptr);
+            }
         }
 
-    } else if (state == WL_KEYBOARD_KEY_STATE_RELEASED) {
-        if (obj->repeat_.notify.xkb_scancode == xkb_scancode) {
-            // stop timer
-            struct itimerspec its{};
-            timer_settime(obj->repeat_.timer, 0, &its, nullptr);
+        for (auto observer: obj->observers_) {
+            observer->notify_keyboard_xkb_v1_key(obj, wl_keyboard, serial, time, xkb_scancode, key_repeats, state,
+                                                 xdg_keysym_count, key_syms);
         }
-    }
-
-    for (auto observer: obj->observers_) {
-        observer->notify_keyboard_key(obj, wl_keyboard, serial, time, xkb_scancode, key_repeats, state,
-                                      xdg_keysym_count, key_syms);
     }
 }
 
@@ -217,7 +223,9 @@ void Keyboard::handle_modifiers(void *data,
 
     SPDLOG_TRACE("[Keyboard] handle_modifiers");
 
-    xkb_state_update_mask(obj->xkb_state_, mods_depressed, mods_latched, mods_locked, 0, 0, group);
+    if (obj->format_ == WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
+        xkb_state_update_mask(obj->xkb_state_, mods_depressed, mods_latched, mods_locked, 0, 0, group);
+    }
 }
 
 void Keyboard::handle_repeat_info(void *data,
@@ -234,25 +242,28 @@ void Keyboard::handle_repeat_info(void *data,
     obj->repeat_.rate = rate;
     obj->repeat_.delay = delay;
 
-    if (!obj->repeat_.timer) {
+    if (obj->format_ == WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
 
-        /// Setup signal event
-        obj->repeat_.sev.sigev_notify = SIGEV_SIGNAL;
-        obj->repeat_.sev.sigev_signo = SIGRTMIN;
-        obj->repeat_.sev.sigev_value.sival_ptr = data;
-        auto res = timer_create(CLOCK_REALTIME, &obj->repeat_.sev, &obj->repeat_.timer);
-        if (res != 0) {
-            spdlog::critical("Error timer_create: {}", strerror(errno));
-            abort();
-        }
+        if (!obj->repeat_.timer) {
 
-        /// Setup signal action
-        obj->repeat_.sa.sa_flags = SA_SIGINFO;
-        obj->repeat_.sa.sa_sigaction = repeat_callback;
-        sigemptyset(&obj->repeat_.sa.sa_mask);
-        if (sigaction(SIGRTMIN, &obj->repeat_.sa, nullptr) == -1) {
-            spdlog::critical("Error sigaction: {}", strerror(errno));
-            abort();
+            /// Setup signal event
+            obj->repeat_.sev.sigev_notify = SIGEV_SIGNAL;
+            obj->repeat_.sev.sigev_signo = SIGRTMIN;
+            obj->repeat_.sev.sigev_value.sival_ptr = data;
+            auto res = timer_create(CLOCK_REALTIME, &obj->repeat_.sev, &obj->repeat_.timer);
+            if (res != 0) {
+                spdlog::critical("Error timer_create: {}", strerror(errno));
+                abort();
+            }
+
+            /// Setup signal action
+            obj->repeat_.sa.sa_flags = SA_SIGINFO;
+            obj->repeat_.sa.sa_sigaction = repeat_xkb_v1_key_callback;
+            sigemptyset(&obj->repeat_.sa.sa_mask);
+            if (sigaction(SIGRTMIN, &obj->repeat_.sa, nullptr) == -1) {
+                spdlog::critical("Error sigaction: {}", strerror(errno));
+                abort();
+            }
         }
     }
 }
@@ -266,13 +277,13 @@ const struct wl_keyboard_listener Keyboard::keyboard_listener_ = {
         .repeat_info = handle_repeat_info,
 };
 
-void Keyboard::repeat_callback(int /* sig */, siginfo_t *si, void * /* uc */) {
+void Keyboard::repeat_xkb_v1_key_callback(int /* sig */, siginfo_t *si, void * /* uc */) {
     auto obj = static_cast<Keyboard *>(si->_sifields._rt.si_sigval.sival_ptr);
 
     for (auto observer: obj->observers_) {
-        observer->notify_keyboard_key(obj, obj->repeat_.notify.wl_keyboard, obj->repeat_.notify.serial,
-                                      obj->repeat_.notify.time, obj->repeat_.notify.xkb_scancode,
-                                      obj->repeat_.notify.key_repeats, WL_KEYBOARD_KEY_STATE_PRESSED,
-                                      obj->repeat_.notify.xdg_keysym_count, obj->repeat_.notify.key_syms);
+        observer->notify_keyboard_xkb_v1_key(obj, obj->repeat_.notify.wl_keyboard, obj->repeat_.notify.serial,
+                                             obj->repeat_.notify.time, obj->repeat_.notify.xkb_scancode,
+                                             obj->repeat_.notify.key_repeats, WL_KEYBOARD_KEY_STATE_PRESSED,
+                                             obj->repeat_.notify.xdg_keysym_count, obj->repeat_.notify.key_syms);
     }
 }

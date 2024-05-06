@@ -70,15 +70,15 @@ void Handlers::notify_keyboard_keymap(Keyboard * /* keyboard */,
     spdlog::info("Keymap: format: {}, fd: {}, size: {}", format, fd, size);
 }
 
-void Handlers::notify_keyboard_key(Keyboard * /* keyboard */,
-                                   wl_keyboard * /* wl_keyboard */,
-                                   uint32_t serial,
-                                   uint32_t time,
-                                   uint32_t xkb_scancode,
-                                   bool key_repeats,
-                                   uint32_t state,
-                                   int xdg_key_symbol_count,
-                                   const xkb_keysym_t *xdg_key_symbols) {
+void Handlers::notify_keyboard_xkb_v1_key(Keyboard * /* keyboard */,
+                                          wl_keyboard * /* wl_keyboard */,
+                                          uint32_t serial,
+                                          uint32_t time,
+                                          uint32_t xkb_scancode,
+                                          bool key_repeats,
+                                          uint32_t state,
+                                          int xdg_key_symbol_count,
+                                          const xkb_keysym_t *xdg_key_symbols) {
     spdlog::info(
             "Key: serial: {}, time: {}, xkb_scancode: 0x{:X}, key_repeats: {}, state: {}, xdg_keysym_count: {}, syms_out[0]: 0x{:X}",
             serial, time, xkb_scancode, key_repeats, state == KeyState::KEY_STATE_PRESS ? "press" : "release",
