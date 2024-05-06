@@ -19,9 +19,17 @@
 #include <EGL/egl.h>
 
 #include "registrar.h"
-#include "window_manager_observer.h"
 
 class Registrar;
+
+class WindowManager;
+
+class WindowManagerObserver {
+public:
+    virtual ~WindowManagerObserver() = default;
+
+    virtual void notify_task() = 0;
+};
 
 class WindowManager : public Registrar {
 public:
