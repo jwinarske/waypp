@@ -23,39 +23,38 @@
 
 #include "handlers.h"
 #include "logging.h"
-#include "window/xdg_toplevel.h"
 #include "vk_backend.h"
+#include "window/xdg_toplevel.h"
 
 class App {
-public:
+ public:
+  static constexpr char kAppTitle[] = "Shadertoy";
+  static constexpr char kAppId[] = "org.waypp.vk-shadertoy";
 
-    static constexpr char kAppTitle[] = "Shadertoy";
-    static constexpr char kAppId[] = "org.waypp.vk-shadertoy";
+  struct Configuration {
+    int width;
+    int height;
+    bool debug_enable;
+    bool disable_cursor;
+    bool fullscreen;
+    bool maximized;
+    bool fullscreen_ratio;
+    bool tearing;
+  };
 
-    struct Configuration {
-        int width;
-        int height;
-        bool debug_enable;
-        bool disable_cursor;
-        bool fullscreen;
-        bool maximized;
-        bool fullscreen_ratio;
-        bool tearing;
-    };
+  explicit App(const Configuration& config);
 
-    explicit App(const Configuration &config);
+  ~App();
 
-    ~App();
+  bool run();
 
-    bool run();
+ private:
+  struct wl_display* display_;
+  std::unique_ptr<Logging> logging_;
+  std::unique_ptr<Handlers> handlers_;
+  std::unique_ptr<XdgWindowManager> wm_;
+  std::unique_ptr<VulkanBackend> backend_;
+  XdgTopLevel* toplevel_;
 
-private:
-    struct wl_display *display_;
-    std::unique_ptr<Logging> logging_;
-    std::unique_ptr<Handlers> handlers_;
-    std::unique_ptr<XdgWindowManager> wm_;
-    std::unique_ptr<VulkanBackend> backend_;
-    XdgTopLevel *toplevel_;
-
-    static void draw_frame(void *data, uint32_t time);
+  static void draw_frame(void* data, uint32_t time);
 };

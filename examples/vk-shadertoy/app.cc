@@ -27,66 +27,58 @@
 
 static constexpr uint32_t kOffscreenBuffers = 4;
 
-void App::draw_frame(void * /* data */, const uint32_t /* time */) {
-    // auto window = static_cast<Window *>(data);
+void App::draw_frame(void* /* data */, const uint32_t /* time */) {
+  // auto window = static_cast<Window *>(data);
 }
 
-App::App(const Configuration &config) : handlers_(std::make_unique<Handlers>()), logging_(std::make_unique<Logging>()) {
+App::App(const Configuration& config)
+    : handlers_(std::make_unique<Handlers>()),
+      logging_(std::make_unique<Logging>()) {
+  spdlog::info("{}", kAppTitle);
 
-    spdlog::info("{}", kAppTitle);
+  display_ = wl_display_connect(nullptr);
+  if (!display_) {
+    spdlog::critical("Unable to connect to Wayland socket.");
+    exit(EXIT_FAILURE);
+  }
 
-    display_ = wl_display_connect(nullptr);
-    if (!display_) {
-        spdlog::critical("Unable to connect to Wayland socket.");
-        exit(EXIT_FAILURE);
+  std::thread t1([&] {
+    backend_ = std::make_unique<VulkanBackend>(kAppId, config.debug_enable);
+  });
+
+  std::thread t2([&] {
+    wm_ = std::make_unique<XdgWindowManager>(display_, config.disable_cursor);
+    auto seat = wm_->get_seat();
+    if (seat.has_value()) {
+      seat.value()->register_observer(handlers_.get());
     }
 
-    std::thread t1([&] {
-        backend_ = std::make_unique<VulkanBackend>(kAppId, config.debug_enable);
-    });
+    spdlog::debug("XDG Window Manager Version: {}", wm_->get_version());
 
-    std::thread t2([&] {
-        wm_ = std::make_unique<XdgWindowManager>(display_, config.disable_cursor);
-        auto seat = wm_->get_seat();
-        if (seat.has_value()) {
-            seat.value()->register_observer(handlers_.get());
-        }
+    toplevel_ = wm_->create_top_level(
+        kAppTitle, kAppId, config.width, config.height, 0, 0, config.fullscreen,
+        config.maximized, config.fullscreen_ratio, config.tearing, draw_frame);
+    spdlog::debug("XDG Window Version: {}", toplevel_->get_version());
+  });
 
-        spdlog::debug("XDG Window Manager Version: {}", wm_->get_version());
+  t1.join();
+  t2.join();
 
-        toplevel_ = wm_->create_top_level(kAppTitle,
-                                          kAppId,
-                                          config.width,
-                                          config.height,
-                                          0,
-                                          0,
-                                          config.fullscreen,
-                                          config.maximized,
-                                          config.fullscreen_ratio,
-                                          config.tearing,
-                                          draw_frame
-        );
-        spdlog::debug("XDG Window Version: {}", toplevel_->get_version());
-    });
+  backend_->CreateSurface(wm_->get_display(), toplevel_->get_surface(),
+                          config.width, config.height, kOffscreenBuffers);
 
-    t1.join();
-    t2.join();
-
-    backend_->CreateSurface(wm_->get_display(), toplevel_->get_surface(), config.width, config.height,
-                            kOffscreenBuffers);
-
-    /// paint padding
-    toplevel_->set_surface_damage(0, 0, config.width, config.height);
-    toplevel_->start_frame_callbacks();
+  /// paint padding
+  toplevel_->set_surface_damage(0, 0, config.width, config.height);
+  toplevel_->start_frame_callbacks();
 }
 
 App::~App() {
-    toplevel_->stop_frame_callbacks();
-    wl_display_flush(display_);
-    wl_display_flush(display_);
+  toplevel_->stop_frame_callbacks();
+  wl_display_flush(display_);
+  wl_display_flush(display_);
 }
 
 bool App::run() {
-    /// display_dispatch is blocking
-    return (toplevel_->is_valid() && wm_->display_dispatch() != -1);
+  /// display_dispatch is blocking
+  return (toplevel_->is_valid() && wm_->display_dispatch() != -1);
 }

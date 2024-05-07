@@ -27,56 +27,54 @@
 
 #include "app.h"
 
-
 static volatile bool gRunning = true;
-
 
 /**
  * @brief Signal handler function to handle signals.
  *
- * This function is a signal handler for handling signals. It sets the value of keep_running
- * to false, which will stop the program from running. The function does not take any input
- * parameters.
+ * This function is a signal handler for handling signals. It sets the value of
+ * keep_running to false, which will stop the program from running. The function
+ * does not take any input parameters.
  *
  * @param signal The signal number. This parameter is not used by the function.
  *
  * @return void
  */
 void handle_signal(int signal) {
-    if (signal == SIGINT) {
-        gRunning = false;
-    }
+  if (signal == SIGINT) {
+    gRunning = false;
+  }
 }
 
+int main(int argc, char** argv) {
+  std::signal(SIGINT, handle_signal);
 
-int main(int argc, char **argv) {
+  cxxopts::Options options("simple-shm", "Weston simple-shm example");
+  options.add_options()("w,width", "Set width",
+                        cxxopts::value<int>()->default_value("250"))(
+      "h,height", "Set height", cxxopts::value<int>()->default_value("250"))(
+      "d,debug", "Enable debug extensions")("c,disable-cursor",
+                                            "Disable Cursor")(
+      "f,fullscreen", "Run in fullscreen mode")("m,maximized",
+                                                "Run in maximized mode")(
+      "r,fullscreen-ratio",
+      "Use fixed width/height ratio when run in fullscreen mode")(
+      "t,tearing", "Enable tearing via the tearing_control protocol");
+  auto result = options.parse(argc, argv);
 
-    std::signal(SIGINT, handle_signal);
+  App app({
+      .width = result["width"].as<int>(),
+      .height = result["height"].as<int>(),
+      .debug_enable = result["debug"].as<bool>(),
+      .disable_cursor = result["disable-cursor"].as<bool>(),
+      .fullscreen = result["fullscreen"].as<bool>(),
+      .maximized = result["maximized"].as<bool>(),
+      .fullscreen_ratio = result["fullscreen-ratio"].as<bool>(),
+      .tearing = result["tearing"].as<bool>(),
+  });
 
-    cxxopts::Options options("simple-shm", "Weston simple-shm example");
-    options.add_options()
-            ("w,width", "Set width", cxxopts::value<int>()->default_value("250"))
-            ("h,height", "Set height", cxxopts::value<int>()->default_value("250"))
-            ("d,debug", "Enable debug extensions")
-            ("c,disable-cursor", "Disable Cursor")
-            ("f,fullscreen", "Run in fullscreen mode")
-            ("m,maximized", "Run in maximized mode")
-            ("r,fullscreen-ratio", "Use fixed width/height ratio when run in fullscreen mode")
-            ("t,tearing", "Enable tearing via the tearing_control protocol");
-    auto result = options.parse(argc, argv);
+  while (gRunning && app.run()) {
+  }
 
-    App app({
-                    .width = result["width"].as<int>(),
-                    .height = result["height"].as<int>(),
-                    .debug_enable = result["debug"].as<bool>(),
-                    .disable_cursor = result["disable-cursor"].as<bool>(),
-                    .fullscreen = result["fullscreen"].as<bool>(),
-                    .maximized = result["maximized"].as<bool>(),
-                    .fullscreen_ratio = result["fullscreen-ratio"].as<bool>(),
-                    .tearing = result["tearing"].as<bool>(),
-            });
-
-    while (gRunning && app.run()) {}
-
-    return EXIT_SUCCESS;
+  return EXIT_SUCCESS;
 }

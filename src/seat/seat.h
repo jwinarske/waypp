@@ -35,74 +35,74 @@ class Touch;
 class Seat;
 
 class SeatObserver {
-public:
-    virtual ~SeatObserver() = default;
+ public:
+  virtual ~SeatObserver() = default;
 
-    virtual void notify_seat_name(Seat *seat,
-                                  struct wl_seat *wl_seat,
-                                  const char *name) = 0;
+  virtual void notify_seat_name(Seat* seat,
+                                struct wl_seat* wl_seat,
+                                const char* name) = 0;
 
-    virtual void notify_seat_capabilities(Seat *seat,
-                                          struct wl_seat *wl_seat,
-                                          uint32_t caps) = 0;
+  virtual void notify_seat_capabilities(Seat* seat,
+                                        struct wl_seat* wl_seat,
+                                        uint32_t caps) = 0;
 };
 
 class Seat {
-public:
-    explicit Seat(struct wl_seat *seat,
-                  struct wl_shm *wl_shm,
-                  struct wl_compositor *wl_compositor,
-                  bool disable_cursor = false);
+ public:
+  explicit Seat(struct wl_seat* seat,
+                struct wl_shm* wl_shm,
+                struct wl_compositor* wl_compositor,
+                bool disable_cursor = false);
 
-    ~Seat();
+  ~Seat();
 
-    void register_observer(SeatObserver *observer) {
-        observers_.push_back(observer);
-    }
+  void register_observer(SeatObserver* observer) {
+    observers_.push_back(observer);
+  }
 
-    void unregister_observer(SeatObserver *observer) {
-        observers_.remove(observer);
-    }
+  void unregister_observer(SeatObserver* observer) {
+    observers_.remove(observer);
+  }
 
-    [[nodiscard]] struct wl_seat *get_seat() const { return wl_seat_; }
+  [[nodiscard]] struct wl_seat* get_seat() const { return wl_seat_; }
 
-    [[nodiscard]] uint32_t get_capabilities() const { return capabilities_; }
+  [[nodiscard]] uint32_t get_capabilities() const { return capabilities_; }
 
-    [[nodiscard]] const std::string &get_name() const { return name_; }
+  [[nodiscard]] const std::string& get_name() const { return name_; }
 
-    [[nodiscard]] std::optional<Keyboard *> get_keyboard() const;
+  [[nodiscard]] std::optional<Keyboard*> get_keyboard() const;
 
-    [[nodiscard]] std::optional<Pointer *> get_pointer() const;
+  [[nodiscard]] std::optional<Pointer*> get_pointer() const;
 
-    // Disallow copy and assign.
-    Seat(const Seat &) = delete;
+  // Disallow copy and assign.
+  Seat(const Seat&) = delete;
 
-    Seat &operator=(const Seat &) = delete;
+  Seat& operator=(const Seat&) = delete;
 
-private:
-    struct wl_seat *wl_seat_;
-    uint32_t capabilities_{};
-    std::string name_;
-    struct wl_shm *wl_shm_;
-    struct wl_compositor *wl_compositor_;
-    bool disable_cursor_;
+ private:
+  struct wl_seat* wl_seat_;
+  uint32_t capabilities_{};
+  std::string name_;
+  struct wl_shm* wl_shm_;
+  struct wl_compositor* wl_compositor_;
+  bool disable_cursor_;
 
-    std::list<SeatObserver *> observers_{};
+  std::list<SeatObserver*> observers_{};
 
-    std::unique_ptr<Keyboard> keyboard_;
-    std::unique_ptr<Pointer> pointer_;
-    std::unique_ptr<Touch> touch_;
+  std::unique_ptr<Keyboard> keyboard_;
+  std::unique_ptr<Pointer> pointer_;
+  std::unique_ptr<Touch> touch_;
 
-    static void handle_capabilities(void *data,
-                                    struct wl_seat *wl_seat,
-                                    uint32_t caps);
+  static void handle_capabilities(void* data,
+                                  struct wl_seat* wl_seat,
+                                  uint32_t caps);
 
-    static void handle_name(void *data,
-                            struct wl_seat *wl_seat,
-                            const char *name);
+  static void handle_name(void* data,
+                          struct wl_seat* wl_seat,
+                          const char* name);
 
-    static constexpr struct wl_seat_listener listener_ = {
-            .capabilities = handle_capabilities,
-            .name = handle_name,
-    };
+  static constexpr struct wl_seat_listener listener_ = {
+      .capabilities = handle_capabilities,
+      .name = handle_name,
+  };
 };

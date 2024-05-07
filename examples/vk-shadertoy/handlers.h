@@ -27,44 +27,93 @@
 
 #include "window/xdg_toplevel.h"
 
-class Handlers final : public SeatObserver, public PointerObserver, public KeyboardObserver {
-public:
-    Handlers();
+class Handlers final : public SeatObserver,
+                       public PointerObserver,
+                       public KeyboardObserver {
+ public:
+  Handlers();
 
-    ~Handlers() override = default;
+  ~Handlers() override = default;
 
-private:
-    std::random_device rd_;
-    std::mt19937 gen_;
+ private:
+  std::random_device rd_;
+  std::mt19937 gen_;
 
-    void notify_seat_capabilities(Seat *seat, wl_seat *, uint32_t) override;
+  void notify_seat_capabilities(Seat* seat, wl_seat*, uint32_t) override;
 
-    void notify_seat_name(Seat *, wl_seat *, const char *name) override;
+  void notify_seat_name(Seat*, wl_seat*, const char* name) override;
 
-    void notify_keyboard_enter(Keyboard *, wl_keyboard *, uint32_t, wl_surface *, wl_array *) override;
+  void notify_keyboard_enter(Keyboard*,
+                             wl_keyboard*,
+                             uint32_t,
+                             wl_surface*,
+                             wl_array*) override;
 
-    void notify_keyboard_leave(Keyboard *, wl_keyboard *, uint32_t, wl_surface *) override;
+  void notify_keyboard_leave(Keyboard*,
+                             wl_keyboard*,
+                             uint32_t,
+                             wl_surface*) override;
 
-    void notify_keyboard_keymap(Keyboard *, wl_keyboard *, uint32_t, int32_t, uint32_t) override;
+  void notify_keyboard_keymap(Keyboard*,
+                              wl_keyboard*,
+                              uint32_t,
+                              int32_t,
+                              uint32_t) override;
 
-    void notify_keyboard_xkb_v1_key(Keyboard *, wl_keyboard *, uint32_t, uint32_t, uint32_t, bool, uint32_t, int,
-                                    const xkb_keysym_t *) override;
+  void notify_keyboard_xkb_v1_key(Keyboard*,
+                                  wl_keyboard*,
+                                  uint32_t,
+                                  uint32_t,
+                                  uint32_t,
+                                  bool,
+                                  uint32_t,
+                                  int,
+                                  const xkb_keysym_t*) override;
 
-    void notify_pointer_enter(Pointer *, wl_pointer *, uint32_t, wl_surface *, double, double) override;
+  void notify_pointer_enter(Pointer*,
+                            wl_pointer*,
+                            uint32_t,
+                            wl_surface*,
+                            double,
+                            double) override;
 
-    void notify_pointer_leave(Pointer *, wl_pointer *, uint32_t, wl_surface *) override;
+  void notify_pointer_leave(Pointer*,
+                            wl_pointer*,
+                            uint32_t,
+                            wl_surface*) override;
 
-    void notify_pointer_motion(Pointer *, wl_pointer *, uint32_t, double, double) override;
+  void notify_pointer_motion(Pointer*,
+                             wl_pointer*,
+                             uint32_t,
+                             double,
+                             double) override;
 
-    void notify_pointer_button(Pointer *, wl_pointer *, uint32_t, uint32_t, uint32_t, uint32_t state) override;
+  void notify_pointer_button(Pointer*,
+                             wl_pointer*,
+                             uint32_t,
+                             uint32_t,
+                             uint32_t,
+                             uint32_t state) override;
 
-    void notify_pointer_axis(Pointer *, wl_pointer *, uint32_t, uint32_t, wl_fixed_t) override;
+  void notify_pointer_axis(Pointer*,
+                           wl_pointer*,
+                           uint32_t,
+                           uint32_t,
+                           wl_fixed_t) override;
 
-    void notify_pointer_frame(Pointer *, wl_pointer *) override;
+  void notify_pointer_frame(Pointer*, wl_pointer*) override;
 
-    void notify_pointer_axis_source(Pointer *, wl_pointer *, uint32_t axis_source) override;
+  void notify_pointer_axis_source(Pointer*,
+                                  wl_pointer*,
+                                  uint32_t axis_source) override;
 
-    void notify_pointer_axis_stop(Pointer *, wl_pointer *, uint32_t, uint32_t axis) override;
+  void notify_pointer_axis_stop(Pointer*,
+                                wl_pointer*,
+                                uint32_t,
+                                uint32_t axis) override;
 
-    void notify_pointer_axis_discrete(Pointer *, wl_pointer *, uint32_t axis, int32_t discrete) override;
+  void notify_pointer_axis_discrete(Pointer*,
+                                    wl_pointer*,
+                                    uint32_t axis,
+                                    int32_t discrete) override;
 };

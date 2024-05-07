@@ -28,19 +28,18 @@
 
 #include <cxxopts.hpp>
 
-#include "window_manager/agl_shell.h"
-#include "window/xdg_toplevel.h"
 #include "logging.h"
-
+#include "window/xdg_toplevel.h"
+#include "window_manager/agl_shell.h"
 
 struct Configuration {
-    int width;
-    int height;
-    bool disable_cursor;
-    bool fullscreen;
-    bool maximized;
-    bool fullscreen_ratio;
-    bool tearing;
+  int width;
+  int height;
+  bool disable_cursor;
+  bool fullscreen;
+  bool maximized;
+  bool fullscreen_ratio;
+  bool tearing;
 };
 
 static volatile bool gRunning = true;
@@ -50,305 +49,323 @@ static std::vector<std::string> gCursors = Pointer::get_available_cursors();
 /**
  * @brief Signal handler function to handle signals.
  *
- * This function is a signal handler for handling signals. It sets the value of keep_running
- * to false, which will stop the program from running. The function does not take any input
- * parameters.
+ * This function is a signal handler for handling signals. It sets the value of
+ * keep_running to false, which will stop the program from running. The function
+ * does not take any input parameters.
  *
  * @param signal The signal number. This parameter is not used by the function.
  *
  * @return void
  */
 void handle_signal(int signal) {
-    if (signal == SIGINT) {
-        gRunning = false;
-    }
+  if (signal == SIGINT) {
+    gRunning = false;
+  }
 }
 
-static void paint_pixels(void *image, int padding, int width, int height, uint32_t time) {
-    auto pixel = static_cast<uint32_t *>(image);
-    int half_h = padding + (height - padding * 2) / 2;
-    int half_w = padding + (width - padding * 2) / 2;
-    int ir, or_;
-    int y;
+static void paint_pixels(void* image,
+                         int padding,
+                         int width,
+                         int height,
+                         uint32_t time) {
+  auto pixel = static_cast<uint32_t*>(image);
+  int half_h = padding + (height - padding * 2) / 2;
+  int half_w = padding + (width - padding * 2) / 2;
+  int ir, or_;
+  int y;
 
-    /// Squared radii thresholds
-    or_ = (half_w < half_h ? half_w : half_h) - 8;
-    ir = or_ - 32;
-    or_ *= or_;
-    ir *= ir;
+  /// Squared radii thresholds
+  or_ = (half_w < half_h ? half_w : half_h) - 8;
+  ir = or_ - 32;
+  or_ *= or_;
+  ir *= ir;
 
-    pixel += padding * width;
-    for (y = padding; y < height - padding; y++) {
-        int x;
-        int y2 = (y - half_h) * (y - half_h);
+  pixel += padding * width;
+  for (y = padding; y < height - padding; y++) {
+    int x;
+    int y2 = (y - half_h) * (y - half_h);
 
-        pixel += padding;
-        for (x = padding; x < width - padding; x++) {
-            uint32_t v;
+    pixel += padding;
+    for (x = padding; x < width - padding; x++) {
+      uint32_t v;
 
-            /// Squared distance from center
-            int r2 = (x - half_w) * (x - half_w) + y2;
+      /// Squared distance from center
+      int r2 = (x - half_w) * (x - half_w) + y2;
 
-            if (r2 < ir)
-                v = (static_cast<uint32_t>(r2 / 32) + time / 64) * 0x0080401;
-            else if (r2 < or_)
-                v = (static_cast<uint32_t>(y) + time / 32) * 0x0080401;
-            else
-                v = (static_cast<uint32_t>(x) + time / 16) * 0x0080401;
-            v &= 0x00ffffff;
+      if (r2 < ir)
+        v = (static_cast<uint32_t>(r2 / 32) + time / 64) * 0x0080401;
+      else if (r2 < or_)
+        v = (static_cast<uint32_t>(y) + time / 32) * 0x0080401;
+      else
+        v = (static_cast<uint32_t>(x) + time / 16) * 0x0080401;
+      v &= 0x00ffffff;
 
-            /// Cross if compositor uses X from XRGB as alpha
-            if (abs(x - y) > 6 && abs(x + y - height) > 6)
-                v |= 0xff000000;
+      /// Cross if compositor uses X from XRGB as alpha
+      if (abs(x - y) > 6 && abs(x + y - height) > 6)
+        v |= 0xff000000;
 
-            *pixel++ = v;
-        }
-
-        pixel += padding;
+      *pixel++ = v;
     }
+
+    pixel += padding;
+  }
 }
 
-void draw_frame(void *data, const uint32_t time) {
-    auto window = static_cast<Window *>(data);
+void draw_frame(void* data, const uint32_t time) {
+  auto window = static_cast<Window*>(data);
 
-    auto buffer = window->next_buffer();
-    if (!buffer) {
-        spdlog::error("Failed to acquire a buffer");
-        exit(EXIT_FAILURE);
-    }
+  auto buffer = window->next_buffer();
+  if (!buffer) {
+    spdlog::error("Failed to acquire a buffer");
+    exit(EXIT_FAILURE);
+  }
 
-    paint_pixels(buffer->get_shm_data(), 20, window->get_width(), window->get_height(), time);
+  paint_pixels(buffer->get_shm_data(), 20, window->get_width(),
+               window->get_height(), time);
 
-    wl_surface_attach(window->get_surface(), buffer->get_wl_buffer(), 0, 0);
-    wl_surface_damage(window->get_surface(), 20, 20, window->get_width() - 40, window->get_height() - 40);
+  wl_surface_attach(window->get_surface(), buffer->get_wl_buffer(), 0, 0);
+  wl_surface_damage(window->get_surface(), 20, 20, window->get_width() - 40,
+                    window->get_height() - 40);
 
-    buffer->set_busy();
+  buffer->set_busy();
 }
 
-class App : public PointerObserver, public KeyboardObserver, public SeatObserver {
-public:
-    explicit App(const Configuration &config) : logging_(std::make_unique<Logging>()),
-                                                gen_(rd_()) {
-
-        display_ = wl_display_connect(nullptr);
-        if (!display_) {
-            spdlog::critical("Unable to connect to Wayland socket.");
-            exit(EXIT_FAILURE);
-        }
-
-        agl_shell_ = std::make_unique<AglShell>(display_, config.disable_cursor);
-        spdlog::info("AGL Shell Version: {}", agl_shell_->get_version());
-        auto seat = agl_shell_->get_seat();
-        if (seat.has_value()) {
-            seat.value()->register_observer(this);
-        }
-
-        toplevel_ = agl_shell_->create_top_level("agl-simple-shm",
-                                                 "org.freedesktop.gitlab.jwinarske.waypp.simple_shm",
-                                                 config.width,
-                                                 config.height,
-                                                 2,
-                                                 WL_SHM_FORMAT_XRGB8888,
-                                                 config.fullscreen,
-                                                 config.maximized,
-                                                 config.fullscreen_ratio,
-                                                 config.tearing,
-                                                 draw_frame
-        );
-        spdlog::info("XDG Window Version: {}", toplevel_->get_version());
-
-        surface_ = toplevel_->get_surface();
-        output_ = agl_shell_->get_primary_output();
-        agl_shell_->set_background(surface_, output_);
-        agl_shell_->set_activate_region(output_, 0, 0, static_cast<uint32_t>(config.width),
-                                        static_cast<uint32_t>(config.height));
-        agl_shell_->ready();
-
-        /// paint padding
-        toplevel_->set_surface_damage(0, 0, config.width, config.height);
-        toplevel_->start_frame_callbacks();
+class App : public PointerObserver,
+            public KeyboardObserver,
+            public SeatObserver {
+ public:
+  explicit App(const Configuration& config)
+      : logging_(std::make_unique<Logging>()), gen_(rd_()) {
+    display_ = wl_display_connect(nullptr);
+    if (!display_) {
+      spdlog::critical("Unable to connect to Wayland socket.");
+      exit(EXIT_FAILURE);
     }
 
-    ~App() override {
-        toplevel_->stop_frame_callbacks();
-
-        if (display_) {
-            wl_display_flush(display_);
-            wl_display_disconnect(display_);
-        }
+    agl_shell_ = std::make_unique<AglShell>(display_, config.disable_cursor);
+    spdlog::info("AGL Shell Version: {}", agl_shell_->get_version());
+    auto seat = agl_shell_->get_seat();
+    if (seat.has_value()) {
+      seat.value()->register_observer(this);
     }
 
-    bool run() {
-        /// display_dispatch is blocking
-        return (toplevel_->is_valid() && agl_shell_->display_dispatch() != -1);
+    toplevel_ = agl_shell_->create_top_level(
+        "agl-simple-shm", "org.freedesktop.gitlab.jwinarske.waypp.simple_shm",
+        config.width, config.height, 2, WL_SHM_FORMAT_XRGB8888,
+        config.fullscreen, config.maximized, config.fullscreen_ratio,
+        config.tearing, draw_frame);
+    spdlog::info("XDG Window Version: {}", toplevel_->get_version());
+
+    surface_ = toplevel_->get_surface();
+    output_ = agl_shell_->get_primary_output();
+    agl_shell_->set_background(surface_, output_);
+    agl_shell_->set_activate_region(output_, 0, 0,
+                                    static_cast<uint32_t>(config.width),
+                                    static_cast<uint32_t>(config.height));
+    agl_shell_->ready();
+
+    /// paint padding
+    toplevel_->set_surface_damage(0, 0, config.width, config.height);
+    toplevel_->start_frame_callbacks();
+  }
+
+  ~App() override {
+    toplevel_->stop_frame_callbacks();
+
+    if (display_) {
+      wl_display_flush(display_);
+      wl_display_disconnect(display_);
     }
+  }
 
-    void notify_seat_capabilities(Seat *seat, wl_seat * /* seat */, uint32_t /* caps */) override {
-        if (seat) {
-            auto keyboard = seat->get_keyboard();
-            if (keyboard.has_value()) {
-                keyboard.value()->register_observer(this);
-            }
+  bool run() {
+    /// display_dispatch is blocking
+    return (toplevel_->is_valid() && agl_shell_->display_dispatch() != -1);
+  }
 
-            auto pointer = seat->get_pointer();
-            if (pointer.has_value()) {
-                pointer.value()->register_observer(this);
-            }
-        }
+  void notify_seat_capabilities(Seat* seat,
+                                wl_seat* /* seat */,
+                                uint32_t /* caps */) override {
+    if (seat) {
+      auto keyboard = seat->get_keyboard();
+      if (keyboard.has_value()) {
+        keyboard.value()->register_observer(this);
+      }
+
+      auto pointer = seat->get_pointer();
+      if (pointer.has_value()) {
+        pointer.value()->register_observer(this);
+      }
     }
+  }
 
-    void notify_seat_name(Seat * /* seat */, wl_seat * /* seat */, const char *name) override {
-        spdlog::info("Seat: {}", name);
+  void notify_seat_name(Seat* /* seat */,
+                        wl_seat* /* seat */,
+                        const char* name) override {
+    spdlog::info("Seat: {}", name);
+  }
+
+  void notify_keyboard_enter(Keyboard* /* keyboard */,
+                             wl_keyboard* /* wl_keyboard */,
+                             uint32_t serial,
+                             wl_surface* surface,
+                             wl_array* /* keys */) override {
+    spdlog::info("Keyboard Enter: serial: {}, surface: {}", serial,
+                 fmt::ptr(surface));
+  }
+
+  void notify_keyboard_leave(Keyboard* /* keyboard */,
+                             wl_keyboard* /* wl_keyboard */,
+                             uint32_t serial,
+                             wl_surface* surface) override {
+    spdlog::info("Keyboard Leave: serial: {}, surface: {}", serial,
+                 fmt::ptr(surface));
+  }
+
+  void notify_keyboard_keymap(Keyboard* /* keyboard */,
+                              wl_keyboard* /* wl_keyboard */,
+                              uint32_t format,
+                              int32_t fd,
+                              uint32_t size) override {
+    spdlog::info("Keymap: format: {}, fd: {}, size: {}", format, fd, size);
+  }
+
+  void notify_keyboard_xkb_v1_key(
+      Keyboard* /* keyboard */,
+      wl_keyboard* /* wl_keyboard */,
+      uint32_t serial,
+      uint32_t time,
+      uint32_t xkb_scancode,
+      bool key_repeats,
+      uint32_t state,
+      int xdg_key_symbol_count,
+      const xkb_keysym_t* xdg_key_symbols) override {
+    spdlog::info(
+        "Key: serial: {}, time: {}, xkb_scancode: 0x{:X}, key_repeats: {}, "
+        "state: {}, xdg_keysym_count: {}, syms_out[0]: 0x{:X}",
+        serial, time, xkb_scancode, key_repeats,
+        state == KeyState::KEY_STATE_PRESS ? "press" : "release",
+        xdg_key_symbol_count, xdg_key_symbols[0]);
+  }
+
+  void notify_pointer_enter(Pointer* pointer,
+                            wl_pointer* /* pointer */,
+                            uint32_t serial,
+                            wl_surface* surface,
+                            double sx,
+                            double sy) override {
+    spdlog::info("Pointer Enter: serial: {}, surface: {}, x: {}, y: {}", serial,
+                 fmt::ptr(surface), sx, sy);
+
+    if (gCursors.size() > 1) {
+      std::uniform_int_distribution<size_t> distribution(0,
+                                                         gCursors.size() - 1);
+      pointer->set_cursor(serial, gCursors[distribution(gen_)].c_str());
+    } else {
+      pointer->set_cursor(serial, "crosshair");
     }
+  }
 
-    void notify_keyboard_enter(Keyboard * /* keyboard */,
-                               wl_keyboard * /* wl_keyboard */,
-                               uint32_t serial,
-                               wl_surface *surface,
-                               wl_array * /* keys */) override {
-        spdlog::info("Keyboard Enter: serial: {}, surface: {}", serial, fmt::ptr(surface));
-    }
+  void notify_pointer_leave(Pointer* /* pointer */,
+                            wl_pointer* /* pointer */,
+                            uint32_t serial,
+                            wl_surface* surface) override {
+    spdlog::info("Pointer Leave: serial: {}, surface: {}", serial,
+                 fmt::ptr(surface));
+  }
 
-    void notify_keyboard_leave(Keyboard * /* keyboard */,
-                               wl_keyboard * /* wl_keyboard */,
-                               uint32_t serial,
-                               wl_surface *surface) override {
-        spdlog::info("Keyboard Leave: serial: {}, surface: {}", serial, fmt::ptr(surface));
-    }
-
-    void notify_keyboard_keymap(Keyboard * /* keyboard */,
-                                wl_keyboard * /* wl_keyboard */,
-                                uint32_t format,
-                                int32_t fd,
-                                uint32_t size) override {
-        spdlog::info("Keymap: format: {}, fd: {}, size: {}", format, fd, size);
-    }
-
-    void notify_keyboard_xkb_v1_key(Keyboard * /* keyboard */,
-                                    wl_keyboard * /* wl_keyboard */,
-                                    uint32_t serial,
-                                    uint32_t time,
-                                    uint32_t xkb_scancode,
-                                    bool key_repeats,
-                                    uint32_t state,
-                                    int xdg_key_symbol_count,
-                                    const xkb_keysym_t *xdg_key_symbols) override {
-        spdlog::info(
-                "Key: serial: {}, time: {}, xkb_scancode: 0x{:X}, key_repeats: {}, state: {}, xdg_keysym_count: {}, syms_out[0]: 0x{:X}",
-                serial, time, xkb_scancode, key_repeats, state == KeyState::KEY_STATE_PRESS ? "press" : "release",
-                xdg_key_symbol_count, xdg_key_symbols[0]);
-    }
-
-    void notify_pointer_enter(Pointer *pointer,
-                              wl_pointer * /* pointer */,
-                              uint32_t serial,
-                              wl_surface *surface,
-                              double sx,
-                              double sy) override {
-        spdlog::info("Pointer Enter: serial: {}, surface: {}, x: {}, y: {}", serial, fmt::ptr(surface), sx, sy);
-
-        if (gCursors.size() > 1) {
-            std::uniform_int_distribution<size_t> distribution(0, gCursors.size() - 1);
-            pointer->set_cursor(serial, gCursors[distribution(gen_)].c_str());
-        } else {
-            pointer->set_cursor(serial, "crosshair");
-        }
-    }
-
-    void notify_pointer_leave(Pointer * /* pointer */,
-                              wl_pointer * /* pointer */,
-                              uint32_t serial,
-                              wl_surface *surface) override {
-        spdlog::info("Pointer Leave: serial: {}, surface: {}", serial, fmt::ptr(surface));
-    }
-
-    void notify_pointer_motion(Pointer *  /* pointer  */,
-                               wl_pointer * /* pointer */,
-                               uint32_t time,
-                               double sx,
-                               double sy) override {
-        spdlog::info("Pointer: time: {}, x: {}, y: {}", time, sx, sy);
-    }
-
-    void notify_pointer_button(Pointer * /* pointer */,
-                               wl_pointer * /* pointer  */,
-                               uint32_t serial,
-                               uint32_t time,
-                               uint32_t button,
-                               uint32_t state) override {
-        spdlog::info("Pointer Button: pointer: {}, time: {}, button: {}, state: {}", serial, time, button, state);
-    }
-
-    void notify_pointer_axis(Pointer * /* pointer */,
-                             wl_pointer * /* pointer */,
+  void notify_pointer_motion(Pointer* /* pointer  */,
+                             wl_pointer* /* pointer */,
                              uint32_t time,
-                             uint32_t axis,
-                             wl_fixed_t value) override {
-        spdlog::info("Pointer Axis: time: {}, axis: {}, value: {}", time, axis, value);
-    }
+                             double sx,
+                             double sy) override {
+    spdlog::info("Pointer: time: {}, x: {}, y: {}", time, sx, sy);
+  }
 
-    void notify_pointer_frame(Pointer * /* pointer */, wl_pointer * /* pointer */) override {
-        spdlog::info("Pointer Frame");
-    };
+  void notify_pointer_button(Pointer* /* pointer */,
+                             wl_pointer* /* pointer  */,
+                             uint32_t serial,
+                             uint32_t time,
+                             uint32_t button,
+                             uint32_t state) override {
+    spdlog::info("Pointer Button: pointer: {}, time: {}, button: {}, state: {}",
+                 serial, time, button, state);
+  }
 
-    void notify_pointer_axis_source(Pointer * /* pointer */,
-                                    wl_pointer * /* pointer */,
-                                    uint32_t axis_source) override {
-        spdlog::info("Pointer Axis Source: axis_source: {}", axis_source);
-    };
+  void notify_pointer_axis(Pointer* /* pointer */,
+                           wl_pointer* /* pointer */,
+                           uint32_t time,
+                           uint32_t axis,
+                           wl_fixed_t value) override {
+    spdlog::info("Pointer Axis: time: {}, axis: {}, value: {}", time, axis,
+                 value);
+  }
 
-    void notify_pointer_axis_stop(Pointer * /* pointer */,
-                                  wl_pointer * /* pointer */,
-                                  uint32_t /* time */,
-                                  uint32_t axis) override {
-        spdlog::info("Pointer Axis Stop: axis: {}", axis);
-    };
+  void notify_pointer_frame(Pointer* /* pointer */,
+                            wl_pointer* /* pointer */) override {
+    spdlog::info("Pointer Frame");
+  };
 
-    void notify_pointer_axis_discrete(Pointer * /* pointer */,
-                                      wl_pointer * /*pointer */,
-                                      uint32_t axis,
-                                      int32_t discrete) override {
-        spdlog::info("Pointer Axis Discrete: axis: {}, discrete: {}", axis, discrete);
-    }
+  void notify_pointer_axis_source(Pointer* /* pointer */,
+                                  wl_pointer* /* pointer */,
+                                  uint32_t axis_source) override {
+    spdlog::info("Pointer Axis Source: axis_source: {}", axis_source);
+  };
 
-private:
-    struct wl_display *display_;
-    std::unique_ptr<Logging> logging_;
-    std::unique_ptr<AglShell> agl_shell_;
-    struct wl_output *output_;
-    XdgTopLevel *toplevel_;
-    struct wl_surface *surface_;
+  void notify_pointer_axis_stop(Pointer* /* pointer */,
+                                wl_pointer* /* pointer */,
+                                uint32_t /* time */,
+                                uint32_t axis) override {
+    spdlog::info("Pointer Axis Stop: axis: {}", axis);
+  };
 
-    std::random_device rd_;
-    std::mt19937 gen_;
+  void notify_pointer_axis_discrete(Pointer* /* pointer */,
+                                    wl_pointer* /*pointer */,
+                                    uint32_t axis,
+                                    int32_t discrete) override {
+    spdlog::info("Pointer Axis Discrete: axis: {}, discrete: {}", axis,
+                 discrete);
+  }
+
+ private:
+  struct wl_display* display_;
+  std::unique_ptr<Logging> logging_;
+  std::unique_ptr<AglShell> agl_shell_;
+  struct wl_output* output_;
+  XdgTopLevel* toplevel_;
+  struct wl_surface* surface_;
+
+  std::random_device rd_;
+  std::mt19937 gen_;
 };
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
+  std::signal(SIGINT, handle_signal);
 
-    std::signal(SIGINT, handle_signal);
+  cxxopts::Options options("simple-shm", "Weston simple-shm example");
+  options.add_options()("w,width", "Set width",
+                        cxxopts::value<int>()->default_value("250"))(
+      "h,height", "Set height", cxxopts::value<int>()->default_value("250"))(
+      "c,disable-cursor", "Disable Cursor")(
+      "f,fullscreen", "Run in fullscreen mode")("m,maximized",
+                                                "Run in maximized mode")(
+      "r,fullscreen-ratio",
+      "Use fixed width/height ratio when run in fullscreen mode")(
+      "t,tearing", "Enable tearing via the tearing_control protocol");
+  auto result = options.parse(argc, argv);
 
-    cxxopts::Options options("simple-shm", "Weston simple-shm example");
-    options.add_options()
-            ("w,width", "Set width", cxxopts::value<int>()->default_value("250"))
-            ("h,height", "Set height", cxxopts::value<int>()->default_value("250"))
-            ("c,disable-cursor", "Disable Cursor")
-            ("f,fullscreen", "Run in fullscreen mode")
-            ("m,maximized", "Run in maximized mode")
-            ("r,fullscreen-ratio", "Use fixed width/height ratio when run in fullscreen mode")
-            ("t,tearing", "Enable tearing via the tearing_control protocol");
-    auto result = options.parse(argc, argv);
+  App app({
+      .width = result["width"].as<int>(),
+      .height = result["height"].as<int>(),
+      .disable_cursor = result["disable-cursor"].as<bool>(),
+      .fullscreen = result["fullscreen"].as<bool>(),
+      .maximized = result["maximized"].as<bool>(),
+      .fullscreen_ratio = result["fullscreen-ratio"].as<bool>(),
+      .tearing = result["tearing"].as<bool>(),
+  });
 
-    App app({
-                    .width = result["width"].as<int>(),
-                    .height = result["height"].as<int>(),
-                    .disable_cursor = result["disable-cursor"].as<bool>(),
-                    .fullscreen = result["fullscreen"].as<bool>(),
-                    .maximized = result["maximized"].as<bool>(),
-                    .fullscreen_ratio = result["fullscreen-ratio"].as<bool>(),
-                    .tearing = result["tearing"].as<bool>(),
-            });
+  while (gRunning && app.run()) {
+  }
 
-    while (gRunning && app.run()) {}
-
-    return EXIT_SUCCESS;
+  return EXIT_SUCCESS;
 }

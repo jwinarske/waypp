@@ -24,23 +24,25 @@
 #endif
 
 #include <spdlog/cfg/env.h>
-#include <spdlog/spdlog-inl.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog-inl.h>
 
 class Logging {
-public:
-    Logging();
+ public:
+  Logging();
 
-    ~Logging();
+  ~Logging();
 
-    // Disallow copy and assign.
-    Logging(const Logging &) = delete;
+  // Disallow copy and assign.
+  Logging(const Logging&) = delete;
 
-    Logging &operator=(const Logging &) = delete;
+  Logging& operator=(const Logging&) = delete;
 
-private:
-    std::shared_ptr<spdlog::logger> logger_{};
-    std::shared_ptr<spdlog::sinks::ansicolor_stdout_sink<spdlog::details::console_mutex>> console_sink_;
+ private:
+  std::shared_ptr<spdlog::logger> logger_{};
+  std::shared_ptr<
+      spdlog::sinks::ansicolor_stdout_sink<spdlog::details::console_mutex>>
+      console_sink_;
 };
 
-#endif // INCLUDE_LOGGING_H_
+#endif  // INCLUDE_LOGGING_H_

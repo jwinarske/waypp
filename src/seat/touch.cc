@@ -23,58 +23,63 @@
  *
  * The Touch class represents a touch input device.
  */
-Touch::Touch(struct wl_touch *wl_touch) : touch_(wl_touch) {
-    SPDLOG_DEBUG("Touch");
-    wl_touch_add_listener(wl_touch, &listener_, this);
+Touch::Touch(struct wl_touch* wl_touch) : touch_(wl_touch) {
+  SPDLOG_DEBUG("Touch");
+  wl_touch_add_listener(wl_touch, &listener_, this);
 }
 
 /**
  * @brief Destructor for the Touch class.
  *
- * This destructor releases and destroys the `wl_touch` object associated with the Touch instance.
+ * This destructor releases and destroys the `wl_touch` object associated with
+ * the Touch instance.
  */
 Touch::~Touch() {
-    wl_touch_release(touch_);
+  wl_touch_release(touch_);
 }
 
 /**
  * @brief Handles the touch down event.
  *
- * This function is called when a touch down event occurs. It outputs a debug message to the standard error stream.
+ * This function is called when a touch down event occurs. It outputs a debug
+ * message to the standard error stream.
  *
  * @param data Pointer to the data associated with the touch object.
  * @param wl_touch Pointer to the wl_touch object.
  * @param serial The serial number of the event.
  * @param time The time stamp of the event.
- * @param surface Pointer to the wl_surface object that received the touch event.
+ * @param surface Pointer to the wl_surface object that received the touch
+ * event.
  * @param id The ID of the touch point.
  * @param x_w The X coordinate of the touch point in wl_fixed_t format.
  * @param y_w The Y coordinate of the touch point in wl_fixed_t format.
  */
-void Touch::handle_down(void *data,
-                        struct wl_touch *touch,
+void Touch::handle_down(void* data,
+                        struct wl_touch* touch,
                         uint32_t serial,
                         uint32_t time,
-                        struct wl_surface *surface,
+                        struct wl_surface* surface,
                         int32_t id,
                         wl_fixed_t x_w,
                         wl_fixed_t y_w) {
-    const auto obj = static_cast<Touch *>(data);
-    if (obj->touch_ != touch) {
-        return;
-    }
+  const auto obj = static_cast<Touch*>(data);
+  if (obj->touch_ != touch) {
+    return;
+  }
 
-    SPDLOG_TRACE("Touch::handle_down");
+  SPDLOG_TRACE("Touch::handle_down");
 
-    for (auto observer: obj->observers_) {
-        observer->notify_touch_down(obj, touch, serial, time, surface, id, x_w, y_w);
-    }
+  for (auto observer : obj->observers_) {
+    observer->notify_touch_down(obj, touch, serial, time, surface, id, x_w,
+                                y_w);
+  }
 }
 
 /**
  * @brief Handles the touch up event.
  *
- * This function is a callback that is triggered when the touch point is lifted off the surface.
+ * This function is a callback that is triggered when the touch point is lifted
+ * off the surface.
  *
  * @param data A pointer to the user-specified data.
  * @param wl_touch A pointer to the wl_touch object.
@@ -84,21 +89,21 @@ void Touch::handle_down(void *data,
  *
  * @return None.
  */
-void Touch::handle_up(void *data,
-                      struct wl_touch *touch,
+void Touch::handle_up(void* data,
+                      struct wl_touch* touch,
                       uint32_t serial,
                       uint32_t time,
                       int32_t id) {
-    const auto obj = static_cast<Touch *>(data);
-    if (obj->touch_ != touch) {
-        return;
-    }
+  const auto obj = static_cast<Touch*>(data);
+  if (obj->touch_ != touch) {
+    return;
+  }
 
-    SPDLOG_TRACE("Touch::handle_up");
+  SPDLOG_TRACE("Touch::handle_up");
 
-    for (auto observer: obj->observers_) {
-        observer->notify_touch_up(obj, touch, serial, time, id);
-    }
+  for (auto observer : obj->observers_) {
+    observer->notify_touch_up(obj, touch, serial, time, id);
+  }
 }
 
 /**
@@ -108,7 +113,8 @@ void Touch::handle_up(void *data,
  * It prints a message indicating that the motion event is being handled.
  *
  * @param data  A pointer to user-defined data.
- * @param wl_touch  A pointer to the wl_touch object associated with the motion event.
+ * @param wl_touch  A pointer to the wl_touch object associated with the motion
+ * event.
  * @param time  The timestamp of the motion event.
  * @param id  The ID of the touch point.
  * @param x_w  The x coordinate of the touch point, in wl_fixed_t format.
@@ -116,64 +122,65 @@ void Touch::handle_up(void *data,
  *
  * @return None.
  */
-void Touch::handle_motion(void *data,
-                          struct wl_touch *touch,
+void Touch::handle_motion(void* data,
+                          struct wl_touch* touch,
                           uint32_t time,
                           int32_t id,
                           wl_fixed_t x_w,
                           wl_fixed_t y_w) {
-    const auto obj = static_cast<Touch *>(data);
-    if (obj->touch_ != touch) {
-        return;
-    }
+  const auto obj = static_cast<Touch*>(data);
+  if (obj->touch_ != touch) {
+    return;
+  }
 
-    SPDLOG_TRACE("Touch::handle_motion");
+  SPDLOG_TRACE("Touch::handle_motion");
 
-    for (auto observer: obj->observers_) {
-        observer->notify_touch_motion(obj, touch, time, id, x_w, y_w);
-    }
+  for (auto observer : obj->observers_) {
+    observer->notify_touch_motion(obj, touch, time, id, x_w, y_w);
+  }
 }
 
 /**
  * @brief Handles cancel events from the wl_touch interface.
  *
- * This function is called when a cancel event is received from the wl_touch interface.
- * It prints a debug message indicating that the cancel event has been handled.
+ * This function is called when a cancel event is received from the wl_touch
+ * interface. It prints a debug message indicating that the cancel event has
+ * been handled.
  *
  * @param data Pointer to custom data associated with the touch interface
  * @param wl_touch Unused parameter - Touch object associated with the event
  *
  * @return void
  */
-void Touch::handle_cancel(void *data, struct wl_touch *touch) {
-    const auto obj = static_cast<Touch *>(data);
-    if (obj->touch_ != touch) {
-        return;
-    }
+void Touch::handle_cancel(void* data, struct wl_touch* touch) {
+  const auto obj = static_cast<Touch*>(data);
+  if (obj->touch_ != touch) {
+    return;
+  }
 
-    SPDLOG_TRACE("Touch::handle_cancel");
+  SPDLOG_TRACE("Touch::handle_cancel");
 
-    for (auto observer: obj->observers_) {
-        observer->notify_touch_cancel(obj, touch);
-    }
+  for (auto observer : obj->observers_) {
+    observer->notify_touch_cancel(obj, touch);
+  }
 }
 
 /**
  * @class Touch
  * @brief The Touch class represents a touch input device.
  *
- * It handles touch events from a wl_touch object and provides callback functions for various touch events.
+ * It handles touch events from a wl_touch object and provides callback
+ * functions for various touch events.
  */
-void Touch::handle_frame(void *data,
-                         struct wl_touch *touch) {
-    const auto obj = static_cast<Touch *>(data);
-    if (obj->touch_ != touch) {
-        return;
-    }
+void Touch::handle_frame(void* data, struct wl_touch* touch) {
+  const auto obj = static_cast<Touch*>(data);
+  if (obj->touch_ != touch) {
+    return;
+  }
 
-    SPDLOG_TRACE("Touch::handle_frame");
+  SPDLOG_TRACE("Touch::handle_frame");
 
-    for (auto observer: obj->observers_) {
-        observer->notify_touch_frame(obj, touch);
-    }
+  for (auto observer : obj->observers_) {
+    observer->notify_touch_frame(obj, touch);
+  }
 }

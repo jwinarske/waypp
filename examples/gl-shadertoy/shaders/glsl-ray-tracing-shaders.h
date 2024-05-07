@@ -1,6 +1,6 @@
 
-const char *vertex_shader_source =
-        R"(#version 330 core
+const char* vertex_shader_source =
+    R"(#version 330 core
 layout (location = 0) in vec2 position;
 layout (location = 1) in vec2 inTexCoord;
 
@@ -10,8 +10,8 @@ void main(){
     gl_Position = vec4(position.x, position.y, 0.0f, 1.0f);
 })";
 
-const char *fragment_shader_source =
-        R"(#version 330 core
+const char* fragment_shader_source =
+    R"(#version 330 core
 in vec2 texCoord;
 uniform vec2 iMouse;
 uniform vec2 iResolution;
