@@ -22,7 +22,7 @@ macro(append_glsl_to_target target sources version)
 
         get_filename_component(FILE_NAME ${GLSL} NAME)
 
-        set(SPIRV "${CMAKE_CURRENT_BINARY_DIR}/shaders/${FILE_NAME}.spv")
+        set(SPIRV "${CMAKE_CURRENT_BINARY_DIR}/shaders//spv/${FILE_NAME}.spv")
 
         if (NOT EXISTS "${GLSL}")
             set(GLSL "${CMAKE_CURRENT_SOURCE_DIR}/${GLSL}")
@@ -30,7 +30,7 @@ macro(append_glsl_to_target target sources version)
 
         add_custom_command(
                 OUTPUT ${SPIRV}
-                COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/shaders
+                COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/shaders/spv
                 COMMAND ${GLSL_VALIDATOR} -V${version} ${GLSL} -o ${SPIRV}
                 DEPENDS ${GLSL}
         )
@@ -44,7 +44,7 @@ macro(append_glsl_to_target target sources version)
     add_dependencies(${target} Shaders)
 
     add_custom_command(TARGET ${target} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${target}>/shaders/"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${target}>/shaders"
             COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_BINARY_DIR}/shaders" "$<TARGET_FILE_DIR:${target}>/shaders"
     )
 endmacro()

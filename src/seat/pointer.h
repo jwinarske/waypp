@@ -96,7 +96,11 @@ class Pointer {
     observers_.remove(observer);
   }
 
-  static std::string get_cursor_theme();
+    void set_user_data(void *user_data) { user_data_ = user_data; }
+
+    [[nodiscard]] void *get_user_data() const { return user_data_; }
+
+    static std::string get_cursor_theme();
 
   static std::vector<std::string> get_available_cursors(
       const char* theme_name = nullptr);
@@ -120,6 +124,7 @@ class Pointer {
   struct wl_shm* wl_shm_;
   bool disable_cursor_;
   int size_;
+  void *user_data_{};
 
   static void handle_enter(void* data,
                            struct wl_pointer* pointer,

@@ -21,40 +21,122 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include "handlers.h"
 #include "logging.h"
-#include "vk_backend.h"
+#include "shader_toy.h"
 #include "window/xdg_toplevel.h"
 
-class App {
- public:
-  static constexpr char kAppTitle[] = "Shadertoy";
-  static constexpr char kAppId[] = "org.waypp.vk-shadertoy";
+class App : public SeatObserver, public PointerObserver, public KeyboardObserver {
+public:
+    static constexpr char kAppTitle[] = "Shadertoy";
+    static constexpr char kAppId[] = "org.waypp.vk-shadertoy";
 
-  struct Configuration {
-    int width;
-    int height;
-    bool debug_enable;
-    bool disable_cursor;
-    bool fullscreen;
-    bool maximized;
-    bool fullscreen_ratio;
-    bool tearing;
-  };
+    struct Configuration {
+        uint32_t dev_index;
+        bool use_gpu_idx;
+        int present_mode;
+        bool debug;
+        bool reload_shaders;
+        int width;
+        int height;
+        bool disable_cursor;
+        bool fullscreen;
+        bool maximized;
+        bool tearing;
+    };
 
-  explicit App(const Configuration& config);
+    explicit App(const Configuration &config);
 
-  ~App();
+    ~App();
 
-  bool run();
+    bool run();
 
- private:
-  struct wl_display* display_;
-  std::unique_ptr<Logging> logging_;
-  std::unique_ptr<Handlers> handlers_;
-  std::unique_ptr<XdgWindowManager> wm_;
-  std::unique_ptr<VulkanBackend> backend_;
-  XdgTopLevel* toplevel_;
+    void toggle_fullscreen() { toplevel_->set_fullscreen(); }
 
-  static void draw_frame(void* data, uint32_t time);
+private:
+    struct wl_display *display_;
+    std::unique_ptr<Logging> logging_;
+    std::unique_ptr<XdgWindowManager> wm_;
+    XdgTopLevel *toplevel_;
+    std::unique_ptr<ShaderToy> shadertoy_;
+    bool fullscreen_{};
+
+    static void draw_frame(void *data, uint32_t time);
+
+    void notify_seat_capabilities(Seat *seat, wl_seat *, uint32_t) override;
+
+    void notify_seat_name(Seat *, wl_seat *, const char *name) override;
+
+    void notify_keyboard_enter(Keyboard *,
+                               wl_keyboard *,
+                               uint32_t,
+                               wl_surface *,
+                               wl_array *) override;
+
+    void notify_keyboard_leave(Keyboard *,
+                               wl_keyboard *,
+                               uint32_t,
+                               wl_surface *) override;
+
+    void notify_keyboard_keymap(Keyboard *,
+                                wl_keyboard *,
+                                uint32_t,
+                                int32_t,
+                                uint32_t) override;
+
+    void notify_keyboard_xkb_v1_key(Keyboard *,
+                                    wl_keyboard *,
+                                    uint32_t,
+                                    uint32_t,
+                                    uint32_t,
+                                    bool,
+                                    uint32_t,
+                                    int,
+                                    const xkb_keysym_t *) override;
+
+    void notify_pointer_enter(Pointer *,
+                              wl_pointer *,
+                              uint32_t,
+                              wl_surface *,
+                              double,
+                              double) override;
+
+    void notify_pointer_leave(Pointer *,
+                              wl_pointer *,
+                              uint32_t,
+                              wl_surface *) override;
+
+    void notify_pointer_motion(Pointer *,
+                               wl_pointer *,
+                               uint32_t,
+                               double,
+                               double) override;
+
+    void notify_pointer_button(Pointer *,
+                               wl_pointer *,
+                               uint32_t,
+                               uint32_t,
+                               uint32_t,
+                               uint32_t state) override;
+
+    void notify_pointer_axis(Pointer *,
+                             wl_pointer *,
+                             uint32_t,
+                             uint32_t,
+                             wl_fixed_t) override;
+
+    void notify_pointer_frame(Pointer *, wl_pointer *) override;
+
+    void notify_pointer_axis_source(Pointer *,
+                                    wl_pointer *,
+                                    uint32_t axis_source) override;
+
+    void notify_pointer_axis_stop(Pointer *,
+                                  wl_pointer *,
+                                  uint32_t,
+                                  uint32_t axis) override;
+
+    void notify_pointer_axis_discrete(Pointer *,
+                                      wl_pointer *,
+                                      uint32_t axis,
+                                      int32_t discrete) override;
 };

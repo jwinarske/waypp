@@ -79,6 +79,10 @@ class Keyboard {
     observers_.remove(observer);
   }
 
+  void set_user_data(void *user_data) { user_data_ = user_data; }
+
+  [[nodiscard]] void *get_user_data() const { return user_data_; }
+
   [[nodiscard]] int32_t get_repeat_delay() const { return repeat_.delay; }
 
   [[nodiscard]] int32_t get_repeat_rate() const { return repeat_.rate; }
@@ -96,6 +100,7 @@ class Keyboard {
   struct xkb_state* xkb_state_{};
   enum wl_keyboard_keymap_format format_ {};
   std::list<KeyboardObserver*> observers_{};
+  void *user_data_{};
 
   struct {
     int32_t rate;

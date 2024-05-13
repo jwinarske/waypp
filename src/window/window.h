@@ -82,6 +82,8 @@ class Window {
 
   [[nodiscard]] bool is_valid() const { return valid_; }
 
+  void close() { valid_ = false; }
+
   void resize(int width, int height);
 
   void update_buffer_geometry();
