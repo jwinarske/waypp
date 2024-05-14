@@ -21,6 +21,9 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+// Danil, 2021+ Vulkan shader launcher, self https://github.com/danilw/vulkan-shadertoy-launcher
+// The MIT License
+
 #ifndef EXAMPLES_VK_SHADERTOY_VULKAN_RENDER_H_
 #define EXAMPLES_VK_SHADERTOY_VULKAN_RENDER_H_
 
