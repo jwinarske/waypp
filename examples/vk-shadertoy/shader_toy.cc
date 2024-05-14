@@ -76,24 +76,6 @@ ShaderToy::init(int width, int height, struct wl_display *wl_display, struct wl_
     return 0;
 }
 
-void ShaderToy::update_key_map(int w, int h, bool val) {
-    keyboard_map_[w][h] = val;
-    keyboard_texture_[(h * 256 + w) * 4] = val ? 0xff : 0x00;
-}
-
-void ShaderToy::update_keypress() {
-    if (keyboard_need_update_)
-        keyboard_draw_ = true;
-    else
-        keyboard_draw_ = false;
-    if (keyboard_need_update_) {
-        for (uint8_t i = 0; i < 0xff; i++) {
-            update_key_map(i, 1, false);
-        }
-    }
-    keyboard_need_update_ = false;
-}
-
 bool ShaderToy::update_iKeyboard_texture(struct vk_physical_device *phy_dev, struct vk_device *dev,
                                          struct vk_render_essentials *essentials,
                                          struct render_data *render_data) {

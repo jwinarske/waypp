@@ -23,8 +23,6 @@ public:
 
     struct app_os_window *get_app_os_window() { return &os_window_; }
 
-    void quit() { os_window_.app_data.quit = true; };
-
     void toggle_pause() { os_window_.app_data.pause = !os_window_.app_data.pause; }
 
     void toggle_draw_debug() { os_window_.app_data.drawdebug = !os_window_.app_data.drawdebug; }
@@ -35,26 +33,24 @@ public:
 
 private:
 
-    uint32_t resize_size_[2]{}; // = {1280, 720}; // in Wayland surface should set own size
+    uint32_t resize_size_[2]{};
 
     bool main_image_srgb_ = false; // srgb surface fix
 
     // keyboard is texture that send from this data
-    bool keyboard_map_[0xff][3]{}; //[ASCII code][0: current state of key, 1: Keypress, 2: toggle for key]
     uint8_t keyboard_texture_[256 * 3 * 4]{}; // texture
-    bool keyboard_need_update_{};
     bool keyboard_draw_{};
     bool screenshot_once_{};
 
     // update to 2021 Shadertoy iMouse.w change https://www.shadertoy.com/view/llySRh (comments)
     bool last_iMousel_clicked_[2] = {};
 
-// do not edit, it just to see where keyboard texture used
-#define iKeyboard 1
+    // do not edit, it just to see where keyboard texture used
+    static constexpr uint32_t iKeyboard = UINT32_C(1);
 
-// to build-in compressed shaders into bin(exe) file
-// used OFFSCREEN_BUFFERS size, names of .hex files should be set manually(and edit yariv_shaders[]), this example using 4 buffers same as on shadertoy
-//#define YARIV_SHADER
+    // to build-in compressed shaders into bin(exe) file
+    // used OFFSCREEN_BUFFERS size, names of .hex files should be set manually(and edit yariv_shaders[]), this example using 4 buffers same as on shadertoy
+    //#define YARIV_SHADER
 
     struct shaders_push_constants {
         float iMouse[4];
