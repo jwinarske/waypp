@@ -102,12 +102,10 @@ add_sanitizers(agl-capture)
 #
 # Vulkan
 #
-if (FALSE)
-    find_package(Vulkan)
+find_package(Vulkan)
 
-    if (VULKAN_FOUND)
-        add_subdirectory(vk-shadertoy)
-    endif ()
+if (VULKAN_FOUND)
+    add_subdirectory(vk-shadertoy)
 endif ()
 
 #

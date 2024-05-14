@@ -41,40 +41,44 @@ static volatile bool gRunning = true;
  * @return void
  */
 void handle_signal(int signal) {
-  if (signal == SIGINT) {
-    gRunning = false;
-  }
+    if (signal == SIGINT) {
+        gRunning = false;
+    }
 }
 
-int main(int argc, char** argv) {
-  std::signal(SIGINT, handle_signal);
+int main(int argc, char **argv) {
+    std::signal(SIGINT, handle_signal);
 
-  cxxopts::Options options("simple-shm", "Weston simple-shm example");
-  options.add_options()("w,width", "Set width",
-                        cxxopts::value<int>()->default_value("250"))(
-      "h,height", "Set height", cxxopts::value<int>()->default_value("250"))(
-      "d,debug", "Enable debug extensions")("c,disable-cursor",
-                                            "Disable Cursor")(
-      "f,fullscreen", "Run in fullscreen mode")("m,maximized",
-                                                "Run in maximized mode")(
-      "r,fullscreen-ratio",
-      "Use fixed width/height ratio when run in fullscreen mode")(
-      "t,tearing", "Enable tearing via the tearing_control protocol");
-  auto result = options.parse(argc, argv);
+    cxxopts::Options options("simple-shm", "Weston simple-shm example");
+    options.add_options()
+            ("g,gpu", "GPU index", cxxopts::value<uint32_t>()->default_value("255"))
+            ("p,present", "Present Mode", cxxopts::value<int>()->default_value("2"))
+            ("r,reload_shaders", "Reload shaders on re-size")
+            ("d,debug", "Enable debug extensions")
+            ("w,width", "Set width", cxxopts::value<int>()->default_value("250"))
+            ("h,height", "Set height", cxxopts::value<int>()->default_value("250"))
+            ("c,disable-cursor", "Disable Cursor")
+            ("f,fullscreen", "Run in fullscreen mode")
+            ("m,maximized", "Run in maximized mode")
+            ("t,tearing", "Enable tearing via the tearing_control protocol");
+    auto result = options.parse(argc, argv);
 
-  App app({
-      .width = result["width"].as<int>(),
-      .height = result["height"].as<int>(),
-      .debug_enable = result["debug"].as<bool>(),
-      .disable_cursor = result["disable-cursor"].as<bool>(),
-      .fullscreen = result["fullscreen"].as<bool>(),
-      .maximized = result["maximized"].as<bool>(),
-      .fullscreen_ratio = result["fullscreen-ratio"].as<bool>(),
-      .tearing = result["tearing"].as<bool>(),
-  });
+    App app({
+                    .dev_index = result["gpu"].as<uint32_t>(),
+                    .use_gpu_idx = result["gpu"].as<uint32_t>() < 255,
+                    .present_mode = result["present"].as<int>(),
+                    .debug = result["debug"].as<bool>(),
+                    .reload_shaders = result["reload_shaders"].as<bool>(),
+                    .width = result["width"].as<int>(),
+                    .height = result["height"].as<int>(),
+                    .disable_cursor = result["disable-cursor"].as<bool>(),
+                    .fullscreen = result["fullscreen"].as<bool>(),
+                    .maximized = result["maximized"].as<bool>(),
+                    .tearing = result["tearing"].as<bool>(),
+            });
 
-  while (gRunning && app.run()) {
-  }
+    while (gRunning && app.run()) {
+    }
 
-  return EXIT_SUCCESS;
+    return EXIT_SUCCESS;
 }

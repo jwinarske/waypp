@@ -29,14 +29,18 @@ set(SHADER_SOURCES
 
 add_executable(vk-shadertoy
         app.cc
-        handlers.cc
         main.cc
-        vk_backend.cc
-        vk_image.cc
-        vk_buffer.cc
+        shader_toy.cc
+        vulkan/render.cc
+        vulkan/utils.cc
+        vulkan/vk_error_print.cc
 )
 
 append_glsl_to_target(vk-shadertoy "${SHADER_SOURCES}" 100)
+
+target_compile_definitions(vk-shadertoy PUBLIC -DVK_USE_PLATFORM_WAYLAND_KHR)
+
+target_include_directories(vk-shadertoy PRIVATE .)
 
 target_link_libraries(vk-shadertoy PRIVATE waypp wayland-gen cxxopts::cxxopts)
 
