@@ -206,7 +206,9 @@ private:
     std::function<void(void *userdata, const uint32_t time)> frame_callback_;
     void *user_data_{};
 
+#if ENABLE_EGL
     std::unique_ptr<Egl> egl_;
+#endif
 
     std::vector<std::unique_ptr<Buffer>> buffers_;
 

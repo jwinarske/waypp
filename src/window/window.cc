@@ -80,6 +80,7 @@ Window::Window(WindowManager *wm,
         presentation_.clock_id = wm_->get_presentation_time_clk_id();
     }
 
+#if ENABLE_EGL
     if (context_attribs_size && config_attribs_size) {
         egl_ = std::make_unique<Egl>(wm->get_display(), wl_surface_, width, height,
                                      context_attribs, context_attribs_size,
@@ -87,6 +88,7 @@ Window::Window(WindowManager *wm,
                                      buffer_bpp, type);
         egl_->set_swap_interval(swap_interval);
     }
+#endif
 
     if (wm->get_viewporter()) {
 #if HAS_WAYLAND_PROTOCOL_VIEWPORTER
@@ -232,9 +234,11 @@ void Window::update_buffer_geometry() {
         buffer_size_.height != new_buffer_size.height) {
         buffer_size_.width = new_buffer_size.width;
         buffer_size_.height = new_buffer_size.height;
+#if ENABLE_EGL
         if (egl_) {
             egl_->resize(buffer_size_.width, buffer_size_.height, 0, 0);
         }
+#endif
     }
 
     if (fractional_buffer_scale_ > 0.0) {
@@ -388,48 +392,62 @@ void Window::handle_preferred_buffer_transform(void *data,
 }
 
 void Window::resize(int width, int height) {
+#if ENABLE_EGL
     if (egl_) {
         logical_size_.width = width;
         logical_size_.height = height;
         egl_->resize(width, height, 0, 0);
     }
+#endif
 }
 
 void Window::make_current() {
+#if ENABLE_EGL
     if (egl_) {
         egl_->make_current();
     }
+#endif
 }
 
 void Window::clear_current() {
+#if ENABLE_EGL
     if (egl_) {
         egl_->clear_current();
     }
+#endif
 }
 
 void Window::swap_buffers() {
+#if ENABLE_EGL
     if (egl_) {
         egl_->swap_buffers();
     }
+#endif
 }
 
 bool Window::have_swap_buffers_width_damage() {
+#if ENABLE_EGL
     if (egl_) {
         return egl_->have_swap_buffers_width_damage();
     }
+#endif
     return false;
 }
 
 void Window::get_buffer_age(EGLint &buffer_age) {
+#if ENABLE_EGL
     if (egl_) {
         egl_->get_buffer_age(buffer_age);
     }
+#endif
 }
 
 void Window::swap_buffers_with_damage(const EGLint *rects, EGLint n_rects) {
+#if ENABLE_EGL
     if (egl_) {
         egl_->swap_buffers_with_damage(rects, n_rects);
     }
+#endif
 }
 
 Buffer *Window::pick_free_buffer() {

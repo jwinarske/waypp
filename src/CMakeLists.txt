@@ -16,7 +16,10 @@
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GLIB REQUIRED IMPORTED_TARGET glib-2.0)
-find_package(OpenGL REQUIRED COMPONENTS EGL)
+
+if (ENABLE_EGL)
+    find_package(OpenGL REQUIRED COMPONENTS EGL)
+endif ()
 
 set(WINDOW_MANAGER_SRC
         window_manager/agl_shell.cc
@@ -37,7 +40,6 @@ set(SEAT_SRC
 set(WINDOW_SRC
         window/anonymous_file.cc
         window/buffer.cc
-        window/egl.cc
         window/feedback.cc
         window/window.cc
 )
@@ -52,6 +54,12 @@ add_library(waypp
 if (BUILD_STANDALONE)
     target_sources(waypp PRIVATE
             logging.cc)
+endif ()
+
+if (ENABLE_EGL)
+    target_sources(waypp PRIVATE
+            window/egl.cc
+    )
 endif ()
 
 if (ENABLE_XDG_CLIENT)
@@ -74,8 +82,13 @@ target_include_directories(waypp PUBLIC .)
 target_link_libraries(waypp PUBLIC
         wayland-gen
         PkgConfig::GLIB
-        OpenGL::EGL
         spdlog
 )
+
+if (ENABLE_EGL)
+    target_link_libraries(waypp PUBLIC
+            OpenGL::EGL
+    )
+endif ()
 
 add_sanitizers(waypp)

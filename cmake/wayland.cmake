@@ -24,7 +24,10 @@ option(ENABLE_IVI_SHELL_CLIENT "Enable ivi-shell Client" OFF)
 option(ENABLE_DRM_LEASE_CLIENT "Enable DRM Lease Client" OFF)
 
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(WAYLAND REQUIRED IMPORTED_TARGET wayland-client wayland-egl wayland-cursor xkbcommon)
+pkg_check_modules(WAYLAND REQUIRED IMPORTED_TARGET wayland-client wayland-cursor xkbcommon)
+if (ENABLE_EGL)
+    pkg_check_modules(WAYLAND_EGL REQUIRED IMPORTED_TARGET wayland-egl)
+endif ()
 
 include(CheckFunctionExists)
 check_function_exists(memfd_create HAVE_MEMFD_CREATE)
@@ -120,6 +123,9 @@ configure_file(cmake/wayland-protocols.h.in ${CMAKE_CURRENT_BINARY_DIR}/protocol
 
 add_library(wayland-gen STATIC ${WAYLAND_PROTOCOL_SOURCES})
 target_link_libraries(wayland-gen PUBLIC PkgConfig::WAYLAND)
+if (ENABLE_EGL)
+    target_link_libraries(wayland-gen PUBLIC PkgConfig::WAYLAND_EGL)
+endif ()
 target_include_directories(wayland-gen PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_BINARY_DIR}/protocols

@@ -15,23 +15,32 @@
 #
 
 
-#
-# simple-egl
-#
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(GLESv2 IMPORTED_TARGET glesv2)
+if (ENABLE_EGL)
 
-add_executable(simple-egl simple-egl.cc)
+    #
+    # simple-egl
+    #
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GLESv2 IMPORTED_TARGET glesv2)
 
-target_compile_definitions(simple-egl PRIVATE EGL_NO_X11 MESA_EGL_NO_X11_HEADERS)
+    add_executable(simple-egl simple-egl.cc)
 
-target_link_libraries(simple-egl PRIVATE waypp wayland-gen PkgConfig::GLESv2 cxxopts::cxxopts)
+    target_compile_definitions(simple-egl PRIVATE EGL_NO_X11 MESA_EGL_NO_X11_HEADERS)
 
-if (IPO_SUPPORT_RESULT)
-    set_property(TARGET simple-egl PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+    target_link_libraries(simple-egl PRIVATE waypp wayland-gen PkgConfig::GLESv2 cxxopts::cxxopts)
+
+    if (IPO_SUPPORT_RESULT)
+        set_property(TARGET simple-egl PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+    endif ()
+
+    add_sanitizers(simple-egl)
+
+    #
+    # OpenGL
+    #
+    add_subdirectory(gl-shadertoy)
+
 endif ()
-
-add_sanitizers(simple-egl)
 
 #
 # simple-shm
@@ -107,8 +116,3 @@ find_package(Vulkan)
 if (VULKAN_FOUND)
     add_subdirectory(vk-shadertoy)
 endif ()
-
-#
-# GL
-#
-add_subdirectory(gl-shadertoy)
