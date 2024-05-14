@@ -49,8 +49,9 @@ void handle_signal(int signal) {
 int main(int argc, char **argv) {
     std::signal(SIGINT, handle_signal);
 
-    cxxopts::Options options("simple-shm", "Weston simple-shm example");
+    cxxopts::Options options("vk-shadertoy", "Vulkan Shadertoy Launcher");
     options.add_options()
+            // clang-format off
             ("g,gpu", "GPU index", cxxopts::value<uint32_t>()->default_value("255"))
             ("p,present", "Present Mode", cxxopts::value<int>()->default_value("2"))
             ("r,reload_shaders", "Reload shaders on re-size")
@@ -61,6 +62,8 @@ int main(int argc, char **argv) {
             ("f,fullscreen", "Run in fullscreen mode")
             ("m,maximized", "Run in maximized mode")
             ("t,tearing", "Enable tearing via the tearing_control protocol");
+
+    // clang-format on
     auto result = options.parse(argc, argv);
 
     App app({

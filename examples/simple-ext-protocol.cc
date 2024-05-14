@@ -33,12 +33,12 @@
 #include "xdg-output-unstable-v1-client-protocol.h"
 
 struct Configuration {
-  int width;
-  int height;
-  bool fullscreen;
-  int maximized;
-  bool fullscreen_ratio;
-  bool tearing;
+    int width;
+    int height;
+    bool fullscreen;
+    int maximized;
+    bool fullscreen_ratio;
+    bool tearing;
 };
 
 static volatile bool running = true;
@@ -55,152 +55,154 @@ static volatile bool running = true;
  * @return void
  */
 void handle_signal(int signal) {
-  if (signal == SIGINT) {
-    running = false;
-  }
+    if (signal == SIGINT) {
+        running = false;
+    }
 }
 
-static void paint_pixels(void* image,
+static void paint_pixels(void *image,
                          int padding,
                          int width,
                          int height,
                          uint32_t time) {
-  const int half_height = padding + (height - padding * 2) / 2;
-  const int half_width = padding + (width - padding * 2) / 2;
-  int ir, or_;
-  auto* pixel = static_cast<uint32_t*>(image);
-  int y;
+    const int half_height = padding + (height - padding * 2) / 2;
+    const int half_width = padding + (width - padding * 2) / 2;
+    int ir, or_;
+    auto *pixel = static_cast<uint32_t *>(image);
+    int y;
 
-  /* squared radii thresholds */
-  or_ = (half_width < half_height ? half_width : half_height) - 8;
-  ir = or_ - 32;
-  or_ *= or_;
-  ir *= ir;
+    /* squared radii thresholds */
+    or_ = (half_width < half_height ? half_width : half_height) - 8;
+    ir = or_ - 32;
+    or_ *= or_;
+    ir *= ir;
 
-  pixel += padding * width;
-  for (y = padding; y < height - padding; y++) {
-    int x;
-    int y2 = (y - half_height) * (y - half_height);
+    pixel += padding * width;
+    for (y = padding; y < height - padding; y++) {
+        int x;
+        int y2 = (y - half_height) * (y - half_height);
 
-    pixel += padding;
-    for (x = padding; x < width - padding; x++) {
-      uint32_t v;
+        pixel += padding;
+        for (x = padding; x < width - padding; x++) {
+            uint32_t v;
 
-      /* squared distance from center */
-      int r2 = (x - half_width) * (x - half_width) + y2;
+            /* squared distance from center */
+            int r2 = (x - half_width) * (x - half_width) + y2;
 
-      if (r2 < ir)
-        v = (static_cast<uint32_t>(r2 / 32) + time / 64) * 0x0080401;
-      else if (r2 < or_)
-        v = (static_cast<uint32_t>(y) + time / 32) * 0x0080401;
-      else
-        v = (static_cast<uint32_t>(x) + time / 16) * 0x0080401;
-      v &= 0x00ffffff;
+            if (r2 < ir)
+                v = (static_cast<uint32_t>(r2 / 32) + time / 64) * 0x0080401;
+            else if (r2 < or_)
+                v = (static_cast<uint32_t>(y) + time / 32) * 0x0080401;
+            else
+                v = (static_cast<uint32_t>(x) + time / 16) * 0x0080401;
+            v &= 0x00ffffff;
 
-      /* cross if compositor uses X from XRGB as alpha */
-      if (abs(x - y) > 6 && abs(x + y - height) > 6)
-        v |= 0xff000000;
+            /* cross if compositor uses X from XRGB as alpha */
+            if (abs(x - y) > 6 && abs(x + y - height) > 6)
+                v |= 0xff000000;
 
-      *pixel++ = v;
+            *pixel++ = v;
+        }
+
+        pixel += padding;
+    }
+}
+
+void draw_frame(void *data, const uint32_t time) {
+    auto window = static_cast<Window *>(data);
+
+    auto buffer = window->next_buffer();
+    if (!buffer) {
+        spdlog::error("Failed to acquire a buffer");
+        exit(EXIT_FAILURE);
     }
 
-    pixel += padding;
-  }
+    paint_pixels(buffer->get_shm_data(), 20, window->get_width(),
+                 window->get_height(), time);
+
+    wl_surface_attach(window->get_surface(), buffer->get_wl_buffer(), 0, 0);
+    wl_surface_damage(window->get_surface(), 20, 20, window->get_width() - 40,
+                      window->get_height() - 40);
+
+    buffer->set_busy();
 }
 
-void draw_frame(void* data, const uint32_t time) {
-  auto window = static_cast<Window*>(data);
-
-  auto buffer = window->next_buffer();
-  if (!buffer) {
-    spdlog::error("Failed to acquire a buffer");
-    exit(EXIT_FAILURE);
-  }
-
-  paint_pixels(buffer->get_shm_data(), 20, window->get_width(),
-               window->get_height(), time);
-
-  wl_surface_attach(window->get_surface(), buffer->get_wl_buffer(), 0, 0);
-  wl_surface_damage(window->get_surface(), 20, 20, window->get_width() - 40,
-                    window->get_height() - 40);
-
-  buffer->set_busy();
-}
-
-static void handle_interface1_add(Registrar* /* data */,
-                                  struct wl_registry* /* registry */,
+static void handle_interface1_add(Registrar * /* data */,
+                                  struct wl_registry * /* registry */,
                                   uint32_t name,
-                                  const char* interface,
+                                  const char *interface,
                                   uint32_t version) {
-  spdlog::info("handle_interface1_add: name: {}, interface: {}, version: {}",
-               name, interface, version);
+    spdlog::info("handle_interface1_add: name: {}, interface: {}, version: {}",
+                 name, interface, version);
 }
 
-static void handle_interface1_remove(Registrar* /* data */,
-                                     struct wl_registry* /* registry */,
+static void handle_interface1_remove(Registrar * /* data */,
+                                     struct wl_registry * /* registry */,
                                      uint32_t id) {
-  spdlog::info("handle_interface1_remove: id: {}", id);
+    spdlog::info("handle_interface1_remove: id: {}", id);
 }
 
 static constexpr std::array<Registrar::RegistrarCallback, 1> ext_interfaces{{{
-    "weston_capture_v1",
-    handle_interface1_add,
-    handle_interface1_remove,
-}}};
+                                                                                     "weston_capture_v1",
+                                                                                     handle_interface1_add,
+                                                                                     handle_interface1_remove,
+                                                                             }}};
 
-int main(int argc, char** argv) {
-  auto logging = std::make_unique<Logging>();
+int main(int argc, char **argv) {
+    auto logging = std::make_unique<Logging>();
 
-  auto display = wl_display_connect(nullptr);
-  if (!display) {
-    spdlog::critical("Unable to connect to Wayland socket.");
-    exit(EXIT_FAILURE);
-  }
+    auto display = wl_display_connect(nullptr);
+    if (!display) {
+        spdlog::critical("Unable to connect to Wayland socket.");
+        exit(EXIT_FAILURE);
+    }
 
-  std::signal(SIGINT, handle_signal);
+    std::signal(SIGINT, handle_signal);
 
-  cxxopts::Options options("simple-shm", "Weston simple-shm example");
-  options.add_options()("w,width", "Set width",
-                        cxxopts::value<int>()->default_value("250"))(
-      "h,height", "Set height", cxxopts::value<int>()->default_value("250"))(
-      "f,fullscreen", "Run in fullscreen mode")("m,maximized",
-                                                "Run in maximized mode")(
-      "r,fullscreen-ratio",
-      "Use fixed width/height ratio when run in fullscreen mode")(
-      "t,tearing", "Enable tearing via the tearing_control protocol");
-  auto result = options.parse(argc, argv);
+    cxxopts::Options options("simple-shm", "Weston simple-shm example");
+    options.add_options()
+            // clang-format off
+            ("w,width", "Set width", cxxopts::value<int>()->default_value("250"))
+            ("h,height", "Set height", cxxopts::value<int>()->default_value("250"))
+            ("f,fullscreen", "Run in fullscreen mode")
+            ("m,maximized", "Run in maximized mode")
+            ("r,fullscreen-ratio", "Use fixed width/height ratio when run in fullscreen mode")
+            ("t,tearing", "Enable tearing via the tearing_control protocol");
 
-  Configuration config = {
-      .width = result["width"].as<int>(),
-      .height = result["height"].as<int>(),
-      .fullscreen = result["fullscreen"].as<bool>(),
-      .maximized = result["maximized"].as<bool>() ? 1 : 0,
-      .fullscreen_ratio = result["fullscreen-ratio"].as<bool>(),
-      .tearing = result["tearing"].as<bool>(),
-  };
+    // clang-format on
+    auto result = options.parse(argc, argv);
 
-  XdgWindowManager wm = XdgWindowManager(display, false, ext_interfaces.size(),
-                                         ext_interfaces.data());
-  spdlog::info("XDG Window Manager Version: {}", wm.get_version());
-  auto top_level = wm.create_top_level(
-      "simple-ext-protocol",
-      "org.freedesktop.gitlab.jwinarske.waypp.simple_ext_protocol",
-      config.width, config.height, 2, WL_SHM_FORMAT_XRGB8888, config.fullscreen,
-      config.maximized, config.fullscreen_ratio, config.tearing, draw_frame);
-  spdlog::info("XDG Window Version: {}", top_level->get_version());
+    Configuration config = {
+            .width = result["width"].as<int>(),
+            .height = result["height"].as<int>(),
+            .fullscreen = result["fullscreen"].as<bool>(),
+            .maximized = result["maximized"].as<bool>() ? 1 : 0,
+            .fullscreen_ratio = result["fullscreen-ratio"].as<bool>(),
+            .tearing = result["tearing"].as<bool>(),
+    };
 
-  /// paint padding
-  top_level->set_surface_damage(0, 0, config.width, config.height);
-  top_level->update_buffer_geometry();
-  top_level->start_frame_callbacks();
+    XdgWindowManager wm = XdgWindowManager(display, false, ext_interfaces.size(),
+                                           ext_interfaces.data());
+    spdlog::info("XDG Window Manager Version: {}", wm.get_version());
+    auto top_level = wm.create_top_level(
+            "simple-ext-protocol",
+            "jwinarske.waypp.simple_ext_protocol",
+            config.width, config.height, 2, WL_SHM_FORMAT_XRGB8888, config.fullscreen,
+            config.maximized, config.fullscreen_ratio, config.tearing, draw_frame);
+    spdlog::info("XDG Window Version: {}", top_level->get_version());
 
-  while (running && top_level->is_valid() && wm.display_dispatch() != -1) {
-  }
+    /// paint padding
+    top_level->set_surface_damage(0, 0, config.width, config.height);
+    top_level->update_buffer_geometry();
+    top_level->start_frame_callbacks();
 
-  top_level->stop_frame_callbacks();
+    while (running && top_level->is_valid() && wm.display_dispatch() != -1) {
+    }
 
-  wl_display_flush(display);
-  wl_display_disconnect(display);
+    top_level->stop_frame_callbacks();
 
-  return EXIT_SUCCESS;
+    wl_display_flush(display);
+    wl_display_disconnect(display);
+
+    return EXIT_SUCCESS;
 }

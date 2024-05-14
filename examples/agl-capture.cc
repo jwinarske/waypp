@@ -30,181 +30,183 @@
 #include "window_manager/weston-capture.h"
 
 struct Configuration {
-  bool write_back;
-  bool frame_buffer;
-  bool full_frame_buffer;
-  bool blending;
-  std::string output;
-  bool list;
-  bool all;
+    bool write_back;
+    bool frame_buffer;
+    bool full_frame_buffer;
+    bool blending;
+    std::string output;
+    bool list;
+    bool all;
 };
 
 static volatile bool gRunning = true;
 
 class App : public WestonCaptureObserver {
- public:
-  explicit App(const Configuration& config)
-      : logging_(std::make_unique<Logging>()), weston_capture_v1_(nullptr) {
-    display_ = wl_display_connect(nullptr);
-    if (!display_) {
-      spdlog::critical("Unable to connect to Wayland socket.");
-      exit(EXIT_FAILURE);
+public:
+    explicit App(const Configuration &config)
+            : logging_(std::make_unique<Logging>()), weston_capture_v1_(nullptr) {
+        display_ = wl_display_connect(nullptr);
+        if (!display_) {
+            spdlog::critical("Unable to connect to Wayland socket.");
+            exit(EXIT_FAILURE);
+        }
+
+        agl_shell_ = std::make_unique<AglShell>(display_, false);
+        auto d = agl_shell_->get_display();
+
+        // required when not creating a window
+        wl_display_roundtrip(d);
+
+        if (config.list) {
+            auto &outputs = agl_shell_->get_outputs();
+            for (const auto &output: outputs) {
+                spdlog::info("Output: {}", output.second->get_name());
+            }
+            exit(EXIT_SUCCESS);
+        }
+
+        /// Weston Capture
+        weston_capture_v1_ = agl_shell_->get_weston_capture_v1();
+        if (!weston_capture_v1_) {
+            spdlog::critical("weston_capture_v1 interface not found.");
+            exit(EXIT_FAILURE);
+        }
+
+        /// Source
+        enum weston_capture_v1_source source =
+                WESTON_CAPTURE_V1_SOURCE_FULL_FRAMEBUFFER;
+        if (config.write_back) {
+            source = WESTON_CAPTURE_V1_SOURCE_WRITEBACK;
+        } else if (config.frame_buffer) {
+            source = WESTON_CAPTURE_V1_SOURCE_FRAMEBUFFER;
+        } else if (config.full_frame_buffer) {
+            source = WESTON_CAPTURE_V1_SOURCE_FULL_FRAMEBUFFER;
+        } else if (config.blending) {
+            source = WESTON_CAPTURE_V1_SOURCE_BLENDING;
+        }
+
+        /// Output
+        if (!config.all) {
+            struct wl_output *output{};
+
+            if (!config.output.empty()) {
+                output = agl_shell_->find_output_by_name(config.output);
+            } else {
+                output = agl_shell_->get_primary_output();
+            }
+
+            if (!output) {
+                spdlog::critical("Output not available.");
+                exit(EXIT_FAILURE);
+            }
+
+            weston_capture_list_.push_back(std::make_unique<WestonCapture>(
+                    weston_capture_v1_, output, source, this, this));
+        } else {
+            for (auto &output: agl_shell_->get_outputs()) {
+                weston_capture_list_.push_back(std::make_unique<WestonCapture>(
+                        weston_capture_v1_, output.first, source, this, this));
+            }
+        }
+
+        spdlog::info("AGL Capture");
     }
 
-    agl_shell_ = std::make_unique<AglShell>(display_, false);
-    auto d = agl_shell_->get_display();
-
-    // required when not creating a window
-    wl_display_roundtrip(d);
-
-    if (config.list) {
-      auto& outputs = agl_shell_->get_outputs();
-      for (const auto& output : outputs) {
-        spdlog::info("Output: {}", output.second->get_name());
-      }
-      exit(EXIT_SUCCESS);
+    void notify_weston_capture_format(
+            void *user_data,
+            struct weston_capture_source_v1 * /* weston_capture_source_v1 */,
+            uint32_t drm_format) override {
+        auto obj = static_cast<App *>(user_data);
+        obj->buffer_.drm_format = drm_format;
+        spdlog::debug("drm_format: 0x{:X}", drm_format);
     }
 
-    /// Weston Capture
-    weston_capture_v1_ = agl_shell_->get_weston_capture_v1();
-    if (!weston_capture_v1_) {
-      spdlog::critical("weston_capture_v1 interface not found.");
-      exit(EXIT_FAILURE);
+    void notify_weston_capture_size(
+            void *user_data,
+            struct weston_capture_source_v1 * /* weston_capture_source_v1 */,
+            int32_t width,
+            int32_t height) override {
+        auto obj = static_cast<App *>(user_data);
+        obj->buffer_.width = width;
+        obj->buffer_.height = height;
+        spdlog::debug("width: {}, height: {}", width, height);
     }
 
-    /// Source
-    enum weston_capture_v1_source source =
-        WESTON_CAPTURE_V1_SOURCE_FULL_FRAMEBUFFER;
-    if (config.write_back) {
-      source = WESTON_CAPTURE_V1_SOURCE_WRITEBACK;
-    } else if (config.frame_buffer) {
-      source = WESTON_CAPTURE_V1_SOURCE_FRAMEBUFFER;
-    } else if (config.full_frame_buffer) {
-      source = WESTON_CAPTURE_V1_SOURCE_FULL_FRAMEBUFFER;
-    } else if (config.blending) {
-      source = WESTON_CAPTURE_V1_SOURCE_BLENDING;
+    void notify_weston_capture_complete(
+            void * /* user_data */,
+            struct weston_capture_source_v1 * /* weston_capture_source_v1 */)
+    override {
+        gRunning = false;
+        spdlog::debug("complete");
     }
 
-    /// Output
-    if (!config.all) {
-      struct wl_output* output{};
-
-      if (!config.output.empty()) {
-        output = agl_shell_->find_output_by_name(config.output);
-      } else {
-        output = agl_shell_->get_primary_output();
-      }
-
-      if (!output) {
-        spdlog::critical("Output not available.");
-        exit(EXIT_FAILURE);
-      }
-
-      weston_capture_list_.push_back(std::make_unique<WestonCapture>(
-          weston_capture_v1_, output, source, this, this));
-    } else {
-      for (auto& output : agl_shell_->get_outputs()) {
-        weston_capture_list_.push_back(std::make_unique<WestonCapture>(
-            weston_capture_v1_, output.first, source, this, this));
-      }
+    void notify_weston_capture_retry(
+            void * /* user_data */,
+            struct weston_capture_source_v1 * /* weston_capture_source_v1 */)
+    override {
+        spdlog::debug("retry");
     }
 
-    spdlog::info("AGL Capture");
-  }
-
-  void notify_weston_capture_format(
-      void* user_data,
-      struct weston_capture_source_v1* /* weston_capture_source_v1 */,
-      uint32_t drm_format) override {
-    auto obj = static_cast<App*>(user_data);
-    obj->buffer_.drm_format = drm_format;
-    spdlog::debug("drm_format: 0x{:X}", drm_format);
-  }
-
-  void notify_weston_capture_size(
-      void* user_data,
-      struct weston_capture_source_v1* /* weston_capture_source_v1 */,
-      int32_t width,
-      int32_t height) override {
-    auto obj = static_cast<App*>(user_data);
-    obj->buffer_.width = width;
-    obj->buffer_.height = height;
-    spdlog::debug("width: {}, height: {}", width, height);
-  }
-
-  void notify_weston_capture_complete(
-      void* /* user_data */,
-      struct weston_capture_source_v1* /* weston_capture_source_v1 */)
-      override {
-    gRunning = false;
-    spdlog::debug("complete");
-  }
-
-  void notify_weston_capture_retry(
-      void* /* user_data */,
-      struct weston_capture_source_v1* /* weston_capture_source_v1 */)
-      override {
-    spdlog::debug("retry");
-  }
-
-  void notify_weston_capture_failed(
-      void* /* user_data */,
-      struct weston_capture_source_v1* /* weston_capture_source_v1 */,
-      const char* msg) override {
-    spdlog::debug("failed: {}", msg);
-  }
-
-  ~App() override {
-    if (display_) {
-      wl_display_flush(display_);
-      wl_display_disconnect(display_);
+    void notify_weston_capture_failed(
+            void * /* user_data */,
+            struct weston_capture_source_v1 * /* weston_capture_source_v1 */,
+            const char *msg) override {
+        spdlog::debug("failed: {}", msg);
     }
-  };
 
-  bool run() {
-    /// display_dispatch is blocking
-    return (gRunning && agl_shell_->display_dispatch() != -1);
-  }
+    ~App() override {
+        if (display_) {
+            wl_display_flush(display_);
+            wl_display_disconnect(display_);
+        }
+    };
 
- private:
-  struct wl_display* display_;
-  std::unique_ptr<Logging> logging_;
-  std::unique_ptr<AglShell> agl_shell_;
-  std::list<std::unique_ptr<WestonCapture>> weston_capture_list_;
-  struct weston_capture_v1* weston_capture_v1_;
+    bool run() {
+        /// display_dispatch is blocking
+        return (gRunning && agl_shell_->display_dispatch() != -1);
+    }
 
-  struct {
-    uint32_t drm_format;
-    int32_t width;
-    int32_t height;
-  } buffer_{};
+private:
+    struct wl_display *display_;
+    std::unique_ptr<Logging> logging_;
+    std::unique_ptr<AglShell> agl_shell_;
+    std::list<std::unique_ptr<WestonCapture>> weston_capture_list_;
+    struct weston_capture_v1 *weston_capture_v1_;
+
+    struct {
+        uint32_t drm_format;
+        int32_t width;
+        int32_t height;
+    } buffer_{};
 };
 
-int main(int argc, char** argv) {
-  cxxopts::Options options("agl-capture", "AGL Output Capture Utility");
-  options.add_options()("w,writeback", "Use hardware writeback")(
-      "d,framebuffer", "Copy from framebuffer, desktop area")(
-      "f,full-framebuffer", "Copy whole framebuffer, including borders")(
-      "b,blending", "Copy from blending space")(
-      "o,output", "take a screenshot of the output specified by OUTPUT_NAME",
-      cxxopts::value<std::string>())("l,list", "list all the outputs found")(
-      "a,all", "take a screenshot of all the outputs found");
+int main(int argc, char **argv) {
+    cxxopts::Options options("agl-capture", "AGL Output Capture Utility");
+    options.add_options()
+            // clang-format off
+            ("w,writeback", "Use hardware writeback")
+            ("d,framebuffer", "Copy from framebuffer, desktop area")
+            ("f,full-framebuffer", "Copy whole framebuffer, including borders")
+            ("b,blending", "Copy from blending space")
+            ("o,output", "take a screenshot of the output specified by OUTPUT_NAME", cxxopts::value<std::string>())
+            ("l,list", "list all the outputs found")
+            ("a,all", "take a screenshot of all the outputs found");
 
-  auto result = options.parse(argc, argv);
+    // clang-format on
+    auto result = options.parse(argc, argv);
 
-  App app({
-      .write_back = result["writeback"].as<bool>(),
-      .frame_buffer = result["framebuffer"].as<bool>(),
-      .full_frame_buffer = result["full-framebuffer"].as<bool>(),
-      .blending = result["blending"].as<bool>(),
-      .output =
-          result.count("output") ? result["output"].as<std::string>() : "",
-      .list = result["list"].as<bool>(),
-      .all = result["all"].as<bool>(),
-  });
+    App app({
+                    .write_back = result["writeback"].as<bool>(),
+                    .frame_buffer = result["framebuffer"].as<bool>(),
+                    .full_frame_buffer = result["full-framebuffer"].as<bool>(),
+                    .blending = result["blending"].as<bool>(),
+                    .output = result.count("output") ? result["output"].as<std::string>() : "",
+                    .list = result["list"].as<bool>(),
+                    .all = result["all"].as<bool>(),
+            });
 
-  while (app.run()) {
-  }
+    while (app.run()) {
+    }
 
-  return EXIT_SUCCESS;
+    return EXIT_SUCCESS;
 }
