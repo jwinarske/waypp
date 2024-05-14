@@ -23,78 +23,78 @@
 #include <EGL/eglext.h>
 
 class Egl {
- public:
-  enum api {
-    OPENGL_ES_API = 0x30A0,
-    OPENGL_API = 0x30A2,
-  };
+public:
+    enum api {
+        OPENGL_ES_API = 0x30A0,
+        OPENGL_API = 0x30A2,
+    };
 
-  explicit Egl(struct wl_display* display,
-               struct wl_surface* wl_surface,
-               int width,
-               int height,
-               const int32_t* context_attribs,
-               size_t context_attribs_size,
-               const int32_t* config_attribs,
-               size_t config_attribs_size,
-               int buffer_bpp,
-               enum api type = OPENGL_ES_API);
+    explicit Egl(struct wl_display *display,
+                 struct wl_surface *wl_surface,
+                 int width,
+                 int height,
+                 const int32_t *context_attribs,
+                 size_t context_attribs_size,
+                 const int32_t *config_attribs,
+                 size_t config_attribs_size,
+                 int buffer_bpp,
+                 enum api type = OPENGL_ES_API);
 
-  ~Egl();
+    ~Egl();
 
-  void set_swap_interval(int interval);
+    void set_swap_interval(int interval);
 
-  void make_current();
+    void make_current();
 
-  void clear_current();
+    void clear_current();
 
-  void swap_buffers();
+    void swap_buffers();
 
-  void get_buffer_age(EGLint& age);
+    void get_buffer_age(EGLint &age);
 
-  bool have_swap_buffers_width_damage() const {
-    return pfSwapBufferWithDamage_ != nullptr;
-  }
+    bool have_swap_buffers_width_damage() const {
+        return pfSwapBufferWithDamage_ != nullptr;
+    }
 
-  void swap_buffers_with_damage(const EGLint* rects, EGLint n_rects);
+    void swap_buffers_with_damage(const EGLint *rects, EGLint n_rects);
 
-  void resize(int width, int height, int dx, int dy);
+    void resize(int width, int height, int dx, int dy);
 
-  // Disallow copy and assign.
-  Egl(const Egl&) = delete;
+    // Disallow copy and assign.
+    Egl(const Egl &) = delete;
 
-  Egl& operator=(const Egl&) = delete;
+    Egl &operator=(const Egl &) = delete;
 
- private:
-  std::vector<EGLint> context_attribs_;
-  std::vector<EGLint> config_attribs_;
-  int buffer_bpp_;
+private:
+    std::vector<EGLint> context_attribs_;
+    std::vector<EGLint> config_attribs_;
+    int buffer_bpp_;
 
-  EGLContext context_{};
+    EGLContext context_{};
 
-  EGLint major_{}, minor_{};
+    EGLint major_{}, minor_{};
 
-  EGLDisplay dpy_;
-  EGLConfig config_{};
+    EGLDisplay dpy_;
+    EGLConfig config_{};
 
-  struct wl_surface* wl_surface_;
-  struct wl_egl_window* wl_egl_window_{};
-  EGLSurface egl_surface_{};
+    struct wl_surface *wl_surface_;
+    struct wl_egl_window *wl_egl_window_{};
+    EGLSurface egl_surface_{};
 
-  int width_;
-  int height_;
+    int width_;
+    int height_;
 
-  PFNEGLSWAPBUFFERSWITHDAMAGEEXTPROC pfSwapBufferWithDamage_{};
-  PFNEGLSETDAMAGEREGIONKHRPROC pfSetDamageRegion_{};
+    PFNEGLSWAPBUFFERSWITHDAMAGEEXTPROC pfSwapBufferWithDamage_{};
+    PFNEGLSETDAMAGEREGIONKHRPROC pfSetDamageRegion_{};
 
-  static bool has_egl_extension(const char* extensions, const char* name);
+    static bool has_egl_extension(const char *extensions, const char *name);
 
-  static void debug_callback(EGLenum error,
-                             const char* command,
-                             EGLint messageType,
-                             EGLLabelKHR threadLabel,
-                             EGLLabelKHR objectLabel,
-                             const char* message);
+    static void debug_callback(EGLenum error,
+                               const char *command,
+                               EGLint messageType,
+                               EGLLabelKHR threadLabel,
+                               EGLLabelKHR objectLabel,
+                               const char *message);
 
-  static void egl_khr_debug_init();
+    static void egl_khr_debug_init();
 };

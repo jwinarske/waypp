@@ -1,6 +1,28 @@
+/*
+ * Copyright © 2024 Joel Winarske
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice (including the next
+ * paragraph) shall be included in all copies or substantial portions of the
+ * Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
+ */
 
-#ifndef _LAUNCHER_VULKAN_UTILS_H_
-#define _LAUNCHER_VULKAN_UTILS_H_
+#ifndef EXAMPLES_VK_SHADERTOY_VULKAN_UTILS_H_
+#define EXAMPLES_VK_SHADERTOY_VULKAN_UTILS_H_
 
 #include "common.h"
 
@@ -50,13 +72,7 @@ public:
     static inline vk_error init(VkInstance *vk) {
         const char *extension_names[] = {
                 VK_KHR_SURFACE_EXTENSION_NAME,
-#if defined(VK_USE_PLATFORM_WIN32_KHR)
-                VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
-#elif defined(VK_USE_PLATFORM_XCB_KHR)
-                VK_KHR_XCB_SURFACE_EXTENSION_NAME,
-#elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
                 VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME,
-#endif
         };
         VULKAN_HPP_DEFAULT_DISPATCHER.init();
         return init_ext(vk, extension_names, sizeof extension_names / sizeof *extension_names);
@@ -71,8 +87,6 @@ public:
                            sizeof extension_names / sizeof *extension_names);
     }
 
-// gcc 11 has Wstringop-overflow warning here, but this is GCC bug look like
-// look https://stackoverflow.com/questions/69426070/gcc-11-order-of-arguments-triggers-false-positive-wstringop-overflow-is-this-bu
     static vk_error
     setup(struct vk_physical_device *phy_dev, struct vk_device *dev, VkQueueFlags qflags, uint32_t create_count) {
         VkDeviceQueueCreateInfo queue_info[kMaxQueueFamily];
@@ -126,7 +140,7 @@ public:
 
     static vk_error
     make_graphics_layouts(struct vk_device *dev, struct vk_layout *layouts, uint32_t layout_count, bool w_img_pattern,
-                          uint32_t *img_pattern, uint32_t img_pattern_size);
+                          const uint32_t *img_pattern, uint32_t img_pattern_size);
 
     static vk_error
     make_graphics_pipelines(struct vk_device *dev, struct vk_pipeline *pipelines, uint32_t pipeline_count,
@@ -168,4 +182,4 @@ public:
     static void FPS_LOCK(int fps);
 };
 
-#endif //_LAUNCHER_VULKAN_UTILS_H_
+#endif // EXAMPLES_VK_SHADERTOY_VULKAN_UTILS_H_

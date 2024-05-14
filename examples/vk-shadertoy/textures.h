@@ -1,6 +1,8 @@
 
 #include "vulkan/render.h"
 
+#include "logging.h"
+
 class VulkanRender;
 
 static vk_error
@@ -46,7 +48,7 @@ init_texture_file(struct vk_physical_device *phy_dev, struct vk_device *dev, str
     uint8_t *generated_texture = stbi_load(name, &width, &height, &channels, STBI_rgb_alpha);
     if (generated_texture == nullptr) {
         retval.error.type = VK_ERROR_ERRNO;
-        printf("Error in loading image %s\n", name);
+        spdlog::error("Error in loading image {}", name);
         return retval;
     }
 
@@ -65,7 +67,7 @@ texture_empty(struct vk_physical_device *phy_dev, struct vk_device *dev, struct 
     auto *generated_texture = (uint8_t *) malloc(texture_size);
     if (generated_texture == nullptr) {
         retval.error.type = VK_ERROR_ERRNO;
-        printf("Error in allocating memory\n");
+        spdlog::error("Error in allocating memory");
         return retval;
     }
     for (unsigned int i = 0; i < height; ++i) {

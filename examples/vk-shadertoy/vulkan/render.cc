@@ -3,7 +3,10 @@
 
 #include <cmath>
 
+#include "logging.h"
 #include "utils.h"
+
+#define d VULKAN_HPP_DEFAULT_DISPATCHER
 
 class VulkanUtils;
 
@@ -27,7 +30,7 @@ int VulkanRender::get_essentials(struct vk_render_essentials *essentials, struct
     retval = VulkanUtils::get_presentable_queues(phy_dev, dev, swapchain->surface, &presentable_queues,
                                                  &presentable_queue_count);
     if (!vk_error_is_success(&retval) || presentable_queue_count == 0) {
-        printf("No presentable queue families!  What kind of graphics card is this!\n");
+        spdlog::error("No presentable queue families!  What kind of graphics card is this!");
         return -1;
     }
 
@@ -39,15 +42,15 @@ int VulkanRender::get_essentials(struct vk_render_essentials *essentials, struct
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
     };
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateSemaphore(dev->device, &sem_info, nullptr,
-                                                          &essentials->sem_post_acquire);
+    res = d.vkCreateSemaphore(dev->device, &sem_info, nullptr,
+                              &essentials->sem_post_acquire);
     vk_error_set_vkresult(&retval, res);
     if (res) {
         vk_error_printf(&retval, "Failed to create post-acquire semaphore\n");
         return -1;
     }
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateSemaphore(dev->device, &sem_info, nullptr, &essentials->sem_pre_submit);
+    res = d.vkCreateSemaphore(dev->device, &sem_info, nullptr, &essentials->sem_pre_submit);
     vk_error_set_vkresult(&retval, res);
     if (res) {
         vk_error_printf(&retval, "Failed to create pre-submit semaphore\n");
@@ -58,7 +61,7 @@ int VulkanRender::get_essentials(struct vk_render_essentials *essentials, struct
             .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
     };
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateFence(dev->device, &fence_info, nullptr, &essentials->exec_fence);
+    res = d.vkCreateFence(dev->device, &fence_info, nullptr, &essentials->exec_fence);
     vk_error_set_vkresult(&retval, res);
     if (res) {
         vk_error_printf(&retval, "Failed to create fence\n");
@@ -71,11 +74,11 @@ int VulkanRender::get_essentials(struct vk_render_essentials *essentials, struct
 }
 
 void VulkanRender::cleanup_essentials(struct vk_render_essentials *essentials, struct vk_device *dev) {
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkDeviceWaitIdle(dev->device);
+    d.vkDeviceWaitIdle(dev->device);
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroySemaphore(dev->device, essentials->sem_post_acquire, nullptr);
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroySemaphore(dev->device, essentials->sem_pre_submit, nullptr);
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroyFence(dev->device, essentials->exec_fence, nullptr);
+    d.vkDestroySemaphore(dev->device, essentials->sem_post_acquire, nullptr);
+    d.vkDestroySemaphore(dev->device, essentials->sem_pre_submit, nullptr);
+    d.vkDestroyFence(dev->device, essentials->exec_fence, nullptr);
     free(essentials->images);
 }
 
@@ -84,15 +87,15 @@ VkResult VulkanRender::start(struct vk_render_essentials *essentials, struct vk_
     vk_error retval = VK_ERROR_NONE;
     VkResult res;
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkAcquireNextImageKHR(dev->device, swapchain->swapchain, 1000000000,
-                                                              essentials->sem_post_acquire, nullptr,
-                                                              image_index);
+    res = d.vkAcquireNextImageKHR(dev->device, swapchain->swapchain, 1000000000,
+                                  essentials->sem_post_acquire, nullptr,
+                                  image_index);
     vk_error_set_vkresult(&retval, res);
     if (res == VK_TIMEOUT) {
-        printf("A whole second and no image.  I give up.\n");
+        spdlog::warn("A whole second and no image.  I give up.");
         return res;
     } else if (res == VK_SUBOPTIMAL_KHR)
-        printf("presentation is suboptimal.\n");
+        spdlog::warn("presentation is suboptimal.");
     else if (res == VK_ERROR_OUT_OF_DATE_KHR) {
         // this is not error, this is resize event for AMD hardware
         return res;
@@ -102,7 +105,7 @@ VkResult VulkanRender::start(struct vk_render_essentials *essentials, struct vk_
     }
 
     if (!essentials->first_render) {
-        res = VULKAN_HPP_DEFAULT_DISPATCHER.vkWaitForFences(dev->device, 1, &essentials->exec_fence, true, 1000000000);
+        res = d.vkWaitForFences(dev->device, 1, &essentials->exec_fence, true, 1000000000);
         vk_error_set_vkresult(&retval, res);
         if (res) {
             vk_error_printf(&retval, "Wait for fence failed\n");
@@ -111,12 +114,12 @@ VkResult VulkanRender::start(struct vk_render_essentials *essentials, struct vk_
     }
     essentials->first_render = false;
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkResetCommandBuffer(essentials->cmd_buffer, 0);
+    d.vkResetCommandBuffer(essentials->cmd_buffer, 0);
     VkCommandBufferBeginInfo begin_info = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
             .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
     };
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkBeginCommandBuffer(essentials->cmd_buffer, &begin_info);
+    res = d.vkBeginCommandBuffer(essentials->cmd_buffer, &begin_info);
     vk_error_set_vkresult(&retval, res);
     if (res) {
         vk_error_printf(&retval, "Couldn't even begin recording a command buffer\n");
@@ -141,13 +144,13 @@ VkResult VulkanRender::start(struct vk_render_essentials *essentials, struct vk_
             },
     };
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdPipelineBarrier(essentials->cmd_buffer,
-                                                       VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                                                       VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
-                                                       0,
-                                                       0, nullptr,
-                                                       0, nullptr,
-                                                       1, &image_barrier);
+    d.vkCmdPipelineBarrier(essentials->cmd_buffer,
+                           VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                           VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+                           0,
+                           0, nullptr,
+                           0, nullptr,
+                           1, &image_barrier);
 
     return VK_SUCCESS;
 }
@@ -160,7 +163,7 @@ VulkanRender::fill_object(struct vk_device *dev, VkDeviceMemory to, void *from, 
     vk_error retval = VK_ERROR_NONE;
     VkResult res;
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkMapMemory(dev->device, to, 0, size, 0, &mem);
+    res = d.vkMapMemory(dev->device, to, 0, size, 0, &mem);
     vk_error_set_vkresult(&retval, res);
     if (res) {
         vk_error_printf(&retval, "Failed to map memory of the %s %s\n", name, object);
@@ -169,7 +172,7 @@ VulkanRender::fill_object(struct vk_device *dev, VkDeviceMemory to, void *from, 
 
     memcpy(mem, from, size);
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkUnmapMemory(dev->device, to);
+    d.vkUnmapMemory(dev->device, to);
 
     return retval;
 }
@@ -191,12 +194,12 @@ VulkanRender::copy_object_start(struct vk_device * /* dev */, struct vk_render_e
     vk_error retval = VK_ERROR_NONE;
     VkResult res;
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkResetCommandBuffer(essentials->cmd_buffer, 0);
+    d.vkResetCommandBuffer(essentials->cmd_buffer, 0);
     VkCommandBufferBeginInfo begin_info = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
             .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
     };
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkBeginCommandBuffer(essentials->cmd_buffer, &begin_info);
+    res = d.vkBeginCommandBuffer(essentials->cmd_buffer, &begin_info);
     vk_error_set_vkresult(&retval, res);
     if (res)
         vk_error_printf(&retval, "Couldn't begin recording a command buffer to copy the %s %s\n", name, object);
@@ -208,9 +211,9 @@ vk_error VulkanRender::copy_object_end(struct vk_device *dev, struct vk_render_e
     vk_error retval = VK_ERROR_NONE;
     VkResult res;
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkEndCommandBuffer(essentials->cmd_buffer);
+    d.vkEndCommandBuffer(essentials->cmd_buffer);
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkResetFences(dev->device, 1, &essentials->exec_fence);
+    res = d.vkResetFences(dev->device, 1, &essentials->exec_fence);
     vk_error_set_vkresult(&retval, res);
     if (res) {
         vk_error_printf(&retval, "Failed to reset fence\n");
@@ -223,8 +226,8 @@ vk_error VulkanRender::copy_object_end(struct vk_device *dev, struct vk_render_e
             .pCommandBuffers = &essentials->cmd_buffer,
     };
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkQueueSubmit(essentials->present_queue, 1, &submit_info, essentials->exec_fence);
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkWaitForFences(dev->device, 1, &essentials->exec_fence, true, 1000000000);
+    d.vkQueueSubmit(essentials->present_queue, 1, &submit_info, essentials->exec_fence);
+    res = d.vkWaitForFences(dev->device, 1, &essentials->exec_fence, true, 1000000000);
     vk_error_set_vkresult(&retval, res);
 
     return retval;
@@ -243,7 +246,7 @@ vk_error VulkanRender::copy_buffer(struct vk_device *dev, struct vk_render_essen
             .dstOffset = 0,
             .size = size,
     };
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdCopyBuffer(essentials->cmd_buffer, from->buffer, to->buffer, 1, &copy_region);
+    d.vkCmdCopyBuffer(essentials->cmd_buffer, from->buffer, to->buffer, 1, &copy_region);
 
     return copy_object_end(dev, essentials);
 }
@@ -258,8 +261,8 @@ vk_error VulkanRender::copy_image(struct vk_device *dev, struct vk_render_essent
     if (!vk_error_is_success(&retval))
         return retval;
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdCopyImage(essentials->cmd_buffer, from->image, from_layout, to->image, to_layout,
-                                                 1, region);
+    d.vkCmdCopyImage(essentials->cmd_buffer, from->image, from_layout, to->image, to_layout,
+                     1, region);
 
     return copy_object_end(dev, essentials);
 }
@@ -273,8 +276,8 @@ vk_error VulkanRender::copy_buffer_to_image(struct vk_device *dev, struct vk_ren
     if (!vk_error_is_success(&retval))
         return retval;
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdCopyBufferToImage(essentials->cmd_buffer, from->buffer, to->image, to_layout, 1,
-                                                         region);
+    d.vkCmdCopyBufferToImage(essentials->cmd_buffer, from->buffer, to->image, to_layout, 1,
+                             region);
 
     return copy_object_end(dev, essentials);
 }
@@ -288,8 +291,8 @@ vk_error VulkanRender::copy_image_to_buffer(struct vk_device *dev, struct vk_ren
     if (!vk_error_is_success(&retval))
         return retval;
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdCopyImageToBuffer(essentials->cmd_buffer, from->image, from_layout, to->buffer,
-                                                         1, region);
+    d.vkCmdCopyImageToBuffer(essentials->cmd_buffer, from->image, from_layout, to->buffer,
+                             1, region);
 
     return copy_object_end(dev, essentials);
 }
@@ -301,12 +304,12 @@ vk_error VulkanRender::transition_images(struct vk_device *dev, struct vk_render
     vk_error retval = VK_ERROR_NONE;
     VkResult res;
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkResetCommandBuffer(essentials->cmd_buffer, 0);
+    d.vkResetCommandBuffer(essentials->cmd_buffer, 0);
 
     VkCommandBufferBeginInfo begin_info{};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkBeginCommandBuffer(essentials->cmd_buffer, &begin_info);
+    res = d.vkBeginCommandBuffer(essentials->cmd_buffer, &begin_info);
     vk_error_set_vkresult(&retval, res);
     if (res) {
         vk_error_printf(&retval, "Couldn't begin recording a command buffer to transition the %s image\n", name);
@@ -330,18 +333,18 @@ vk_error VulkanRender::transition_images(struct vk_device *dev, struct vk_render
 
     for (uint32_t i = 0; i < image_count; ++i) {
         image_barrier.image = images[i].image;
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdPipelineBarrier(essentials->cmd_buffer,
-                                                           VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                                                           VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                                                           0,
-                                                           0, nullptr,
-                                                           0, nullptr,
-                                                           1, &image_barrier);
+        d.vkCmdPipelineBarrier(essentials->cmd_buffer,
+                               VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                               VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                               0,
+                               0, nullptr,
+                               0, nullptr,
+                               1, &image_barrier);
     }
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkEndCommandBuffer(essentials->cmd_buffer);
+    d.vkEndCommandBuffer(essentials->cmd_buffer);
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkResetFences(dev->device, 1, &essentials->exec_fence);
+    res = d.vkResetFences(dev->device, 1, &essentials->exec_fence);
     vk_error_set_vkresult(&retval, res);
     if (res) {
         vk_error_printf(&retval, "Failed to reset fence\n");
@@ -353,8 +356,8 @@ vk_error VulkanRender::transition_images(struct vk_device *dev, struct vk_render
     submit_info.commandBufferCount = 1;
     submit_info.pCommandBuffers = &essentials->cmd_buffer;
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkQueueSubmit(essentials->present_queue, 1, &submit_info, essentials->exec_fence);
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkWaitForFences(dev->device, 1, &essentials->exec_fence, true, 1000000000);
+    d.vkQueueSubmit(essentials->present_queue, 1, &submit_info, essentials->exec_fence);
+    res = d.vkWaitForFences(dev->device, 1, &essentials->exec_fence, true, 1000000000);
     vk_error_set_vkresult(&retval, res);
 
     return retval;
@@ -390,20 +393,20 @@ vk_error VulkanRender::transition_images_mipmaps(struct vk_physical_device *phy_
     VkResult res;
 
     VkFormatProperties formatProperties;
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceFormatProperties(phy_dev->physical_device, image->format,
-                                                                      &formatProperties);
+    d.vkGetPhysicalDeviceFormatProperties(phy_dev->physical_device, image->format,
+                                          &formatProperties);
 
     if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)) {
-        printf("texture image format does not support linear blitting! %s image\n", name);
+        spdlog::error("texture image format does not support linear blitting! {} image", name);
         retval.error.type = VK_ERROR_ERRNO;
         return retval;
     }
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkResetCommandBuffer(essentials->cmd_buffer, 0);
+    d.vkResetCommandBuffer(essentials->cmd_buffer, 0);
     VkCommandBufferBeginInfo begin_info{};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkBeginCommandBuffer(essentials->cmd_buffer, &begin_info);
+    res = d.vkBeginCommandBuffer(essentials->cmd_buffer, &begin_info);
     vk_error_set_vkresult(&retval, res);
     if (res) {
         vk_error_printf(&retval, "Couldn't begin recording a command buffer to transition the %s image\n", name);
@@ -433,12 +436,12 @@ vk_error VulkanRender::transition_images_mipmaps(struct vk_physical_device *phy_
         image_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
         image_barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdPipelineBarrier(essentials->cmd_buffer,
-                                                           VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                                           VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-                                                           0, nullptr,
-                                                           0, nullptr,
-                                                           1, &image_barrier);
+        d.vkCmdPipelineBarrier(essentials->cmd_buffer,
+                               VK_PIPELINE_STAGE_TRANSFER_BIT,
+                               VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+                               0, nullptr,
+                               0, nullptr,
+                               1, &image_barrier);
 
         VkImageBlit blit = {0};
         blit.srcOffsets[0] = (struct VkOffset3D) {.x=0, .y=0, .z=0};
@@ -456,23 +459,23 @@ vk_error VulkanRender::transition_images_mipmaps(struct vk_physical_device *phy_
         blit.dstSubresource.baseArrayLayer = 0;
         blit.dstSubresource.layerCount = 1;
 
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdBlitImage(essentials->cmd_buffer,
-                                                     image->image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                                     image->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                                     1, &blit,
-                                                     VK_FILTER_LINEAR);
+        d.vkCmdBlitImage(essentials->cmd_buffer,
+                         image->image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                         image->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                         1, &blit,
+                         VK_FILTER_LINEAR);
 
         image_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
         image_barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         image_barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
         image_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdPipelineBarrier(essentials->cmd_buffer,
-                                                           VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                                           VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-                                                           0, nullptr,
-                                                           0, nullptr,
-                                                           1, &image_barrier);
+        d.vkCmdPipelineBarrier(essentials->cmd_buffer,
+                               VK_PIPELINE_STAGE_TRANSFER_BIT,
+                               VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+                               0, nullptr,
+                               0, nullptr,
+                               1, &image_barrier);
 
         if (mipWidth > 1) mipWidth /= 2;
         if (mipHeight > 1) mipHeight /= 2;
@@ -484,17 +487,17 @@ vk_error VulkanRender::transition_images_mipmaps(struct vk_physical_device *phy_
     image_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
     image_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdPipelineBarrier(essentials->cmd_buffer,
-                                                       VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                                       VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                                                       0,
-                                                       0, nullptr,
-                                                       0, nullptr,
-                                                       1, &image_barrier);
+    d.vkCmdPipelineBarrier(essentials->cmd_buffer,
+                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                           VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                           0,
+                           0, nullptr,
+                           0, nullptr,
+                           1, &image_barrier);
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkEndCommandBuffer(essentials->cmd_buffer);
+    d.vkEndCommandBuffer(essentials->cmd_buffer);
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkResetFences(dev->device, 1, &essentials->exec_fence);
+    res = d.vkResetFences(dev->device, 1, &essentials->exec_fence);
     vk_error_set_vkresult(&retval, res);
     if (res) {
         vk_error_printf(&retval, "Failed to reset fence\n");
@@ -507,8 +510,8 @@ vk_error VulkanRender::transition_images_mipmaps(struct vk_physical_device *phy_
             .pCommandBuffers = &essentials->cmd_buffer,
     };
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkQueueSubmit(essentials->present_queue, 1, &submit_info, essentials->exec_fence);
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkWaitForFences(dev->device, 1, &essentials->exec_fence, true, 1000000000);
+    d.vkQueueSubmit(essentials->present_queue, 1, &submit_info, essentials->exec_fence);
+    res = d.vkWaitForFences(dev->device, 1, &essentials->exec_fence, true, 1000000000);
     vk_error_set_vkresult(&retval, res);
 
     return retval;
@@ -642,17 +645,17 @@ int VulkanRender::finish(struct vk_render_essentials *essentials, struct vk_devi
             },
     };
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdPipelineBarrier(essentials->cmd_buffer,
-                                                       VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
-                                                       VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-                                                       0,
-                                                       0, nullptr,
-                                                       0, nullptr,
-                                                       1, &image_barrier);
+    d.vkCmdPipelineBarrier(essentials->cmd_buffer,
+                           VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+                           VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                           0,
+                           0, nullptr,
+                           0, nullptr,
+                           1, &image_barrier);
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkEndCommandBuffer(essentials->cmd_buffer);
+    d.vkEndCommandBuffer(essentials->cmd_buffer);
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkResetFences(dev->device, 1, &essentials->exec_fence);
+    res = d.vkResetFences(dev->device, 1, &essentials->exec_fence);
     vk_error_set_vkresult(&retval, res);
     if (res) {
         vk_error_printf(&retval, "Failed to reset fence\n");
@@ -672,7 +675,7 @@ int VulkanRender::finish(struct vk_render_essentials *essentials, struct vk_devi
             .signalSemaphoreCount = signal_sem ? UINT32_C(2) : UINT32_C(1),
             .pSignalSemaphores = signal_sems,
     };
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkQueueSubmit(essentials->present_queue, 1, &submit_info, essentials->exec_fence);
+    d.vkQueueSubmit(essentials->present_queue, 1, &submit_info, essentials->exec_fence);
 
     VkPresentInfoKHR present_info = {
             .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -682,7 +685,7 @@ int VulkanRender::finish(struct vk_render_essentials *essentials, struct vk_devi
             .pSwapchains = &swapchain->swapchain,
             .pImageIndices = &image_index,
     };
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkQueuePresentKHR(essentials->present_queue, &present_info);
+    res = d.vkQueuePresentKHR(essentials->present_queue, &present_info);
 
     if (res == VK_ERROR_OUT_OF_DATE_KHR) {
         return VK_ERROR_OUT_OF_DATE_KHR;

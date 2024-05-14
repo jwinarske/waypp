@@ -28,54 +28,54 @@
 class XdgTopLevel;
 
 class XdgWindowManager : public WindowManager {
- public:
-  explicit XdgWindowManager(
-      struct wl_display* display,
-      bool disable_cursor = false,
-      unsigned long ext_interface_count = 0,
-      const Registrar::RegistrarCallback* ext_interface_data = nullptr,
-      GMainContext* context = nullptr);
+public:
+    explicit XdgWindowManager(
+            struct wl_display *display,
+            bool disable_cursor = false,
+            unsigned long ext_interface_count = 0,
+            const Registrar::RegistrarCallback *ext_interface_data = nullptr,
+            GMainContext *context = nullptr);
 
-  ~XdgWindowManager();
+    ~XdgWindowManager();
 
-  [[nodiscard]] uint32_t get_version() const {
-    return xdg_wm_base_get_version(xdg_wm_base_);
-  }
+    [[nodiscard]] uint32_t get_version() const {
+        return xdg_wm_base_get_version(xdg_wm_base_);
+    }
 
-  XdgTopLevel* create_top_level(
-      const char* title,
-      const char* app_id,
-      int width,
-      int height,
-      int buffer_count,
-      uint32_t buffer_format,
-      bool fullscreen,
-      bool maximized,
-      bool fullscreen_ratio,
-      bool tearing,
-      const std::function<void(void*, const uint32_t)>& frame_callback,
-      const int32_t* context_attribs = nullptr,
-      size_t context_attribs_size = 0,
-      const int32_t* config_attribs = nullptr,
-      size_t config_attribs_size = 0,
-      enum Egl::api type = Egl::OPENGL_ES_API,
-      int buffer_bpp = 0,
-      int swap_interval = 0);
+    XdgTopLevel *create_top_level(
+            const char *title,
+            const char *app_id,
+            int width,
+            int height,
+            int buffer_count,
+            uint32_t buffer_format,
+            bool fullscreen,
+            bool maximized,
+            bool fullscreen_ratio,
+            bool tearing,
+            const std::function<void(void *, const uint32_t)> &frame_callback,
+            const int32_t *context_attribs = nullptr,
+            size_t context_attribs_size = 0,
+            const int32_t *config_attribs = nullptr,
+            size_t config_attribs_size = 0,
+            enum Egl::api type = Egl::OPENGL_ES_API,
+            int buffer_bpp = 0,
+            int swap_interval = 0);
 
-  // Disallow copy and assign.
-  XdgWindowManager(const XdgWindowManager&) = delete;
+    // Disallow copy and assign.
+    XdgWindowManager(const XdgWindowManager &) = delete;
 
-  XdgWindowManager& operator=(const XdgWindowManager&) = delete;
+    XdgWindowManager &operator=(const XdgWindowManager &) = delete;
 
- private:
-  struct xdg_wm_base* xdg_wm_base_;
-  std::unique_ptr<XdgTopLevel> xdg_top_level_;
+private:
+    struct xdg_wm_base *xdg_wm_base_;
+    std::unique_ptr<XdgTopLevel> xdg_top_level_;
 
-  static void xdg_wm_base_ping(void* data,
-                               struct xdg_wm_base* xdg_wm_base,
-                               uint32_t serial);
+    static void xdg_wm_base_ping(void *data,
+                                 struct xdg_wm_base *xdg_wm_base,
+                                 uint32_t serial);
 
-  static constexpr struct xdg_wm_base_listener xdg_wm_base_listener_ = {
-      .ping = xdg_wm_base_ping,
-  };
+    static constexpr struct xdg_wm_base_listener xdg_wm_base_listener_ = {
+            .ping = xdg_wm_base_ping,
+    };
 };

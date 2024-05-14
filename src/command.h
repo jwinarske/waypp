@@ -21,12 +21,12 @@
 #include <linux/limits.h>
 
 class Command {
- public:
-  /**
-   * @brief Execute Command and return result
-   * @return bool
-   * @relation
-   * internal
-   */
-  static bool Execute(const char* cmd, std::string& result);
+public:
+    /**
+     * @brief Execute Command and return result
+     * @return bool
+     * @relation
+     * internal
+     */
+    static bool Execute(const char *cmd, std::string &result);
 };

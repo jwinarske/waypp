@@ -2,12 +2,11 @@
 #include "shader_toy.h"
 
 #include "textures.h"
-#include "logging.h"
 
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
-const auto &d = vk::defaultDispatchLoaderDynamic;
+#define d VULKAN_HPP_DEFAULT_DISPATCHER
 
 ShaderToy::ShaderToy() = default;
 
@@ -52,7 +51,7 @@ ShaderToy::init(int width, int height, struct wl_display *wl_display, struct wl_
     res = enumerate_devices(vk_, &swapchain_.surface, &phy_dev_, &dev_index, use_gpu_idx);
     if (vk_error_is_error(&res)) {
         vk_error_printf(&res, "Could not enumerate devices\n");
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroySurfaceKHR(vk_, swapchain_.surface, nullptr);
+        d.vkDestroySurfaceKHR(vk_, swapchain_.surface, nullptr);
         exit_cleanup(vk_, nullptr, nullptr);
         return retval;
     }
@@ -104,7 +103,7 @@ bool ShaderToy::update_iKeyboard_texture(struct vk_physical_device *phy_dev, str
     if (!keyboard_draw_)
         return true;
     if (!essentials->first_render) {
-        res = VULKAN_HPP_DEFAULT_DISPATCHER.vkWaitForFences(dev->device, 1, &essentials->exec_fence, true, 1000000000);
+        res = d.vkWaitForFences(dev->device, 1, &essentials->exec_fence, true, 1000000000);
         vk_error_set_vkresult(&retval, res);
         if (res) {
             vk_error_printf(&retval, "Wait for fence failed\n");
@@ -420,8 +419,8 @@ vk_error ShaderToy::allocate_render_data(struct vk_physical_device *phy_dev, str
                 .descriptorSetCount = 1,
                 .pSetLayouts = &render_data->buf_layout[i].set_layout,
         };
-        res = VULKAN_HPP_DEFAULT_DISPATCHER.vkAllocateDescriptorSets(dev->device, &set_info,
-                                                                     &render_data->buf_desc_set[i]);
+        res = d.vkAllocateDescriptorSets(dev->device, &set_info,
+                                         &render_data->buf_desc_set[i]);
         retval = VK_ERROR_NONE;
         vk_error_set_vkresult(&retval, res);
         if (res) {
@@ -511,8 +510,8 @@ vk_error ShaderToy::allocate_render_data(struct vk_physical_device *phy_dev, str
                 .descriptorSetCount = 1,
                 .pSetLayouts = &render_data->main_layout.set_layout,
         };
-        res = VULKAN_HPP_DEFAULT_DISPATCHER.vkAllocateDescriptorSets(dev->device, &set_info,
-                                                                     &render_data->main_desc_set);
+        res = d.vkAllocateDescriptorSets(dev->device, &set_info,
+                                         &render_data->main_desc_set);
         retval = VK_ERROR_NONE;
         vk_error_set_vkresult(&retval, res);
         if (res) {
@@ -529,7 +528,7 @@ vk_error ShaderToy::allocate_render_data(struct vk_physical_device *phy_dev, str
 
 void ShaderToy::free_render_data(struct vk_device *dev, struct vk_render_essentials *essentials,
                                  struct render_data *render_data) {
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkDeviceWaitIdle(dev->device);
+    d.vkDeviceWaitIdle(dev->device);
 
     free_pipelines(dev, &render_data->main_pipeline, 1);
     free_layouts(dev, &render_data->main_layout, 1);
@@ -554,13 +553,13 @@ void ShaderToy::free_render_data(struct vk_device *dev, struct vk_render_essenti
 void ShaderToy::exit_cleanup_render_loop(struct vk_device *dev, struct vk_render_essentials *essentials,
                                          struct render_data *render_data, VkSemaphore wait_buf_sem,
                                          VkSemaphore wait_main_sem, VkFence offscreen_fence) {
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkDeviceWaitIdle(dev->device);
+    d.vkDeviceWaitIdle(dev->device);
     if (offscreen_fence != VK_NULL_HANDLE)
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroyFence(dev->device, offscreen_fence, nullptr);
+        d.vkDestroyFence(dev->device, offscreen_fence, nullptr);
     if (wait_main_sem != VK_NULL_HANDLE)
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroySemaphore(dev->device, wait_main_sem, nullptr);
+        d.vkDestroySemaphore(dev->device, wait_main_sem, nullptr);
     if (wait_buf_sem != VK_NULL_HANDLE)
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroySemaphore(dev->device, wait_buf_sem, nullptr);
+        d.vkDestroySemaphore(dev->device, wait_buf_sem, nullptr);
     free_render_data(dev, essentials, render_data);
     cleanup_essentials(essentials, dev);
 }
@@ -585,7 +584,7 @@ ShaderToy::render_loop_init(struct vk_physical_device *phy_dev, struct vk_device
         retval = get_presentable_queues(phy_dev, dev, swapchain->surface, &presentable_queues,
                                         &presentable_queue_count);
         if (!vk_error_is_success(&retval) || presentable_queue_count == 0) {
-            printf(
+            spdlog::error(
                     "No presentable queue families.  You should have got this error in vk_render_get_essentials before.\n");
             free(presentable_queues);
             cleanup_essentials(&essentials_, dev);
@@ -629,15 +628,15 @@ ShaderToy::render_loop_init(struct vk_physical_device *phy_dev, struct vk_device
         VkSemaphoreCreateInfo sem_info = {
                 .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
         };
-        VkResult vk_res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateSemaphore(dev->device, &sem_info, nullptr,
-                                                                          &wait_buf_sem_);
+        VkResult vk_res = d.vkCreateSemaphore(dev->device, &sem_info, nullptr,
+                                              &wait_buf_sem_);
         vk_error_set_vkresult(&retval, vk_res);
         if (vk_res) {
             vk_error_printf(&retval, "Failed to create wait-render semaphore\n");
             exit_cleanup_render_loop(dev, &essentials_, &render_data_, wait_buf_sem_, wait_main_sem_, offscreen_fence_);
             return;
         }
-        vk_res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateSemaphore(dev->device, &sem_info, nullptr, &wait_main_sem_);
+        vk_res = d.vkCreateSemaphore(dev->device, &sem_info, nullptr, &wait_main_sem_);
         vk_error_set_vkresult(&retval, vk_res);
         if (vk_res) {
             vk_error_printf(&retval, "Failed to create wait-post-process semaphore\n");
@@ -648,7 +647,7 @@ ShaderToy::render_loop_init(struct vk_physical_device *phy_dev, struct vk_device
         VkFenceCreateInfo fence_info = {
                 .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
         };
-        vk_res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateFence(dev->device, &fence_info, nullptr, &offscreen_fence_);
+        vk_res = d.vkCreateFence(dev->device, &fence_info, nullptr, &offscreen_fence_);
         vk_error_set_vkresult(&retval, vk_res);
         if (vk_res) {
             vk_error_printf(&retval, "Failed to create fence\n");
@@ -675,7 +674,7 @@ bool ShaderToy::on_window_resize(struct vk_physical_device *phy_dev, struct vk_d
     if (!os_window->prepared)
         return true;
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkDeviceWaitIdle(dev->device);
+    d.vkDeviceWaitIdle(dev->device);
     os_window->prepared = false;
 
     resize_size_[0] = static_cast<uint32_t>(os_window->app_data.iResolution[0]);
@@ -804,7 +803,7 @@ bool ShaderToy::render_loop_buf(struct vk_physical_device * /* phy_dev */, struc
     VkResult res;
 
     if ((!essentials->first_render) && (buffer_index == 0)) {
-        res = VULKAN_HPP_DEFAULT_DISPATCHER.vkWaitForFences(dev->device, 1, &essentials->exec_fence, true, 1000000000);
+        res = d.vkWaitForFences(dev->device, 1, &essentials->exec_fence, true, 1000000000);
         vk_error_set_vkresult(&retval, res);
         if (res) {
             vk_error_printf(&retval, "Wait for fence failed\n");
@@ -815,11 +814,11 @@ bool ShaderToy::render_loop_buf(struct vk_physical_device * /* phy_dev */, struc
         update_push_constants_local_size(render_data->buf_obuffers[render_index + buffer_index * 2].surface_size.width,
                                          render_data->buf_obuffers[render_index + buffer_index * 2].surface_size.height);
 #endif
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkResetCommandBuffer(cmd_buffer, 0);
+    d.vkResetCommandBuffer(cmd_buffer, 0);
     VkCommandBufferBeginInfo begin_info = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
     };
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkBeginCommandBuffer(cmd_buffer, &begin_info);
+    res = d.vkBeginCommandBuffer(cmd_buffer, &begin_info);
     vk_error_set_vkresult(&retval, res);
     if (res) {
         vk_error_printf(&retval, "BUF: Couldn't even begin recording a command buffer\n");
@@ -844,9 +843,9 @@ bool ShaderToy::render_loop_buf(struct vk_physical_device * /* phy_dev */, struc
                     },
     };
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdPipelineBarrier(cmd_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                                                       VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, nullptr,
-                                                       0, nullptr, 1, &image_barrier);
+    d.vkCmdPipelineBarrier(cmd_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                           VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, 0, 0, nullptr,
+                           0, nullptr, 1, &image_barrier);
 
     VkClearValue clear_values = {
             .color =
@@ -871,9 +870,9 @@ bool ShaderToy::render_loop_buf(struct vk_physical_device * /* phy_dev */, struc
             .pClearValues = &clear_values,
     };
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdBeginRenderPass(cmd_buffer, &pass_info, VK_SUBPASS_CONTENTS_INLINE);
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdBindPipeline(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                                    render_data->buf_pipeline[buffer_index].pipeline);
+    d.vkCmdBeginRenderPass(cmd_buffer, &pass_info, VK_SUBPASS_CONTENTS_INLINE);
+    d.vkCmdBindPipeline(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        render_data->buf_pipeline[buffer_index].pipeline);
 
     int render_index_t[OFFSCREEN_BUFFERS];
     for (int i = 0; i < OFFSCREEN_BUFFERS; i++) {
@@ -933,17 +932,17 @@ bool ShaderToy::render_loop_buf(struct vk_physical_device * /* phy_dev */, struc
                     .pImageInfo = &set_write_image_info[IMAGE_TEXTURES + OFFSCREEN_BUFFERS],
             },
     };
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkUpdateDescriptorSets(dev->device, 3, set_write, 0, nullptr);
+    d.vkUpdateDescriptorSets(dev->device, 3, set_write, 0, nullptr);
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                                          render_data->buf_layout[buffer_index].pipeline_layout, 0, 1,
-                                                          &render_data->buf_desc_set[buffer_index], 0, nullptr);
+    d.vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                              render_data->buf_layout[buffer_index].pipeline_layout, 0, 1,
+                              &render_data->buf_desc_set[buffer_index], 0, nullptr);
     VkDeviceSize vertices_offset = 0;
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdBindVertexBuffers(cmd_buffer, 0, 1,
-                                                         &render_data->buffers[BUFFER_VERTICES].buffer,
-                                                         &vertices_offset);
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdBindIndexBuffer(cmd_buffer, render_data->buffers[BUFFER_INDICES].buffer, 0,
-                                                       VK_INDEX_TYPE_UINT16);
+    d.vkCmdBindVertexBuffers(cmd_buffer, 0, 1,
+                             &render_data->buffers[BUFFER_VERTICES].buffer,
+                             &vertices_offset);
+    d.vkCmdBindIndexBuffer(cmd_buffer, render_data->buffers[BUFFER_INDICES].buffer, 0,
+                           VK_INDEX_TYPE_UINT16);
 
     VkViewport viewport = {
             .x = 0,
@@ -954,7 +953,7 @@ bool ShaderToy::render_loop_buf(struct vk_physical_device * /* phy_dev */, struc
             .minDepth = 0,
             .maxDepth = 1,
     };
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdSetViewport(cmd_buffer, 0, 1, &viewport);
+    d.vkCmdSetViewport(cmd_buffer, 0, 1, &viewport);
 
     VkRect2D scissor = {
             .offset =
@@ -964,15 +963,15 @@ bool ShaderToy::render_loop_buf(struct vk_physical_device * /* phy_dev */, struc
                     },
             .extent = render_data->buf_obuffers[render_index + buffer_index * 2].surface_size,
     };
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdSetScissor(cmd_buffer, 0, 1, &scissor);
+    d.vkCmdSetScissor(cmd_buffer, 0, 1, &scissor);
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdPushConstants(cmd_buffer, render_data->buf_layout[buffer_index].pipeline_layout,
-                                                     VK_SHADER_STAGE_FRAGMENT_BIT,
-                                                     0, sizeof render_data->push_constants,
-                                                     &render_data->push_constants);
+    d.vkCmdPushConstants(cmd_buffer, render_data->buf_layout[buffer_index].pipeline_layout,
+                         VK_SHADER_STAGE_FRAGMENT_BIT,
+                         0, sizeof render_data->push_constants,
+                         &render_data->push_constants);
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdDrawIndexed(cmd_buffer, 3, 1, 0, 0, 0);
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdEndRenderPass(cmd_buffer);
+    d.vkCmdDrawIndexed(cmd_buffer, 3, 1, 0, 0, 0);
+    d.vkCmdEndRenderPass(cmd_buffer);
 
     image_barrier = (VkImageMemoryBarrier) {
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
@@ -993,10 +992,10 @@ bool ShaderToy::render_loop_buf(struct vk_physical_device * /* phy_dev */, struc
                     },
     };
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdPipelineBarrier(cmd_buffer, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
-                                                       VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0,
-                                                       nullptr, 0, nullptr, 1, &image_barrier);
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkEndCommandBuffer(cmd_buffer);
+    d.vkCmdPipelineBarrier(cmd_buffer, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+                           VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0,
+                           nullptr, 0, nullptr, 1, &image_barrier);
+    d.vkEndCommandBuffer(cmd_buffer);
     return true;
 }
 
@@ -1015,15 +1014,15 @@ ShaderToy::render_loop_draw(struct vk_physical_device *phy_dev, struct vk_device
     for (int i = 0; i < OFFSCREEN_BUFFERS; i++) {
         if (!render_loop_buf(phy_dev, dev, &essentials_, &render_data_, offscreen_cmd_buffer_[i], render_index, i,
                              &os_window->app_data)) {
-            printf("Error on rendering buffers \n");
+            spdlog::error("Error on rendering buffers");
             return false;
         }
         update_push_constants_window_size(os_window);
 
         if (i == 0) { // wait main screen
             if (!first_submission_) {
-                res = VULKAN_HPP_DEFAULT_DISPATCHER.vkWaitForFences(dev->device, 1, &offscreen_fence_, true,
-                                                                    1000000000);
+                res = d.vkWaitForFences(dev->device, 1, &offscreen_fence_, true,
+                                        1000000000);
                 vk_error_set_vkresult(&retval, res);
                 if (res) {
                     vk_error_printf(&retval, "Wait for main fence failed\n");
@@ -1042,16 +1041,16 @@ ShaderToy::render_loop_draw(struct vk_physical_device *phy_dev, struct vk_device
                     .signalSemaphoreCount = 1,
                     .pSignalSemaphores = &wait_buf_sem_,
             };
-            res = VULKAN_HPP_DEFAULT_DISPATCHER.vkResetFences(dev->device, 1, &offscreen_fence_);
+            res = d.vkResetFences(dev->device, 1, &offscreen_fence_);
             vk_error_set_vkresult(&retval, res);
             if (res) {
                 vk_error_printf(&retval, "Failed to reset fence\n");
                 return false;
             }
-            VULKAN_HPP_DEFAULT_DISPATCHER.vkQueueSubmit(offscreen_queue_[i], 1, &submit_info, offscreen_fence_);
+            d.vkQueueSubmit(offscreen_queue_[i], 1, &submit_info, offscreen_fence_);
             first_submission_ = false;
         } else { // wait last buf/shader in loop, if multi VkQueue supported
-            res = VULKAN_HPP_DEFAULT_DISPATCHER.vkWaitForFences(dev->device, 1, &offscreen_fence_, true, 1000000000);
+            res = d.vkWaitForFences(dev->device, 1, &offscreen_fence_, true, 1000000000);
             vk_error_set_vkresult(&retval, res);
             if (res) {
                 vk_error_printf(&retval, "Wait for buf fence failed\n");
@@ -1069,13 +1068,13 @@ ShaderToy::render_loop_draw(struct vk_physical_device *phy_dev, struct vk_device
                     .signalSemaphoreCount = 1,
                     .pSignalSemaphores = &wait_main_sem_, // used main sem
             };
-            res = VULKAN_HPP_DEFAULT_DISPATCHER.vkResetFences(dev->device, 1, &offscreen_fence_);
+            res = d.vkResetFences(dev->device, 1, &offscreen_fence_);
             vk_error_set_vkresult(&retval, res);
             if (res) {
                 vk_error_printf(&retval, "Failed to reset fence\n");
                 return false;
             }
-            VULKAN_HPP_DEFAULT_DISPATCHER.vkQueueSubmit(offscreen_queue_[i], 1, &submit_info, offscreen_fence_);
+            d.vkQueueSubmit(offscreen_queue_[i], 1, &submit_info, offscreen_fence_);
             VkSemaphore tmp_sem = wait_buf_sem_;
             wait_buf_sem_ = wait_main_sem_;
             wait_main_sem_ = tmp_sem;
@@ -1092,7 +1091,7 @@ ShaderToy::render_loop_draw(struct vk_physical_device *phy_dev, struct vk_device
         first_submission_ = true;
         return true;
     } else if (result == VK_ERROR_SURFACE_LOST_KHR) {
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroySurfaceKHR(vk_, swapchain->surface, nullptr);
+        d.vkDestroySurfaceKHR(vk_, swapchain->surface, nullptr);
         retval = create_surface(vk_, &swapchain->surface, os_window);
         if (!vk_error_is_success(&retval))
             return false;
@@ -1127,9 +1126,9 @@ ShaderToy::render_loop_draw(struct vk_physical_device *phy_dev, struct vk_device
             .pClearValues = &clear_values,
     };
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdBeginRenderPass(essentials_.cmd_buffer, &pass_info, VK_SUBPASS_CONTENTS_INLINE);
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdBindPipeline(essentials_.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                                    render_data_.main_pipeline.pipeline);
+    d.vkCmdBeginRenderPass(essentials_.cmd_buffer, &pass_info, VK_SUBPASS_CONTENTS_INLINE);
+    d.vkCmdBindPipeline(essentials_.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        render_data_.main_pipeline.pipeline);
 
     VkDescriptorImageInfo set_write_image_info[IMAGE_TEXTURES + OFFSCREEN_BUFFERS + iKeyboard] = {};
     for (uint32_t i = 0; i < IMAGE_TEXTURES; i++) {
@@ -1178,19 +1177,19 @@ ShaderToy::render_loop_draw(struct vk_physical_device *phy_dev, struct vk_device
                     .pImageInfo = &set_write_image_info[IMAGE_TEXTURES + OFFSCREEN_BUFFERS],
             },
     };
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkUpdateDescriptorSets(dev->device, 3, set_write, 0, nullptr);
+    d.vkUpdateDescriptorSets(dev->device, 3, set_write, 0, nullptr);
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdBindDescriptorSets(essentials_.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                                          render_data_.main_layout.pipeline_layout, 0, 1,
-                                                          &render_data_.main_desc_set, 0, nullptr);
+    d.vkCmdBindDescriptorSets(essentials_.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                              render_data_.main_layout.pipeline_layout, 0, 1,
+                              &render_data_.main_desc_set, 0, nullptr);
 
     VkDeviceSize vertices_offset = 0;
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdBindVertexBuffers(essentials_.cmd_buffer, 0, 1,
-                                                         &render_data_.buffers[BUFFER_VERTICES].buffer,
-                                                         &vertices_offset);
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdBindIndexBuffer(essentials_.cmd_buffer,
-                                                       render_data_.buffers[BUFFER_INDICES].buffer, 0,
-                                                       VK_INDEX_TYPE_UINT16);
+    d.vkCmdBindVertexBuffers(essentials_.cmd_buffer, 0, 1,
+                             &render_data_.buffers[BUFFER_VERTICES].buffer,
+                             &vertices_offset);
+    d.vkCmdBindIndexBuffer(essentials_.cmd_buffer,
+                           render_data_.buffers[BUFFER_INDICES].buffer, 0,
+                           VK_INDEX_TYPE_UINT16);
 
     VkViewport viewport = {
             .x = 0,
@@ -1200,7 +1199,7 @@ ShaderToy::render_loop_draw(struct vk_physical_device *phy_dev, struct vk_device
             .minDepth = 0,
             .maxDepth = 1,
     };
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdSetViewport(essentials_.cmd_buffer, 0, 1, &viewport);
+    d.vkCmdSetViewport(essentials_.cmd_buffer, 0, 1, &viewport);
 
     VkRect2D scissor = {
             .offset =
@@ -1210,17 +1209,17 @@ ShaderToy::render_loop_draw(struct vk_physical_device *phy_dev, struct vk_device
                     },
             .extent = render_data_.main_gbuffers[image_index].surface_size,
     };
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdSetScissor(essentials_.cmd_buffer, 0, 1, &scissor);
+    d.vkCmdSetScissor(essentials_.cmd_buffer, 0, 1, &scissor);
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdPushConstants(essentials_.cmd_buffer, render_data_.main_layout.pipeline_layout,
-                                                     VK_SHADER_STAGE_FRAGMENT_BIT,
-                                                     0,
-                                                     sizeof render_data_.push_constants, &render_data_.push_constants);
+    d.vkCmdPushConstants(essentials_.cmd_buffer, render_data_.main_layout.pipeline_layout,
+                         VK_SHADER_STAGE_FRAGMENT_BIT,
+                         0,
+                         sizeof render_data_.push_constants, &render_data_.push_constants);
 
     // vkCmdDraw(essentials.cmd_buffer, 3, 1, 0, 0);
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdDrawIndexed(essentials_.cmd_buffer, 3, 1, 0, 0, 0);
+    d.vkCmdDrawIndexed(essentials_.cmd_buffer, 3, 1, 0, 0, 0);
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdEndRenderPass(essentials_.cmd_buffer);
+    d.vkCmdEndRenderPass(essentials_.cmd_buffer);
 
     result = finish(&essentials_, dev, swapchain, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, image_index,
                     wait_buf_sem_, wait_main_sem_);
@@ -1229,7 +1228,7 @@ ShaderToy::render_loop_draw(struct vk_physical_device *phy_dev, struct vk_device
         os_window->resize_event = true;
         result = 0;
     } else if (result == VK_ERROR_SURFACE_LOST_KHR) {
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroySurfaceKHR(vk_, swapchain->surface, nullptr);
+        d.vkDestroySurfaceKHR(vk_, swapchain->surface, nullptr);
         retval = create_surface(vk_, &swapchain->surface, os_window);
         if (!vk_error_is_success(&retval))
             return false;
@@ -1258,13 +1257,13 @@ ShaderToy::transition_images_screenshot_swapchain_begin(struct vk_device *dev, s
     vk_error retval = VK_ERROR_NONE;
     VkResult res;
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkResetCommandBuffer(essentials->cmd_buffer, 0);
+    d.vkResetCommandBuffer(essentials->cmd_buffer, 0);
 
     VkCommandBufferBeginInfo begin_info{};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkBeginCommandBuffer(essentials->cmd_buffer, &begin_info);
+    res = d.vkBeginCommandBuffer(essentials->cmd_buffer, &begin_info);
     vk_error_set_vkresult(&retval, res);
     if (res) {
         vk_error_printf(&retval, "Couldn't begin recording a command buffer to screenshot image\n");
@@ -1286,13 +1285,13 @@ ShaderToy::transition_images_screenshot_swapchain_begin(struct vk_device *dev, s
     image_barrier_dstImage.subresourceRange.baseArrayLayer = 0;
     image_barrier_dstImage.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdPipelineBarrier(essentials->cmd_buffer,
-                                                       VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                                       VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                                       0,
-                                                       0, nullptr,
-                                                       0, nullptr,
-                                                       1, &image_barrier_dstImage);
+    d.vkCmdPipelineBarrier(essentials->cmd_buffer,
+                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                           0,
+                           0, nullptr,
+                           0, nullptr,
+                           1, &image_barrier_dstImage);
 
     VkImageMemoryBarrier image_barrier_srcImage{};
     image_barrier_srcImage.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -1309,17 +1308,17 @@ ShaderToy::transition_images_screenshot_swapchain_begin(struct vk_device *dev, s
     image_barrier_srcImage.subresourceRange.baseArrayLayer = 0;
     image_barrier_srcImage.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdPipelineBarrier(essentials->cmd_buffer,
-                                                       VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                                       VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                                       0,
-                                                       0, nullptr,
-                                                       0, nullptr,
-                                                       1, &image_barrier_srcImage);
+    d.vkCmdPipelineBarrier(essentials->cmd_buffer,
+                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                           0,
+                           0, nullptr,
+                           0, nullptr,
+                           1, &image_barrier_srcImage);
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkEndCommandBuffer(essentials->cmd_buffer);
+    d.vkEndCommandBuffer(essentials->cmd_buffer);
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkResetFences(dev->device, 1, &essentials->exec_fence);
+    res = d.vkResetFences(dev->device, 1, &essentials->exec_fence);
     vk_error_set_vkresult(&retval, res);
     if (res) {
         vk_error_printf(&retval, "Failed to reset fence\n");
@@ -1331,8 +1330,8 @@ ShaderToy::transition_images_screenshot_swapchain_begin(struct vk_device *dev, s
     submit_info.commandBufferCount = 1;
     submit_info.pCommandBuffers = &essentials->cmd_buffer;
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkQueueSubmit(essentials->present_queue, 1, &submit_info, essentials->exec_fence);
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkWaitForFences(dev->device, 1, &essentials->exec_fence, true, 1000000000);
+    d.vkQueueSubmit(essentials->present_queue, 1, &submit_info, essentials->exec_fence);
+    res = d.vkWaitForFences(dev->device, 1, &essentials->exec_fence, true, 1000000000);
     vk_error_set_vkresult(&retval, res);
     if (res) {
         vk_error_printf(&retval, "Failed to reset fence\n");
@@ -1348,13 +1347,13 @@ ShaderToy::transition_images_screenshot_swapchain_end(struct vk_device *dev, str
     vk_error retval = VK_ERROR_NONE;
     VkResult res;
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkResetCommandBuffer(essentials->cmd_buffer, 0);
+    d.vkResetCommandBuffer(essentials->cmd_buffer, 0);
 
     VkCommandBufferBeginInfo begin_info{};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkBeginCommandBuffer(essentials->cmd_buffer, &begin_info);
+    res = d.vkBeginCommandBuffer(essentials->cmd_buffer, &begin_info);
     vk_error_set_vkresult(&retval, res);
     if (res) {
         vk_error_printf(&retval, "Couldn't begin recording a command buffer to screenshot image\n");
@@ -1376,13 +1375,13 @@ ShaderToy::transition_images_screenshot_swapchain_end(struct vk_device *dev, str
     image_barrier_dstImage.subresourceRange.baseArrayLayer = 0;
     image_barrier_dstImage.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdPipelineBarrier(essentials->cmd_buffer,
-                                                       VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                                       VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                                       0,
-                                                       0, nullptr,
-                                                       0, nullptr,
-                                                       1, &image_barrier_dstImage);
+    d.vkCmdPipelineBarrier(essentials->cmd_buffer,
+                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                           0,
+                           0, nullptr,
+                           0, nullptr,
+                           1, &image_barrier_dstImage);
 
     VkImageMemoryBarrier image_barrier_srcImage{};
     image_barrier_srcImage.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -1399,17 +1398,17 @@ ShaderToy::transition_images_screenshot_swapchain_end(struct vk_device *dev, str
     image_barrier_srcImage.subresourceRange.baseArrayLayer = 0;
     image_barrier_srcImage.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdPipelineBarrier(essentials->cmd_buffer,
-                                                       VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                                       VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                                       0,
-                                                       0, nullptr,
-                                                       0, nullptr,
-                                                       1, &image_barrier_srcImage);
+    d.vkCmdPipelineBarrier(essentials->cmd_buffer,
+                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                           0,
+                           0, nullptr,
+                           0, nullptr,
+                           1, &image_barrier_srcImage);
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkEndCommandBuffer(essentials->cmd_buffer);
+    d.vkEndCommandBuffer(essentials->cmd_buffer);
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkResetFences(dev->device, 1, &essentials->exec_fence);
+    res = d.vkResetFences(dev->device, 1, &essentials->exec_fence);
     vk_error_set_vkresult(&retval, res);
     if (res) {
         vk_error_printf(&retval, "Failed to reset fence\n");
@@ -1421,8 +1420,8 @@ ShaderToy::transition_images_screenshot_swapchain_end(struct vk_device *dev, str
     submit_info.commandBufferCount = 1;
     submit_info.pCommandBuffers = &essentials->cmd_buffer;
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkQueueSubmit(essentials->present_queue, 1, &submit_info, essentials->exec_fence);
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkWaitForFences(dev->device, 1, &essentials->exec_fence, true, 1000000000);
+    d.vkQueueSubmit(essentials->present_queue, 1, &submit_info, essentials->exec_fence);
+    res = d.vkWaitForFences(dev->device, 1, &essentials->exec_fence, true, 1000000000);
     vk_error_set_vkresult(&retval, res);
     if (res) {
         vk_error_printf(&retval, "Failed to reset fence\n");
@@ -1500,7 +1499,7 @@ ShaderToy::make_screenshot(struct vk_physical_device *phy_dev, struct vk_device 
     VkResult res;
 
     if (!essentials->first_render) {
-        res = VULKAN_HPP_DEFAULT_DISPATCHER.vkWaitForFences(dev->device, 1, &essentials->exec_fence, true, 1000000000);
+        res = d.vkWaitForFences(dev->device, 1, &essentials->exec_fence, true, 1000000000);
         vk_error_set_vkresult(&retval, res);
         if (res) {
             vk_error_printf(&retval, "Wait for fence failed\n");
@@ -1573,11 +1572,11 @@ ShaderToy::make_screenshot(struct vk_physical_device *phy_dev, struct vk_device 
     subResource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
     VkSubresourceLayout subResourceLayout;
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkGetImageSubresourceLayout(dev->device, dstImage.image, &subResource,
-                                                              &subResourceLayout);
+    d.vkGetImageSubresourceLayout(dev->device, dstImage.image, &subResource,
+                                  &subResourceLayout);
 
     uint8_t *data;
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkMapMemory(dev->device, dstImage.image_mem, 0, VK_WHOLE_SIZE, 0, (void **) &data);
+    d.vkMapMemory(dev->device, dstImage.image_mem, 0, VK_WHOLE_SIZE, 0, (void **) &data);
     data += subResourceLayout.offset;
 
     int color_order[3] = {0, 1, 2};
@@ -1610,7 +1609,7 @@ ShaderToy::make_screenshot(struct vk_physical_device *phy_dev, struct vk_device 
     spdlog::info("screenshot done");
 
     free(data_rgba);
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkUnmapMemory(dev->device, dstImage.image_mem);
+    d.vkUnmapMemory(dev->device, dstImage.image_mem);
     VulkanUtils::free_images(dev, &dstImage, 1);
 
     return retval;

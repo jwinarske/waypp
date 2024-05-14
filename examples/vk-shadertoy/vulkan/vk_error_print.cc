@@ -124,31 +124,6 @@ void win_error(char *iout, char *iout2){
 #endif
 
 void print_error(FILE *fout, struct vk_error_data *error_data, const char *prefix) {
-#if defined(VK_USE_PLATFORM_WIN32_KHR)
-    char iout[512]={0};
-    char iout2[512]={0};
-
-      fprintf(fout, "%s:%u: %s", error_data->file, error_data->line, prefix);
-      sprintf(iout, "%s:%u: %s", error_data->file, error_data->line, prefix);
-    switch (error_data->type)
-    {
-    case VK_ERROR_VKRESULT_WARNING:
-    case VK_ERROR_VKRESULT:
-      fprintf(fout, "%s (VkResult %d)\n", VkResult_string(error_data->vkresult), error_data->vkresult);
-      sprintf(iout2, "%s (VkResult %d)\n", VkResult_string(error_data->vkresult), error_data->vkresult);
-      break;
-    case VK_ERROR_ERRNO:
-      fprintf(fout, "%s (errno %d)\n", strerror(error_data->err_no), error_data->err_no);
-      sprintf(iout2, "%s (errno %d)\n", strerror(error_data->err_no), error_data->err_no);
-      break;
-    default:
-      fprintf(fout, "<internal error>\n");
-      sprintf(iout2, "<internal error>\n");
-      break;
-    }
-    win_error((char*)&iout2,(char*)&iout);
-
-#elif defined(VK_USE_PLATFORM_XCB_KHR) || defined(VK_USE_PLATFORM_WAYLAND_KHR)
     fprintf(fout, "%s:%u: %s", error_data->file, error_data->line, prefix);
     switch (error_data->type) {
         case VK_ERROR_VKRESULT_WARNING:
@@ -162,7 +137,6 @@ void print_error(FILE *fout, struct vk_error_data *error_data, const char *prefi
             fprintf(fout, "<internal error>\n");
             break;
     }
-#endif
 }
 
 void vk_error_fprintf(FILE *fout, struct vk_error *error, const char *fmt, ...) {
@@ -175,8 +149,9 @@ void vk_error_fprintf(FILE *fout, struct vk_error *error, const char *fmt, ...) 
     va_end(args);
 
     print_error(fout, &error->error, "");
-    if (error->sub_error.type != VK_ERROR_SUCCESS)
+    if (error->sub_error.type != VK_ERROR_SUCCESS) {
         print_error(fout, &error->sub_error, "    Resulting from this error: ");
+    }
 }
 
 

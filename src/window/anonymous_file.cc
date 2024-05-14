@@ -65,22 +65,22 @@ static int set_cloexec_or_close(int fd) {
 
 #endif
 
-static int create_tmpfile_cloexec(char* tmpname) {
-  int fd;
+static int create_tmpfile_cloexec(char *tmpname) {
+    int fd;
 
 #if HAVE_MKOSTEMP
-  fd = mkostemp(tmpname, O_CLOEXEC);
-  if (fd >= 0)
-    unlink(tmpname);
+    fd = mkostemp(tmpname, O_CLOEXEC);
+    if (fd >= 0)
+        unlink(tmpname);
 #else
-  fd = mkstemp(tmpname);
-  if (fd >= 0) {
-    fd = set_cloexec_or_close(fd);
-    unlink(tmpname);
-  }
+    fd = mkstemp(tmpname);
+    if (fd >= 0) {
+      fd = set_cloexec_or_close(fd);
+      unlink(tmpname);
+    }
 #endif
 
-  return fd;
+    return fd;
 }
 
 /*
@@ -112,55 +112,55 @@ static int create_tmpfile_cloexec(char* tmpname) {
  * XDG_RUNTIME_DIR.
  */
 int AnonymousFile::create(off_t size) {
-  int fd;
-  int ret;
+    int fd;
+    int ret;
 
 #if HAVE_MEMFD_CREATE
-  fd = memfd_create("waypp-shared", MFD_CLOEXEC | MFD_ALLOW_SEALING);
-  if (fd >= 0) {
-    /* We can add this seal before calling posix_fallocate(), as
-     * the file is currently zero-sized anyway.
-     *
-     * There is also no need to check for the return value, we
-     * couldn't do anything with it anyway.
-     */
-    fcntl(fd, F_ADD_SEALS, F_SEAL_SHRINK);
-  } else
+    fd = memfd_create("waypp-shared", MFD_CLOEXEC | MFD_ALLOW_SEALING);
+    if (fd >= 0) {
+        /* We can add this seal before calling posix_fallocate(), as
+         * the file is currently zero-sized anyway.
+         *
+         * There is also no need to check for the return value, we
+         * couldn't do anything with it anyway.
+         */
+        fcntl(fd, F_ADD_SEALS, F_SEAL_SHRINK);
+    } else
 #endif
-  {
-    auto xdg_runtime_dir = getenv("XDG_RUNTIME_DIR");
-    if (!xdg_runtime_dir) {
-      errno = ENOENT;
-      return -1;
+    {
+        auto xdg_runtime_dir = getenv("XDG_RUNTIME_DIR");
+        if (!xdg_runtime_dir) {
+            errno = ENOENT;
+            return -1;
+        }
+
+        std::filesystem::path tmp_path(xdg_runtime_dir);
+        tmp_path /= "/waypp-shared-XXXXXX";
+        SPDLOG_DEBUG("Creating tmp file: {}", tmp_path.c_str());
+        std::string path(tmp_path);
+        fd = create_tmpfile_cloexec(path.data());
+        if (fd < 0)
+            return -1;
     }
 
-    std::filesystem::path tmp_path(xdg_runtime_dir);
-    tmp_path /= "/waypp-shared-XXXXXX";
-    SPDLOG_DEBUG("Creating tmp file: {}", tmp_path.c_str());
-    std::string path(tmp_path);
-    fd = create_tmpfile_cloexec(path.data());
-    if (fd < 0)
-      return -1;
-  }
-
 #if HAVE_POSIX_FALLOCATE
-  do {
-    ret = posix_fallocate(fd, 0, size);
-  } while (ret == EINTR);
-  if (ret != 0) {
-    close(fd);
-    errno = ret;
-    return -1;
-  }
+    do {
+        ret = posix_fallocate(fd, 0, size);
+    } while (ret == EINTR);
+    if (ret != 0) {
+        close(fd);
+        errno = ret;
+        return -1;
+    }
 #else
-  do {
-    ret = ftruncate(fd, size);
-  } while (ret < 0 && errno == EINTR);
-  if (ret < 0) {
-    close(fd);
-    return -1;
-  }
+    do {
+      ret = ftruncate(fd, size);
+    } while (ret < 0 && errno == EINTR);
+    if (ret < 0) {
+      close(fd);
+      return -1;
+    }
 #endif
 
-  return fd;
+    return fd;
 }

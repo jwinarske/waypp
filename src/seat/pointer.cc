@@ -30,18 +30,18 @@
  * The Pointer class is responsible for handling Wayland pointer events and
  * managing the cursor.
  */
-Pointer::Pointer(wl_pointer* pointer,
-                 struct wl_compositor* wl_compositor,
-                 struct wl_shm* wl_shm,
+Pointer::Pointer(wl_pointer *pointer,
+                 struct wl_compositor *wl_compositor,
+                 struct wl_shm *wl_shm,
                  bool disable_cursor,
                  int size)
-    : wl_pointer_(pointer),
-      wl_shm_(wl_shm),
-      disable_cursor_(disable_cursor),
-      size_(size) {
-  SPDLOG_DEBUG("Pointer");
-  wl_pointer_add_listener(pointer, &pointer_listener_, this);
-  wl_surface_cursor_ = wl_compositor_create_surface(wl_compositor);
+        : wl_pointer_(pointer),
+          wl_shm_(wl_shm),
+          disable_cursor_(disable_cursor),
+          size_(size) {
+    SPDLOG_DEBUG("Pointer");
+    wl_pointer_add_listener(pointer, &pointer_listener_, this);
+    wl_surface_cursor_ = wl_compositor_create_surface(wl_compositor);
 }
 
 /**
@@ -56,15 +56,15 @@ Pointer::Pointer(wl_pointer* pointer,
  * @param enable_cursor A boolean flag indicating whether to enable cursor.
  */
 Pointer::~Pointer() {
-  if (theme_) {
-    wl_cursor_theme_destroy(theme_);
-  }
-  if (wl_surface_cursor_) {
-    wl_surface_destroy(wl_surface_cursor_);
-  }
-  if (wl_pointer_) {
-    wl_pointer_release(wl_pointer_);
-  }
+    if (theme_) {
+        wl_cursor_theme_destroy(theme_);
+    }
+    if (wl_surface_cursor_) {
+        wl_surface_destroy(wl_surface_cursor_);
+    }
+    if (wl_pointer_) {
+        wl_pointer_release(wl_pointer_);
+    }
 }
 
 /**
@@ -75,24 +75,24 @@ Pointer::~Pointer() {
  * such as enter, leave, motion, button, axis, frame, axis source, axis stop,
  * and axis discrete events.
  */
-void Pointer::handle_enter(void* data,
-                           struct wl_pointer* pointer,
+void Pointer::handle_enter(void *data,
+                           struct wl_pointer *pointer,
                            uint32_t serial,
-                           struct wl_surface* surface,
+                           struct wl_surface *surface,
                            wl_fixed_t sx,
                            wl_fixed_t sy) {
-  auto obj = static_cast<Pointer*>(data);
-  if (obj->wl_pointer_ != pointer) {
-    return;
-  }
+    auto obj = static_cast<Pointer *>(data);
+    if (obj->wl_pointer_ != pointer) {
+        return;
+    }
 
-  SPDLOG_TRACE("Pointer::handle_enter");
+    SPDLOG_TRACE("Pointer::handle_enter");
 
-  for (auto observer : obj->observers_) {
-    observer->notify_pointer_enter(obj, pointer, serial, surface,
-                                   wl_fixed_to_double(sx),
-                                   wl_fixed_to_double(sy));
-  }
+    for (auto observer: obj->observers_) {
+        observer->notify_pointer_enter(obj, pointer, serial, surface,
+                                       wl_fixed_to_double(sx),
+                                       wl_fixed_to_double(sy));
+    }
 }
 
 /**
@@ -106,20 +106,20 @@ void Pointer::handle_enter(void* data,
  * @param serial The serial number of the event.
  * @param surface The surface that the pointer left.
  */
-void Pointer::handle_leave(void* data,
-                           struct wl_pointer* pointer,
+void Pointer::handle_leave(void *data,
+                           struct wl_pointer *pointer,
                            uint32_t serial,
-                           struct wl_surface* surface) {
-  auto obj = static_cast<Pointer*>(data);
-  if (obj->wl_pointer_ != pointer) {
-    return;
-  }
+                           struct wl_surface *surface) {
+    auto obj = static_cast<Pointer *>(data);
+    if (obj->wl_pointer_ != pointer) {
+        return;
+    }
 
-  SPDLOG_TRACE("Pointer::handle_leave");
+    SPDLOG_TRACE("Pointer::handle_leave");
 
-  for (auto observer : obj->observers_) {
-    observer->notify_pointer_leave(obj, pointer, serial, surface);
-  }
+    for (auto observer: obj->observers_) {
+        observer->notify_pointer_leave(obj, pointer, serial, surface);
+    }
 }
 
 /**
@@ -134,21 +134,21 @@ void Pointer::handle_leave(void* data,
  * @param sx The X coordinate of the pointer's absolute position.
  * @param sy The Y coordinate of the pointer's absolute position.
  */
-void Pointer::handle_motion(void* data,
-                            struct wl_pointer* pointer,
+void Pointer::handle_motion(void *data,
+                            struct wl_pointer *pointer,
                             uint32_t time,
                             wl_fixed_t sx,
                             wl_fixed_t sy) {
-  auto obj = static_cast<Pointer*>(data);
-  if (obj->wl_pointer_ != pointer) {
-    return;
-  }
+    auto obj = static_cast<Pointer *>(data);
+    if (obj->wl_pointer_ != pointer) {
+        return;
+    }
 
-  SPDLOG_TRACE("Pointer::handle_motion");
+    SPDLOG_TRACE("Pointer::handle_motion");
 
-  for (auto observer : obj->observers_) {
-    observer->notify_pointer_motion(obj, pointer, time, sx, sy);
-  }
+    for (auto observer: obj->observers_) {
+        observer->notify_pointer_motion(obj, pointer, time, sx, sy);
+    }
 }
 
 /**
@@ -160,22 +160,22 @@ void Pointer::handle_motion(void* data,
  * @param button The button that triggered the event
  * @param state The state of the button (pressed or released)
  */
-void Pointer::handle_button(void* data,
-                            struct wl_pointer* pointer,
+void Pointer::handle_button(void *data,
+                            struct wl_pointer *pointer,
                             uint32_t serial,
                             uint32_t time,
                             uint32_t button,
                             uint32_t state) {
-  auto obj = static_cast<Pointer*>(data);
-  if (obj->wl_pointer_ != pointer) {
-    return;
-  }
+    auto obj = static_cast<Pointer *>(data);
+    if (obj->wl_pointer_ != pointer) {
+        return;
+    }
 
-  SPDLOG_TRACE("Pointer::handle_button");
+    SPDLOG_TRACE("Pointer::handle_button");
 
-  for (auto observer : obj->observers_) {
-    observer->notify_pointer_button(obj, pointer, serial, time, button, state);
-  }
+    for (auto observer: obj->observers_) {
+        observer->notify_pointer_button(obj, pointer, serial, time, button, state);
+    }
 }
 
 /**
@@ -193,21 +193,21 @@ void Pointer::handle_button(void* data,
  *
  * @details Prints "Pointer::handle_axis" to the standard error output.
  */
-void Pointer::handle_axis(void* data,
-                          struct wl_pointer* pointer,
+void Pointer::handle_axis(void *data,
+                          struct wl_pointer *pointer,
                           uint32_t time,
                           uint32_t axis,
                           wl_fixed_t value) {
-  auto obj = static_cast<Pointer*>(data);
-  if (obj->wl_pointer_ != pointer) {
-    return;
-  }
+    auto obj = static_cast<Pointer *>(data);
+    if (obj->wl_pointer_ != pointer) {
+        return;
+    }
 
-  SPDLOG_TRACE("Pointer::handle_axis");
+    SPDLOG_TRACE("Pointer::handle_axis");
 
-  for (auto observer : obj->observers_) {
-    observer->notify_pointer_axis(obj, pointer, time, axis, value);
-  }
+    for (auto observer: obj->observers_) {
+        observer->notify_pointer_axis(obj, pointer, time, axis, value);
+    }
 }
 
 /**
@@ -218,17 +218,17 @@ void Pointer::handle_axis(void* data,
  * @param data The user data associated with the pointer.
  * @param wl_pointer The pointer object.
  */
-void Pointer::handle_frame(void* data, struct wl_pointer* pointer) {
-  auto obj = static_cast<Pointer*>(data);
-  if (obj->wl_pointer_ != pointer) {
-    return;
-  }
+void Pointer::handle_frame(void *data, struct wl_pointer *pointer) {
+    auto obj = static_cast<Pointer *>(data);
+    if (obj->wl_pointer_ != pointer) {
+        return;
+    }
 
-  SPDLOG_TRACE("Pointer::handle_frame");
+    SPDLOG_TRACE("Pointer::handle_frame");
 
-  for (auto observer : obj->observers_) {
-    observer->notify_pointer_frame(obj, pointer);
-  }
+    for (auto observer: obj->observers_) {
+        observer->notify_pointer_frame(obj, pointer);
+    }
 }
 
 /**
@@ -241,19 +241,19 @@ void Pointer::handle_frame(void* data, struct wl_pointer* pointer) {
  * This function is called when the axis source event is received for the
  * Pointer object. It prints a message to the standard error stream.
  */
-void Pointer::handle_axis_source(void* data,
-                                 struct wl_pointer* pointer,
+void Pointer::handle_axis_source(void *data,
+                                 struct wl_pointer *pointer,
                                  uint32_t axis_source) {
-  auto obj = static_cast<Pointer*>(data);
-  if (obj->wl_pointer_ != pointer) {
-    return;
-  }
+    auto obj = static_cast<Pointer *>(data);
+    if (obj->wl_pointer_ != pointer) {
+        return;
+    }
 
-  SPDLOG_TRACE("Pointer::handle_axis_source");
+    SPDLOG_TRACE("Pointer::handle_axis_source");
 
-  for (auto observer : obj->observers_) {
-    observer->notify_pointer_axis_source(obj, pointer, axis_source);
-  }
+    for (auto observer: obj->observers_) {
+        observer->notify_pointer_axis_source(obj, pointer, axis_source);
+    }
 }
 
 /**
@@ -266,20 +266,20 @@ void Pointer::handle_axis_source(void* data,
  * @param time      The timestamp of the event.
  * @param axis      The axis that stopped.
  */
-void Pointer::handle_axis_stop(void* data,
-                               struct wl_pointer* pointer,
+void Pointer::handle_axis_stop(void *data,
+                               struct wl_pointer *pointer,
                                uint32_t time,
                                uint32_t axis) {
-  auto obj = static_cast<Pointer*>(data);
-  if (obj->wl_pointer_ != pointer) {
-    return;
-  }
+    auto obj = static_cast<Pointer *>(data);
+    if (obj->wl_pointer_ != pointer) {
+        return;
+    }
 
-  SPDLOG_TRACE("Pointer::handle_axis_stop");
+    SPDLOG_TRACE("Pointer::handle_axis_stop");
 
-  for (auto observer : obj->observers_) {
-    observer->notify_pointer_axis_stop(obj, pointer, time, axis);
-  }
+    for (auto observer: obj->observers_) {
+        observer->notify_pointer_axis_stop(obj, pointer, time, axis);
+    }
 }
 
 /**
@@ -292,101 +292,101 @@ void Pointer::handle_axis_stop(void* data,
  * @param axis The axis value.
  * @param discrete The discrete value.
  */
-void Pointer::handle_axis_discrete(void* data,
-                                   struct wl_pointer* pointer,
+void Pointer::handle_axis_discrete(void *data,
+                                   struct wl_pointer *pointer,
                                    uint32_t axis,
                                    int32_t discrete) {
-  auto obj = static_cast<Pointer*>(data);
-  if (obj->wl_pointer_ != pointer) {
-    return;
-  }
+    auto obj = static_cast<Pointer *>(data);
+    if (obj->wl_pointer_ != pointer) {
+        return;
+    }
 
-  SPDLOG_TRACE("Pointer::handle_axis_discrete");
+    SPDLOG_TRACE("Pointer::handle_axis_discrete");
 
-  for (auto observer : obj->observers_) {
-    observer->notify_pointer_axis_discrete(obj, pointer, axis, discrete);
-  }
+    for (auto observer: obj->observers_) {
+        observer->notify_pointer_axis_discrete(obj, pointer, axis, discrete);
+    }
 }
 
 void Pointer::set_cursor(uint32_t serial,
-                         const char* cursor_name,
-                         const char* theme_name) {
-  if (disable_cursor_) {
-    wl_pointer_set_cursor(wl_pointer_, serial, wl_surface_cursor_, 0, 0);
-    wl_surface_damage(wl_surface_cursor_, 0, 0, 0, 0);
-    wl_surface_commit(wl_surface_cursor_);
-    return;
-  }
-
-  if (!wl_shm_) {
-    return;
-  }
-
-  if (!theme_) {
-    theme_ = wl_cursor_theme_load(theme_name, size_, wl_shm_);
-    if (!theme_) {
-      spdlog::error("[Pointer] unable to load {} theme",
-                    theme_name == nullptr ? "default" : theme_name);
-      return;
+                         const char *cursor_name,
+                         const char *theme_name) {
+    if (disable_cursor_) {
+        wl_pointer_set_cursor(wl_pointer_, serial, wl_surface_cursor_, 0, 0);
+        wl_surface_damage(wl_surface_cursor_, 0, 0, 0, 0);
+        wl_surface_commit(wl_surface_cursor_);
+        return;
     }
-  }
 
-  auto cursor = wl_cursor_theme_get_cursor(theme_, cursor_name);
-  if (!cursor) {
-    spdlog::error("[Pointer] unable to load {}", cursor_name);
-    return;
-  }
-  auto image = cursor->images[0];
-  auto buffer = wl_cursor_image_get_buffer(image);
-  if (!buffer) {
-    return;
-  }
-  wl_pointer_set_cursor(wl_pointer_, serial, wl_surface_cursor_,
-                        static_cast<int32_t>(image->hotspot_x),
-                        static_cast<int32_t>(image->hotspot_y));
-  wl_surface_attach(wl_surface_cursor_, buffer, 0, 0);
-  wl_surface_damage(wl_surface_cursor_, 0, 0,
-                    static_cast<int32_t>(image->width),
-                    static_cast<int32_t>(image->height));
-  wl_surface_commit(wl_surface_cursor_);
+    if (!wl_shm_) {
+        return;
+    }
+
+    if (!theme_) {
+        theme_ = wl_cursor_theme_load(theme_name, size_, wl_shm_);
+        if (!theme_) {
+            spdlog::error("[Pointer] unable to load {} theme",
+                          theme_name == nullptr ? "default" : theme_name);
+            return;
+        }
+    }
+
+    auto cursor = wl_cursor_theme_get_cursor(theme_, cursor_name);
+    if (!cursor) {
+        spdlog::error("[Pointer] unable to load {}", cursor_name);
+        return;
+    }
+    auto image = cursor->images[0];
+    auto buffer = wl_cursor_image_get_buffer(image);
+    if (!buffer) {
+        return;
+    }
+    wl_pointer_set_cursor(wl_pointer_, serial, wl_surface_cursor_,
+                          static_cast<int32_t>(image->hotspot_x),
+                          static_cast<int32_t>(image->hotspot_y));
+    wl_surface_attach(wl_surface_cursor_, buffer, 0, 0);
+    wl_surface_damage(wl_surface_cursor_, 0, 0,
+                      static_cast<int32_t>(image->width),
+                      static_cast<int32_t>(image->height));
+    wl_surface_commit(wl_surface_cursor_);
 }
 
 std::string Pointer::get_cursor_theme() {
-  std::string res;
-  Command::Execute("gsettings get org.gnome.desktop.interface cursor-theme",
-                   res);
+    std::string res;
+    Command::Execute("gsettings get org.gnome.desktop.interface cursor-theme",
+                     res);
 
-  if (!res.empty()) {
-    // clean up string
-    std::string tmp = "\'\n";
-    for_each(tmp.begin(), tmp.end(), [&res](char n) {
-      res.erase(std::remove(res.begin(), res.end(), n), res.end());
-    });
-  }
+    if (!res.empty()) {
+        // clean up string
+        std::string tmp = "\'\n";
+        for_each(tmp.begin(), tmp.end(), [&res](char n) {
+            res.erase(std::remove(res.begin(), res.end(), n), res.end());
+        });
+    }
 
-  return std::move(res);
+    return std::move(res);
 }
 
 std::vector<std::string> Pointer::get_available_cursors(
-    const char* theme_name) {
-  std::string theme = theme_name == nullptr ? get_cursor_theme() : theme_name;
+        const char *theme_name) {
+    std::string theme = theme_name == nullptr ? get_cursor_theme() : theme_name;
 
-  std::ostringstream ss;
-  ss << "ls -1 /usr/share/icons/" << theme << "/cursors";
+    std::ostringstream ss;
+    ss << "ls -1 /usr/share/icons/" << theme << "/cursors";
 
-  std::string res;
-  Command::Execute(ss.str().c_str(), res);
+    std::string res;
+    Command::Execute(ss.str().c_str(), res);
 
-  std::vector<std::string> cursor_list;
+    std::vector<std::string> cursor_list;
 
-  std::string line;
-  std::istringstream orig_stream(res);
-  while (std::getline(orig_stream, line)) {
-    if (!line.empty())
-      cursor_list.push_back(line);
-  }
+    std::string line;
+    std::istringstream orig_stream(res);
+    while (std::getline(orig_stream, line)) {
+        if (!line.empty())
+            cursor_list.push_back(line);
+    }
 
-  std::sort(cursor_list.begin(), cursor_list.end());
+    std::sort(cursor_list.begin(), cursor_list.end());
 
-  return std::move(cursor_list);
+    return std::move(cursor_list);
 }

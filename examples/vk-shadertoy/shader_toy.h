@@ -137,9 +137,9 @@ private:
     static void free_render_data(struct vk_device *dev, struct vk_render_essentials *essentials,
                                  struct render_data *render_data);
 
-    void exit_cleanup_render_loop(struct vk_device *dev, struct vk_render_essentials *essentials,
-                                  struct render_data *render_data, VkSemaphore wait_buf_sem,
-                                  VkSemaphore wait_main_sem, VkFence offscreen_fence);
+    static void exit_cleanup_render_loop(struct vk_device *dev, struct vk_render_essentials *essentials,
+                                         struct render_data *render_data, VkSemaphore wait_buf_sem,
+                                         VkSemaphore wait_main_sem, VkFence offscreen_fence);
 
     void
     render_loop_init(struct vk_physical_device *phy_dev, struct vk_device *dev, struct vk_swapchain *swapchain,
@@ -185,7 +185,8 @@ private:
 
     static void write_bmp(uint32_t w, uint32_t h, const uint8_t *rgba);
 
-    vk_error make_screenshot(struct vk_physical_device *phy_dev, struct vk_device *dev, struct vk_swapchain *swapchain,
-                             struct vk_render_essentials *essentials, struct render_data *render_data,
-                             uint32_t image_index);
+    static vk_error
+    make_screenshot(struct vk_physical_device *phy_dev, struct vk_device *dev, struct vk_swapchain *swapchain,
+                    struct vk_render_essentials *essentials, struct render_data *render_data,
+                    uint32_t image_index);
 };

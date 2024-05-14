@@ -1,19 +1,57 @@
+/*
+ * Copyright © 2024 Joel Winarske
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice (including the next
+ * paragraph) shall be included in all copies or substantial portions of the
+ * Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
+ */
 
 // Danil, 2021+ Vulkan shader launcher, self https://github.com/danilw/vulkan-shadertoy-launcher
 // The MIT License
 
-#ifndef vk_struct_H
-#define vk_struct_H
+#ifndef EXAMPLES_VK_SHADERTOY_VULKAN_VK_STRUCT_H_
+#define EXAMPLES_VK_SHADERTOY_VULKAN_VK_STRUCT_H_
 
 static constexpr uint32_t kMaxQueueFamily = UINT32_C(10);
-//#define VK_MAX_QUEUE_FAMILY 10
+static constexpr uint32_t kMaxPresentModes = UINT32_C(4);
+static constexpr uint32_t kAppNameStrLen = UINT32_C(80);
+
+// numbers buffers <*.frag> files
+// number of buffers to create, any number(>0), if you need 0 use https://github.com/danilw/vulkan-shader-launcher
+// names shaders/spv/<file>.spv look files names in that folder
+static constexpr uint32_t OFFSCREEN_BUFFERS = UINT32_C(4);
+
+// number of images(>0)
+// names textures/<X>.png X start from 1
+static constexpr uint32_t IMAGE_TEXTURES = UINT32_C(4);
+
+// linear or mipmap for textures
+static constexpr bool USE_MIPMAPS = true;
+
+// do not edit, it just to see where keyboard texture used
+static constexpr uint32_t iKeyboard = UINT32_C(1);
+
 
 struct vk_physical_device {
     VkPhysicalDevice physical_device;
     VkPhysicalDeviceProperties properties;
     VkPhysicalDeviceFeatures features;
     VkPhysicalDeviceMemoryProperties memories;
-
     VkQueueFamilyProperties queue_families[kMaxQueueFamily];
     uint32_t queue_family_count;
     bool queue_families_incomplete;
@@ -34,9 +72,6 @@ struct vk_device {
     struct vk_commands *command_pools;
     uint32_t command_pool_count;
 };
-
-static constexpr uint32_t kMaxPresentModes = UINT32_C(4);
-//#define VK_MAX_PRESENT_MODES 4
 
 struct vk_swapchain {
     VkSurfaceKHR surface;
@@ -170,8 +205,6 @@ struct app_data_struct {
     bool drawdebug; //draw debug info, key press
 };
 
-static constexpr uint32_t kAppNameStrLen = UINT32_C(80);
-//#define APP_NAME_STR_LEN 80
 struct app_os_window {
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
     HINSTANCE connection;
@@ -210,25 +243,6 @@ struct app_os_window {
     VkPresentModeKHR present_mode;
     struct app_data_struct app_data;
 };
-
-
-// numbers buffers <*.frag> files
-// number of buffers to create, any number(>0), if you need 0 use https://github.com/danilw/vulkan-shader-launcher
-// names shaders/spv/<file>.spv look files names in that folder
-static constexpr uint32_t OFFSCREEN_BUFFERS = UINT32_C(4);
-
-// number of images(>0)
-// names textures/<X>.png X start from 1
-static constexpr uint32_t IMAGE_TEXTURES = UINT32_C(4);
-
-// linear or mipmap for textures
-static constexpr bool USE_MIPMAPS = true;
-
-// do not edit, it just to see where keyboard texture used
-static constexpr uint32_t iKeyboard = UINT32_C(1);
-
-// use save screenshot functions, default hotkey Z
-//TODO #define USE_SCREENSHOT
 
 struct shaders_push_constants {
     float iMouse[4];
@@ -280,4 +294,4 @@ struct render_data {
 };
 
 
-#endif
+#endif // EXAMPLES_VK_SHADERTOY_VULKAN_VK_STRUCT_H_

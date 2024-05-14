@@ -11,13 +11,15 @@
 #include <chrono>
 #include <thread>
 
+#define d VULKAN_HPP_DEFAULT_DISPATCHER
+
 VulkanUtils::VulkanUtils() = default;
 
 VulkanUtils::~VulkanUtils() = default;
 
 
 void VulkanUtils::exit(VkInstance vk) {
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroyInstance(vk, nullptr);
+    d.vkDestroyInstance(vk, nullptr);
 }
 
 vk_error
@@ -31,13 +33,13 @@ VulkanUtils::enumerate_devices(VkInstance vk, VkSurfaceKHR *surface, struct vk_p
     bool last_use_idx = false;
     uint32_t last_idx = 0; // last non DISCRETE_GPU
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkEnumeratePhysicalDevices(vk, &count, nullptr);
+    res = d.vkEnumeratePhysicalDevices(vk, &count, nullptr);
     vk_error_set_vkresult(&retval, res);
     if (res < 0) {
         return retval;
     }
     if (count < 1) {
-        printf("No Vulkan device found.\n");
+        spdlog::error("No Vulkan device found.");
         vk_error_set_vkresult(&retval, VK_ERROR_INCOMPATIBLE_DRIVER);
         return retval;
     }
@@ -46,7 +48,7 @@ VulkanUtils::enumerate_devices(VkInstance vk, VkSurfaceKHR *surface, struct vk_p
     phy_devs = (VkPhysicalDevice *) malloc(count * sizeof(VkPhysicalDevice));
 
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkEnumeratePhysicalDevices(vk, &count, phy_devs);
+    res = d.vkEnumeratePhysicalDevices(vk, &count, phy_devs);
     vk_error_set_vkresult(&retval, res);
     if (res < 0) {
         free(phy_devs);
@@ -56,23 +58,23 @@ VulkanUtils::enumerate_devices(VkInstance vk, VkSurfaceKHR *surface, struct vk_p
 
     for (uint32_t i = 0; i < count && (!use_idx); i++) {
         uint32_t qfc = 0;
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceQueueFamilyProperties(phy_devs[i], &qfc, nullptr);
+        d.vkGetPhysicalDeviceQueueFamilyProperties(phy_devs[i], &qfc, nullptr);
         if (qfc < 1)continue;
 
         VkQueueFamilyProperties *queue_family_properties;
         queue_family_properties = (VkQueueFamilyProperties *) malloc(qfc * sizeof(VkQueueFamilyProperties));
 
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceQueueFamilyProperties(phy_devs[i], &qfc,
-                                                                               queue_family_properties);
+        d.vkGetPhysicalDeviceQueueFamilyProperties(phy_devs[i], &qfc,
+                                                   queue_family_properties);
 
         for (uint32_t j = 0; j < qfc; j++) {
             VkBool32 supports_present;
-            VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceSurfaceSupportKHR(phy_devs[i], j, *surface,
-                                                                               &supports_present);
+            d.vkGetPhysicalDeviceSurfaceSupportKHR(phy_devs[i], j, *surface,
+                                                   &supports_present);
 
             if ((queue_family_properties[j].queueFlags & VK_QUEUE_GRAPHICS_BIT) && supports_present) {
                 VkPhysicalDeviceProperties pr;
-                VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceProperties(phy_devs[i], &pr);
+                d.vkGetPhysicalDeviceProperties(phy_devs[i], &pr);
                 if (pr.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
                     *idx = i;
                     use_idx = true;
@@ -92,39 +94,40 @@ VulkanUtils::enumerate_devices(VkInstance vk, VkSurfaceKHR *surface, struct vk_p
     }
 
     if (!use_idx) {
-        printf("Not found suitable queue which supports graphics.\n");
+        spdlog::error("Not found suitable queue which supports graphics.");
         vk_error_set_vkresult(&retval, VK_ERROR_INCOMPATIBLE_DRIVER);
         free(phy_devs);
         phy_devs = nullptr;
         return retval;
     }
     if (*idx >= count) {
-        printf("Wrong GPU index %lu, max devices count %lu\n", (unsigned long) *idx, (unsigned long) count);
+        spdlog::error("Wrong GPU index {}, max devices count {}", (unsigned long) *idx, (unsigned long) count);
         vk_error_set_vkresult(&retval, VK_ERROR_INCOMPATIBLE_DRIVER);
         free(phy_devs);
         phy_devs = nullptr;
         return retval;
     }
 
-    printf("Using GPU device %lu\n", (unsigned long) *idx);
+    spdlog::info("Using GPU device {}", (unsigned long) *idx);
 
     devs[0].physical_device = phy_devs[*idx];
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceProperties(devs[0].physical_device, &devs[0].properties);
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceFeatures(devs[0].physical_device, &devs[0].features);
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceMemoryProperties(devs[0].physical_device, &devs[0].memories);
+    d.vkGetPhysicalDeviceProperties(devs[0].physical_device, &devs[0].properties);
+    d.vkGetPhysicalDeviceFeatures(devs[0].physical_device, &devs[0].features);
+    d.vkGetPhysicalDeviceMemoryProperties(devs[0].physical_device, &devs[0].memories);
 
-    printf("Vulkan GPU - %s: %s (id: 0x%04X) from vendor 0x%04X [driver version: 0x%04X, API version: 0x%04X]\n",
-           vk_VkPhysicalDeviceType_string(devs[0].properties.deviceType), devs[0].properties.deviceName,
-           devs[0].properties.deviceID, devs[0].properties.vendorID, devs[0].properties.driverVersion,
-           devs[0].properties.apiVersion);
+    spdlog::info(
+            "Vulkan GPU - {}: {} (id: 0x{:04x}) from vendor 0x{:04x} [driver version: 0x{:04x}, API version: 0x{:04x}]",
+            vk_VkPhysicalDeviceType_string(devs[0].properties.deviceType), devs[0].properties.deviceName,
+            devs[0].properties.deviceID, devs[0].properties.vendorID, devs[0].properties.driverVersion,
+            devs[0].properties.apiVersion);
 
     uint32_t qfc = 0;
     devs[0].queue_family_count = kMaxQueueFamily;
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceQueueFamilyProperties(devs[0].physical_device, &qfc, nullptr);
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceQueueFamilyProperties(devs[0].physical_device,
-                                                                           &devs[0].queue_family_count,
-                                                                           devs[0].queue_families);
+    d.vkGetPhysicalDeviceQueueFamilyProperties(devs[0].physical_device, &qfc, nullptr);
+    d.vkGetPhysicalDeviceQueueFamilyProperties(devs[0].physical_device,
+                                               &devs[0].queue_family_count,
+                                               devs[0].queue_families);
 
     devs[0].queue_families_incomplete = devs[0].queue_family_count < qfc;
 
@@ -164,17 +167,17 @@ VulkanUtils::get_commands(struct vk_physical_device *phy_dev, struct vk_device *
         pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         pool_info.queueFamilyIndex = queue_info[i].queueFamilyIndex;
 
-        res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateCommandPool(dev->device, &pool_info, nullptr, &cmd->pool);
+        res = d.vkCreateCommandPool(dev->device, &pool_info, nullptr, &cmd->pool);
         vk_error_set_vkresult(&retval, res);
         if (res < 0)
             return retval;
         ++dev->command_pool_count;
 
-        cmd->queues = (VkQueue *) malloc(queue_info[i].queueCount * sizeof *cmd->queues);
+        cmd->queues = (VkQueue *) malloc(queue_info[i].queueCount * sizeof(VkQueue *));
         if (!create_num_cmd) {
-            cmd->buffers = (VkCommandBuffer *) malloc(queue_info[i].queueCount * sizeof *cmd->buffers);
+            cmd->buffers = (VkCommandBuffer *) malloc(queue_info[i].queueCount * sizeof(VkCommandBuffer *));
         } else {
-            cmd->buffers = (VkCommandBuffer *) malloc(create_count * sizeof *cmd->buffers);
+            cmd->buffers = (VkCommandBuffer *) malloc(create_count * sizeof(VkCommandBuffer *));
         }
         if (cmd->queues == nullptr || cmd->buffers == nullptr) {
             vk_error_set_errno(&retval, errno);
@@ -182,8 +185,8 @@ VulkanUtils::get_commands(struct vk_physical_device *phy_dev, struct vk_device *
         }
 
         for (uint32_t j = 0; j < queue_info[i].queueCount; ++j)
-            VULKAN_HPP_DEFAULT_DISPATCHER.vkGetDeviceQueue(dev->device, queue_info[i].queueFamilyIndex, j,
-                                                           &cmd->queues[j]);
+            d.vkGetDeviceQueue(dev->device, queue_info[i].queueFamilyIndex, j,
+                               &cmd->queues[j]);
         cmd->queue_count = queue_info[i].queueCount;
 
         VkCommandBufferAllocateInfo buffer_info{};
@@ -192,7 +195,7 @@ VulkanUtils::get_commands(struct vk_physical_device *phy_dev, struct vk_device *
         buffer_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         buffer_info.commandBufferCount = create_num_cmd ? create_count : queue_info[i].queueCount;
 
-        res = VULKAN_HPP_DEFAULT_DISPATCHER.vkAllocateCommandBuffers(dev->device, &buffer_info, cmd->buffers);
+        res = d.vkAllocateCommandBuffers(dev->device, &buffer_info, cmd->buffers);
         vk_error_set_vkresult(&retval, res);
         if (res)
             return retval;
@@ -204,16 +207,16 @@ VulkanUtils::get_commands(struct vk_physical_device *phy_dev, struct vk_device *
 }
 
 void VulkanUtils::cleanup(struct vk_device *dev) {
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkDeviceWaitIdle(dev->device);
+    d.vkDeviceWaitIdle(dev->device);
 
     for (uint32_t i = 0; i < dev->command_pool_count; ++i) {
         free(dev->command_pools[i].queues);
         free(dev->command_pools[i].buffers);
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroyCommandPool(dev->device, dev->command_pools[i].pool, nullptr);
+        d.vkDestroyCommandPool(dev->device, dev->command_pools[i].pool, nullptr);
     }
     free(dev->command_pools);
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroyDevice(dev->device, nullptr);
+    d.vkDestroyDevice(dev->device, nullptr);
 
     *dev = (struct vk_device) {};
 }
@@ -226,7 +229,7 @@ vk_error VulkanUtils::load_shader(struct vk_device *dev, const uint32_t *code, V
     info.codeSize = size;
     info.pCode = code;
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateShaderModule(dev->device, &info, nullptr, shader);
+    res = d.vkCreateShaderModule(dev->device, &info, nullptr, shader);
     vk_error_set_vkresult(&retval, res);
 
     return retval;
@@ -284,7 +287,7 @@ vk_error VulkanUtils::load_shader_spirv_file(struct vk_device *dev, const char *
 }
 
 void VulkanUtils::free_shader(struct vk_device *dev, VkShaderModule shader) {
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroyShaderModule(dev->device, shader, nullptr);
+    d.vkDestroyShaderModule(dev->device, shader, nullptr);
 }
 
 uint32_t VulkanUtils::find_suitable_memory(struct vk_physical_device *phy_dev, struct vk_device * /* dev */,
@@ -323,10 +326,10 @@ vk_error VulkanUtils::init_ext(VkInstance *vk, const char *ext_names[], uint32_t
     info.enabledExtensionCount = ext_count;
     info.ppEnabledExtensionNames = ext_names;
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateInstance(&info, nullptr, vk);
+    res = d.vkCreateInstance(&info, nullptr, vk);
     vk_error_set_vkresult(&retval, res);
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.init(vk::Instance(*vk));
+    d.init(vk::Instance(*vk));
 
     return retval;
 }
@@ -337,7 +340,7 @@ vk_error VulkanUtils::get_dev_ext(struct vk_physical_device *phy_dev, struct vk_
     vk_error retval = VK_ERROR_NONE;
     VkResult res;
 
-    *dev = (struct vk_device) {0};
+    *dev = (struct vk_device) {};
 
     uint32_t max_queue_count = *queue_info_count;
     *queue_info_count = 0;
@@ -379,7 +382,7 @@ vk_error VulkanUtils::get_dev_ext(struct vk_physical_device *phy_dev, struct vk_
     dev_info.ppEnabledExtensionNames = ext_names;
     dev_info.pEnabledFeatures = &phy_dev->features;
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateDevice(phy_dev->physical_device, &dev_info, nullptr, &dev->device);
+    res = d.vkCreateDevice(phy_dev->physical_device, &dev_info, nullptr, &dev->device);
     vk_error_set_vkresult(&retval, res);
 
     free(queue_priorities);
@@ -398,7 +401,7 @@ vk_error VulkanUtils::create_surface(VkInstance vk, VkSurfaceKHR *surface, struc
     createInfo.hinstance = os_window->connection;
     createInfo.hwnd = os_window->window;
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateWin32SurfaceKHR(vk, &createInfo, NULL, surface);
+    res = d.vkCreateWin32SurfaceKHR(vk, &createInfo, NULL, surface);
 #elif defined(VK_USE_PLATFORM_XCB_KHR)
     VkXcbSurfaceCreateInfoKHR createInfo;
     createInfo.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
@@ -407,7 +410,7 @@ vk_error VulkanUtils::create_surface(VkInstance vk, VkSurfaceKHR *surface, struc
     createInfo.connection = os_window->connection;
     createInfo.window = os_window->xcb_window;
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateXcbSurfaceKHR(vk, &createInfo, NULL, surface);
+    res = d.vkCreateXcbSurfaceKHR(vk, &createInfo, NULL, surface);
 #elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
     VkWaylandSurfaceCreateInfoKHR createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
@@ -416,7 +419,7 @@ vk_error VulkanUtils::create_surface(VkInstance vk, VkSurfaceKHR *surface, struc
     createInfo.display = os_window->wl_display;
     createInfo.surface = os_window->wl_surface;
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateWaylandSurfaceKHR(vk, &createInfo, nullptr, surface);
+    res = d.vkCreateWaylandSurfaceKHR(vk, &createInfo, nullptr, surface);
 #endif
     vk_error_set_vkresult(&retval, res);
     return retval;
@@ -431,9 +434,9 @@ vk_error VulkanUtils::get_swapchain(VkInstance /* vk */, struct vk_physical_devi
 
     VkSwapchainKHR oldSwapchain = swapchain->swapchain;
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(phy_dev->physical_device,
-                                                                                  swapchain->surface,
-                                                                                  &swapchain->surface_caps);
+    res = d.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(phy_dev->physical_device,
+                                                      swapchain->surface,
+                                                      &swapchain->surface_caps);
     vk_error_set_vkresult(&retval, res);
     if (res)
         return retval;
@@ -443,9 +446,9 @@ vk_error VulkanUtils::get_swapchain(VkInstance /* vk */, struct vk_physical_devi
         image_count = swapchain->surface_caps.maxImageCount;
 
     uint32_t surface_format_count = 1;
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceSurfaceFormatsKHR(phy_dev->physical_device,
-                                                                             swapchain->surface, &surface_format_count,
-                                                                             nullptr);
+    res = d.vkGetPhysicalDeviceSurfaceFormatsKHR(phy_dev->physical_device,
+                                                 swapchain->surface, &surface_format_count,
+                                                 nullptr);
     vk_error_set_vkresult(&retval, res);
     if (res < 0)
         return retval;
@@ -458,9 +461,9 @@ vk_error VulkanUtils::get_swapchain(VkInstance /* vk */, struct vk_physical_devi
     VkSurfaceFormatKHR surface_format[184];
     if (surface_format_count >= 184) surface_format_count = 184 - 1;
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceSurfaceFormatsKHR(phy_dev->physical_device,
-                                                                             swapchain->surface, &surface_format_count,
-                                                                             &surface_format[0]);
+    res = d.vkGetPhysicalDeviceSurfaceFormatsKHR(phy_dev->physical_device,
+                                                 swapchain->surface, &surface_format_count,
+                                                 &surface_format[0]);
 
     vk_error_set_vkresult(&retval, res);
     if (res < 0)
@@ -488,10 +491,10 @@ vk_error VulkanUtils::get_swapchain(VkInstance /* vk */, struct vk_physical_devi
 
     swapchain->present_modes_count = kMaxPresentModes;
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceSurfacePresentModesKHR(phy_dev->physical_device,
-                                                                                  swapchain->surface,
-                                                                                  &swapchain->present_modes_count,
-                                                                                  swapchain->present_modes);
+    res = d.vkGetPhysicalDeviceSurfacePresentModesKHR(phy_dev->physical_device,
+                                                      swapchain->surface,
+                                                      &swapchain->present_modes_count,
+                                                      swapchain->present_modes);
     vk_error_set_vkresult(&retval, res);
     if (res >= 0) {
         bool tret = false;
@@ -523,12 +526,12 @@ vk_error VulkanUtils::get_swapchain(VkInstance /* vk */, struct vk_physical_devi
 
     VkExtent2D swapchainExtent;
     VkImageFormatProperties format_properties;
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceImageFormatProperties(phy_dev->physical_device,
-                                                                                 swapchain->surface_format.format,
-                                                                                 VK_IMAGE_TYPE_2D,
-                                                                                 VK_IMAGE_TILING_OPTIMAL,
-                                                                                 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 0,
-                                                                                 &format_properties);
+    res = d.vkGetPhysicalDeviceImageFormatProperties(phy_dev->physical_device,
+                                                     swapchain->surface_format.format,
+                                                     VK_IMAGE_TYPE_2D,
+                                                     VK_IMAGE_TILING_OPTIMAL,
+                                                     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 0,
+                                                     &format_properties);
     if (res == VK_SUCCESS
         && (format_properties.maxExtent.width >= swapchain->surface_caps.currentExtent.width &&
             format_properties.maxExtent.height >= swapchain->surface_caps.currentExtent.height)
@@ -555,11 +558,12 @@ vk_error VulkanUtils::get_swapchain(VkInstance /* vk */, struct vk_physical_devi
             os_window->app_data.iResolution[1] = static_cast<int>(swapchain->surface_caps.currentExtent.height);
         }
     } else {
-        printf("Error: too large resolution, currentExtent width, height: %lu, %lu; iResolution.xy: %lu, %lu; maxExtent width, height: %lu, %lu \n",
-               (unsigned long) swapchain->surface_caps.currentExtent.width,
-               (unsigned long) swapchain->surface_caps.currentExtent.height,
-               (unsigned long) os_window->app_data.iResolution[0], (unsigned long) os_window->app_data.iResolution[1],
-               (unsigned long) format_properties.maxExtent.width, (unsigned long) format_properties.maxExtent.height);
+        spdlog::error(
+                "Error: too large resolution, currentExtent width, height: {}, {}; iResolution.xy: {}, {}; maxExtent width, height: {}, {}",
+                (unsigned long) swapchain->surface_caps.currentExtent.width,
+                (unsigned long) swapchain->surface_caps.currentExtent.height,
+                (unsigned long) os_window->app_data.iResolution[0], (unsigned long) os_window->app_data.iResolution[1],
+                (unsigned long) format_properties.maxExtent.width, (unsigned long) format_properties.maxExtent.height);
         os_window->app_data.iResolution[0] = static_cast<int>(swapchain->surface_caps.currentExtent.width);
         os_window->app_data.iResolution[1] = static_cast<int>(swapchain->surface_caps.currentExtent.height);
         if (format_properties.maxExtent.width < swapchain->surface_caps.currentExtent.width)
@@ -608,20 +612,20 @@ vk_error VulkanUtils::get_swapchain(VkInstance /* vk */, struct vk_physical_devi
         return retval;
     free(presentable_queues);
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateSwapchainKHR(dev->device, &swapchain_info, nullptr,
-                                                             &swapchain->swapchain);
+    res = d.vkCreateSwapchainKHR(dev->device, &swapchain_info, nullptr,
+                                 &swapchain->swapchain);
     vk_error_set_vkresult(&retval, res);
 
     if (oldSwapchain != VK_NULL_HANDLE) {
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroySwapchainKHR(dev->device, oldSwapchain, nullptr);
+        d.vkDestroySwapchainKHR(dev->device, oldSwapchain, nullptr);
     }
 
     return retval;
 }
 
 void VulkanUtils::free_swapchain(VkInstance vk, struct vk_device *dev, struct vk_swapchain *swapchain) {
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroySwapchainKHR(dev->device, swapchain->swapchain, nullptr);
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroySurfaceKHR(vk, swapchain->surface, nullptr);
+    d.vkDestroySwapchainKHR(dev->device, swapchain->swapchain, nullptr);
+    d.vkDestroySurfaceKHR(vk, swapchain->surface, nullptr);
 
     *swapchain = (struct vk_swapchain) {};
 }
@@ -631,22 +635,22 @@ VkImage *VulkanUtils::get_swapchain_images(struct vk_device *dev, struct vk_swap
     VkResult res;
 
     uint32_t image_count;
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetSwapchainImagesKHR(dev->device, swapchain->swapchain, &image_count,
-                                                                nullptr);
+    res = d.vkGetSwapchainImagesKHR(dev->device, swapchain->swapchain, &image_count,
+                                    nullptr);
     vk_error_set_vkresult(&retval, res);
     if (res < 0) {
         vk_error_printf(&retval, "Failed to count the number of images in swapchain\n");
         return nullptr;
     }
 
-    VkImage *images = (VkImage *) malloc(image_count * sizeof *images);
+    auto *images = (VkImage *) malloc(image_count * sizeof(VkImage *));
     if (images == nullptr) {
-        printf("Out of memory\n");
+        spdlog::error("Out of memory");
         return nullptr;
     }
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetSwapchainImagesKHR(dev->device, swapchain->swapchain, &image_count,
-                                                                images);
+    res = d.vkGetSwapchainImagesKHR(dev->device, swapchain->swapchain, &image_count,
+                                    images);
     vk_error_set_vkresult(&retval, res);
     if (res < 0) {
         vk_error_printf(&retval, "Failed to get the images in swapchain\n");
@@ -680,11 +684,11 @@ vk_error VulkanUtils::create_images(struct vk_physical_device *phy_dev, struct v
             tiling = VK_IMAGE_TILING_LINEAR;
         } else if (images[i].multisample) {
             VkImageFormatProperties format_properties;
-            res = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceImageFormatProperties(phy_dev->physical_device,
-                                                                                         images[i].format,
-                                                                                         VK_IMAGE_TYPE_2D,
-                                                                                         tiling, images[i].usage, 0,
-                                                                                         &format_properties);
+            res = d.vkGetPhysicalDeviceImageFormatProperties(phy_dev->physical_device,
+                                                             images[i].format,
+                                                             VK_IMAGE_TYPE_2D,
+                                                             tiling, images[i].usage, 0,
+                                                             &format_properties);
             vk_error_sub_set_vkresult(&retval, res);
             if (res == 0) {
                 for (uint32_t s = VK_SAMPLE_COUNT_16_BIT; s != 0; s >>= 1)
@@ -717,13 +721,13 @@ vk_error VulkanUtils::create_images(struct vk_physical_device *phy_dev, struct v
         image_info.pQueueFamilyIndices = shared ? images[i].sharing_queues : nullptr;
         image_info.initialLayout = layout;
 
-        res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateImage(dev->device, &image_info, nullptr, &images[i].image);
+        res = d.vkCreateImage(dev->device, &image_info, nullptr, &images[i].image);
         vk_error_sub_set_vkresult(&retval, res);
         if (res)
             continue;
 
         VkMemoryRequirements mem_req{};
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkGetImageMemoryRequirements(dev->device, images[i].image, &mem_req);
+        d.vkGetImageMemoryRequirements(dev->device, images[i].image, &mem_req);
         uint32_t mem_index = find_suitable_memory(phy_dev, dev, &mem_req,
                                                   images[i].host_visible ?
                                                   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
@@ -737,12 +741,12 @@ vk_error VulkanUtils::create_images(struct vk_physical_device *phy_dev, struct v
         mem_info.allocationSize = mem_req.size;
         mem_info.memoryTypeIndex = mem_index;
 
-        res = VULKAN_HPP_DEFAULT_DISPATCHER.vkAllocateMemory(dev->device, &mem_info, nullptr, &images[i].image_mem);
+        res = d.vkAllocateMemory(dev->device, &mem_info, nullptr, &images[i].image_mem);
         vk_error_sub_set_vkresult(&retval, res);
         if (res)
             continue;
 
-        res = VULKAN_HPP_DEFAULT_DISPATCHER.vkBindImageMemory(dev->device, images[i].image, images[i].image_mem, 0);
+        res = d.vkBindImageMemory(dev->device, images[i].image, images[i].image_mem, 0);
         vk_error_sub_set_vkresult(&retval, res);
         if (res)
             continue;
@@ -764,7 +768,7 @@ vk_error VulkanUtils::create_images(struct vk_physical_device *phy_dev, struct v
             view_info.subresourceRange.baseArrayLayer = 0;
             view_info.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
 
-            res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateImageView(dev->device, &view_info, nullptr, &images[i].view);
+            res = d.vkCreateImageView(dev->device, &view_info, nullptr, &images[i].view);
             vk_error_sub_set_vkresult(&retval, res);
             if (res)
                 continue;
@@ -791,8 +795,8 @@ vk_error VulkanUtils::create_images(struct vk_physical_device *phy_dev, struct v
                 sampler_info.compareOp = VK_COMPARE_OP_ALWAYS;
             }
 
-            res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateSampler(dev->device, &sampler_info, nullptr,
-                                                                &images[i].sampler);
+            res = d.vkCreateSampler(dev->device, &sampler_info, nullptr,
+                                    &images[i].sampler);
             vk_error_sub_set_vkresult(&retval, res);
             if (res)
                 continue;
@@ -826,13 +830,13 @@ vk_error VulkanUtils::create_buffers(struct vk_physical_device *phy_dev, struct 
         buffer_info.queueFamilyIndexCount = shared ? buffers[i].sharing_queue_count : 0;
         buffer_info.pQueueFamilyIndices = shared ? buffers[i].sharing_queues : nullptr;
 
-        res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateBuffer(dev->device, &buffer_info, nullptr, &buffers[i].buffer);
+        res = d.vkCreateBuffer(dev->device, &buffer_info, nullptr, &buffers[i].buffer);
         vk_error_sub_set_vkresult(&retval, res);
         if (res)
             continue;
 
         VkMemoryRequirements mem_req{};
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkGetBufferMemoryRequirements(dev->device, buffers[i].buffer, &mem_req);
+        d.vkGetBufferMemoryRequirements(dev->device, buffers[i].buffer, &mem_req);
         uint32_t mem_index = find_suitable_memory(phy_dev, dev, &mem_req,
                                                   buffers[i].host_visible ?
                                                   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
@@ -846,13 +850,13 @@ vk_error VulkanUtils::create_buffers(struct vk_physical_device *phy_dev, struct 
         mem_info.allocationSize = mem_req.size;
         mem_info.memoryTypeIndex = mem_index;
 
-        res = VULKAN_HPP_DEFAULT_DISPATCHER.vkAllocateMemory(dev->device, &mem_info, nullptr, &buffers[i].buffer_mem);
+        res = d.vkAllocateMemory(dev->device, &mem_info, nullptr, &buffers[i].buffer_mem);
         vk_error_sub_set_vkresult(&retval, res);
         if (res)
             continue;
 
-        res = VULKAN_HPP_DEFAULT_DISPATCHER.vkBindBufferMemory(dev->device, buffers[i].buffer, buffers[i].buffer_mem,
-                                                               0);
+        res = d.vkBindBufferMemory(dev->device, buffers[i].buffer, buffers[i].buffer_mem,
+                                   0);
         vk_error_sub_set_vkresult(&retval, res);
         if (res)
             continue;
@@ -867,8 +871,7 @@ vk_error VulkanUtils::create_buffers(struct vk_physical_device *phy_dev, struct 
                 view_info.offset = 0;
                 view_info.range = VK_WHOLE_SIZE;
 
-                res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateBufferView(dev->device, &view_info, nullptr,
-                                                                       &buffers[i].view);
+                res = d.vkCreateBufferView(dev->device, &view_info, nullptr, &buffers[i].view);
                 vk_error_sub_set_vkresult(&retval, res);
                 if (res)
                     continue;
@@ -917,8 +920,7 @@ vk_error VulkanUtils::get_presentable_queues(struct vk_physical_device *phy_dev,
 
     for (uint32_t i = 0; i < dev->command_pool_count; ++i) {
         VkBool32 supports = false;
-        res = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceSurfaceSupportKHR(phy_dev->physical_device, i, surface,
-                                                                                 &supports);
+        res = d.vkGetPhysicalDeviceSurfaceSupportKHR(phy_dev->physical_device, i, surface, &supports);
         vk_error_sub_set_vkresult(&retval, res);
         if (res || !supports)
             continue;
@@ -946,12 +948,11 @@ VkFormat VulkanUtils::get_supported_depth_stencil_format(struct vk_physical_devi
     };
     VkFormat selected_format = VK_FORMAT_UNDEFINED;
 
-    for (size_t i = 0; i < sizeof depth_formats / sizeof *depth_formats; ++i) {
+    for (auto &depth_format: depth_formats) {
         VkFormatProperties format_properties;
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceFormatProperties(phy_dev->physical_device, depth_formats[i],
-                                                                          &format_properties);
+        d.vkGetPhysicalDeviceFormatProperties(phy_dev->physical_device, depth_format, &format_properties);
         if ((format_properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
-            selected_format = depth_formats[i];
+            selected_format = depth_format;
             break;
         }
     }
@@ -960,28 +961,28 @@ VkFormat VulkanUtils::get_supported_depth_stencil_format(struct vk_physical_devi
 }
 
 void VulkanUtils::free_images(struct vk_device *dev, struct vk_image *images, uint32_t image_count) {
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkDeviceWaitIdle(dev->device);
+    d.vkDeviceWaitIdle(dev->device);
 
     for (uint32_t i = 0; i < image_count; ++i) {
-        if (images[i].view)VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroyImageView(dev->device, images[i].view, nullptr);
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroyImage(dev->device, images[i].image, nullptr);
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkFreeMemory(dev->device, images[i].image_mem, nullptr);
-        if (images[i].sampler)VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroySampler(dev->device, images[i].sampler, nullptr);
+        if (images[i].view)d.vkDestroyImageView(dev->device, images[i].view, nullptr);
+        d.vkDestroyImage(dev->device, images[i].image, nullptr);
+        d.vkFreeMemory(dev->device, images[i].image_mem, nullptr);
+        if (images[i].sampler)d.vkDestroySampler(dev->device, images[i].sampler, nullptr);
     }
 }
 
 void VulkanUtils::free_buffers(struct vk_device *dev, struct vk_buffer *buffers, uint32_t buffer_count) {
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkDeviceWaitIdle(dev->device);
+    d.vkDeviceWaitIdle(dev->device);
 
     for (uint32_t i = 0; i < buffer_count; ++i) {
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroyBufferView(dev->device, buffers[i].view, nullptr);
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroyBuffer(dev->device, buffers[i].buffer, nullptr);
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkFreeMemory(dev->device, buffers[i].buffer_mem, nullptr);
+        d.vkDestroyBufferView(dev->device, buffers[i].view, nullptr);
+        d.vkDestroyBuffer(dev->device, buffers[i].buffer, nullptr);
+        d.vkFreeMemory(dev->device, buffers[i].buffer_mem, nullptr);
     }
 }
 
 void VulkanUtils::free_shaders(struct vk_device *dev, struct vk_shader *shaders, uint32_t shader_count) {
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkDeviceWaitIdle(dev->device);
+    d.vkDeviceWaitIdle(dev->device);
 
     for (uint32_t i = 0; i < shader_count; ++i)
         free_shader(dev, shaders[i].shader);
@@ -990,21 +991,22 @@ void VulkanUtils::free_shaders(struct vk_device *dev, struct vk_shader *shaders,
 void VulkanUtils::free_graphics_buffers(struct vk_device *dev, struct vk_graphics_buffers *graphics_buffers,
                                         uint32_t graphics_buffer_count,
                                         VkRenderPass render_pass) {
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkDeviceWaitIdle(dev->device);
+    d.vkDeviceWaitIdle(dev->device);
 
     for (uint32_t i = 0; i < graphics_buffer_count; ++i) {
         free_images(dev, &graphics_buffers[i].depth, 1);
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroyImageView(dev->device, graphics_buffers[i].color_view, nullptr);
+        d.vkDestroyImageView(dev->device, graphics_buffers[i].color_view, nullptr);
 
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroyFramebuffer(dev->device, graphics_buffers[i].framebuffer, nullptr);
+        d.vkDestroyFramebuffer(dev->device, graphics_buffers[i].framebuffer, nullptr);
     }
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroyRenderPass(dev->device, render_pass, nullptr);
+    d.vkDestroyRenderPass(dev->device, render_pass, nullptr);
 }
 
 
 vk_error VulkanUtils::make_graphics_layouts(struct vk_device *dev, struct vk_layout *layouts, uint32_t layout_count,
-                                            bool w_img_pattern, uint32_t *img_pattern, uint32_t img_pattern_size) {
+                                            bool w_img_pattern, const uint32_t *img_pattern,
+                                            uint32_t img_pattern_size) {
     uint32_t successful = 0;
     vk_error retval = VK_ERROR_NONE;
     VkResult res;
@@ -1068,8 +1070,8 @@ vk_error VulkanUtils::make_graphics_layouts(struct vk_device *dev, struct vk_lay
         set_layout_info.bindingCount = binding_count;
         set_layout_info.pBindings = set_layout_bindings;
 
-        res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateDescriptorSetLayout(dev->device, &set_layout_info, nullptr,
-                                                                        &layout->set_layout);
+        res = d.vkCreateDescriptorSetLayout(dev->device, &set_layout_info, nullptr,
+                                            &layout->set_layout);
         vk_error_sub_set_vkresult(&retval, res);
         if (res) {
             free(set_layout_bindings);
@@ -1084,8 +1086,8 @@ vk_error VulkanUtils::make_graphics_layouts(struct vk_device *dev, struct vk_lay
         pipeline_layout_info.pushConstantRangeCount = resources->push_constant_count;
         pipeline_layout_info.pPushConstantRanges = resources->push_constants;
 
-        res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreatePipelineLayout(dev->device, &pipeline_layout_info, nullptr,
-                                                                   &layout->pipeline_layout);
+        res = d.vkCreatePipelineLayout(dev->device, &pipeline_layout_info, nullptr,
+                                       &layout->pipeline_layout);
         vk_error_sub_set_vkresult(&retval, res);
         if (res) {
             free(set_layout_bindings);
@@ -1204,8 +1206,7 @@ VulkanUtils::make_graphics_pipelines(struct vk_device *dev, struct vk_pipeline *
         pipeline_info.subpass = 0;
         pipeline_info.basePipelineIndex = 0;
 
-        res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateGraphicsPipelines(dev->device, nullptr, 1, &pipeline_info, nullptr,
-                                                                      &pipeline->pipeline);
+        res = d.vkCreateGraphicsPipelines(dev->device, nullptr, 1, &pipeline_info, nullptr, &pipeline->pipeline);
         vk_error_sub_set_vkresult(&retval, res);
         if (res) {
             free(stage_info);
@@ -1264,8 +1265,7 @@ VulkanUtils::make_graphics_pipelines(struct vk_device *dev, struct vk_pipeline *
         set_info.poolSizeCount = pool_size_count;
         set_info.pPoolSizes = pool_sizes;
 
-        res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateDescriptorPool(dev->device, &set_info, nullptr,
-                                                                   &pipeline->set_pool);
+        res = d.vkCreateDescriptorPool(dev->device, &set_info, nullptr, &pipeline->set_pool);
         vk_error_sub_set_vkresult(&retval, res);
         if (res) {
             free(stage_info);
@@ -1283,20 +1283,20 @@ VulkanUtils::make_graphics_pipelines(struct vk_device *dev, struct vk_pipeline *
 }
 
 void VulkanUtils::free_layouts(struct vk_device *dev, struct vk_layout *layouts, uint32_t layout_count) {
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkDeviceWaitIdle(dev->device);
+    d.vkDeviceWaitIdle(dev->device);
 
     for (uint32_t i = 0; i < layout_count; ++i) {
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroyPipelineLayout(dev->device, layouts[i].pipeline_layout, nullptr);
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroyDescriptorSetLayout(dev->device, layouts[i].set_layout, nullptr);
+        d.vkDestroyPipelineLayout(dev->device, layouts[i].pipeline_layout, nullptr);
+        d.vkDestroyDescriptorSetLayout(dev->device, layouts[i].set_layout, nullptr);
     }
 }
 
 void VulkanUtils::free_pipelines(struct vk_device *dev, struct vk_pipeline *pipelines, uint32_t pipeline_count) {
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkDeviceWaitIdle(dev->device);
+    d.vkDeviceWaitIdle(dev->device);
 
     for (uint32_t i = 0; i < pipeline_count; ++i) {
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroyPipeline(dev->device, pipelines[i].pipeline, nullptr);
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroyDescriptorPool(dev->device, pipelines[i].set_pool, nullptr);
+        d.vkDestroyPipeline(dev->device, pipelines[i].pipeline, nullptr);
+        d.vkDestroyDescriptorPool(dev->device, pipelines[i].set_pool, nullptr);
     }
 }
 
@@ -1344,7 +1344,7 @@ create_render_pass(struct vk_device *dev, VkFormat color_format, VkFormat depth_
     render_pass_info.subpassCount = UINT32_C(1);
     render_pass_info.pSubpasses = render_pass_subpasses;
 
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateRenderPass(dev->device, &render_pass_info, nullptr, render_pass);
+    res = d.vkCreateRenderPass(dev->device, &render_pass_info, nullptr, render_pass);
     vk_error_set_vkresult(&retval, res);
 
     return retval;
@@ -1362,13 +1362,13 @@ VulkanUtils::create_offscreen_buffers(struct vk_physical_device *phy_dev, struct
     vk_error err;
 
     VkImageFormatProperties format_properties;
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceImageFormatProperties(phy_dev->physical_device, format,
-                                                                                 VK_IMAGE_TYPE_2D,
-                                                                                 VK_IMAGE_TILING_OPTIMAL,
-                                                                                 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-                                                                                 VK_IMAGE_USAGE_SAMPLED_BIT,
-                                                                                 0,
-                                                                                 &format_properties);
+    res = d.vkGetPhysicalDeviceImageFormatProperties(phy_dev->physical_device, format,
+                                                     VK_IMAGE_TYPE_2D,
+                                                     VK_IMAGE_TILING_OPTIMAL,
+                                                     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                                                     VK_IMAGE_USAGE_SAMPLED_BIT,
+                                                     0,
+                                                     &format_properties);
     vk_error_sub_set_vkresult(&retval, res);
     if (res != VK_SUCCESS)return retval;
 
@@ -1439,8 +1439,7 @@ VulkanUtils::create_offscreen_buffers(struct vk_physical_device *phy_dev, struct
         framebuffer_info.height = offscreen_buffers[i].surface_size.height;
         framebuffer_info.layers = 1;
 
-        res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateFramebuffer(dev->device, &framebuffer_info, nullptr,
-                                                                &offscreen_buffers[i].framebuffer);
+        res = d.vkCreateFramebuffer(dev->device, &framebuffer_info, nullptr, &offscreen_buffers[i].framebuffer);
         vk_error_sub_set_vkresult(&retval, res);
         if (res)
             continue;
@@ -1463,13 +1462,13 @@ VulkanUtils::create_graphics_buffers(struct vk_physical_device *phy_dev, struct 
     vk_error err;
 
     VkImageFormatProperties format_properties;
-    res = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceImageFormatProperties(phy_dev->physical_device, format,
-                                                                                 VK_IMAGE_TYPE_2D,
-                                                                                 VK_IMAGE_TILING_OPTIMAL,
-                                                                                 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-                                                                                 VK_IMAGE_USAGE_SAMPLED_BIT,
-                                                                                 0,
-                                                                                 &format_properties);
+    res = d.vkGetPhysicalDeviceImageFormatProperties(phy_dev->physical_device, format,
+                                                     VK_IMAGE_TYPE_2D,
+                                                     VK_IMAGE_TILING_OPTIMAL,
+                                                     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                                                     VK_IMAGE_USAGE_SAMPLED_BIT,
+                                                     0,
+                                                     &format_properties);
     vk_error_sub_set_vkresult(&retval, res);
     if (res != VK_SUCCESS)return retval;
 
@@ -1505,8 +1504,7 @@ VulkanUtils::create_graphics_buffers(struct vk_physical_device *phy_dev, struct 
         view_info.subresourceRange.baseArrayLayer = 0;
         view_info.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
 
-        res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateImageView(dev->device, &view_info, nullptr,
-                                                              &graphics_buffers[i].color_view);
+        res = d.vkCreateImageView(dev->device, &view_info, nullptr, &graphics_buffers[i].color_view);
         vk_error_sub_set_vkresult(&retval, res);
         if (res)
             continue;
@@ -1530,7 +1528,6 @@ VulkanUtils::create_graphics_buffers(struct vk_physical_device *phy_dev, struct 
                 continue;
         }
 
-        //TODO suspicious
         VkImageView framebuffer_attachments[2] = {
                 graphics_buffers[i].color_view,
                 graphics_buffers[i].depth.view,
@@ -1545,8 +1542,7 @@ VulkanUtils::create_graphics_buffers(struct vk_physical_device *phy_dev, struct 
         framebuffer_info.height = graphics_buffers[i].surface_size.height;
         framebuffer_info.layers = 1;
 
-        res = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateFramebuffer(dev->device, &framebuffer_info, nullptr,
-                                                                &graphics_buffers[i].framebuffer);
+        res = d.vkCreateFramebuffer(dev->device, &framebuffer_info, nullptr, &graphics_buffers[i].framebuffer);
         vk_error_sub_set_vkresult(&retval, res);
         if (res)
             continue;
@@ -1561,16 +1557,16 @@ VulkanUtils::create_graphics_buffers(struct vk_physical_device *phy_dev, struct 
 void VulkanUtils::free_offscreen_buffers(struct vk_device *dev, struct vk_offscreen_buffers *offscreen_buffers,
                                          uint32_t graphics_buffer_count,
                                          VkRenderPass render_pass) {
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkDeviceWaitIdle(dev->device);
+    d.vkDeviceWaitIdle(dev->device);
 
     for (uint32_t i = 0; i < graphics_buffer_count; ++i) {
         free_images(dev, &offscreen_buffers[i].color, 1);
         free_images(dev, &offscreen_buffers[i].depth, 1);
 
-        VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroyFramebuffer(dev->device, offscreen_buffers[i].framebuffer, nullptr);
+        d.vkDestroyFramebuffer(dev->device, offscreen_buffers[i].framebuffer, nullptr);
     }
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroyRenderPass(dev->device, render_pass, nullptr);
+    d.vkDestroyRenderPass(dev->device, render_pass, nullptr);
 }
 
 void VulkanUtils::get_local_time(struct my_time_struct *my_time) {

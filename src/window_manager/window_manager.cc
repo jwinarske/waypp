@@ -38,20 +38,20 @@ class Registrar;
  * @see XdgWm
  */
 WindowManager::WindowManager(
-    struct wl_display* display,
-    bool disable_cursor,
-    const unsigned long ext_interface_count,
-    const Registrar::RegistrarCallback* ext_interface_data,
-    GMainContext* context)
-    : Registrar(display,
-                ext_interface_count,
-                ext_interface_data,
-                disable_cursor),
-      wl_display_(display),
-      context_(context),
-      outputs_(get_outputs()) {
-  SPDLOG_TRACE("++WindowManager::WindowManager()");
-  SPDLOG_TRACE("--WindowManager::WindowManager()");
+        struct wl_display *display,
+        bool disable_cursor,
+        const unsigned long ext_interface_count,
+        const Registrar::RegistrarCallback *ext_interface_data,
+        GMainContext *context)
+        : Registrar(display,
+                    ext_interface_count,
+                    ext_interface_data,
+                    disable_cursor),
+          wl_display_(display),
+          context_(context),
+          outputs_(get_outputs()) {
+    SPDLOG_TRACE("++WindowManager::WindowManager()");
+    SPDLOG_TRACE("--WindowManager::WindowManager()");
 }
 
 /**
@@ -62,8 +62,8 @@ WindowManager::WindowManager(
  * frames.
  */
 WindowManager::~WindowManager() {
-  SPDLOG_TRACE("++WindowManager::~WindowManager()");
-  SPDLOG_TRACE("--WindowManager::~WindowManager()");
+    SPDLOG_TRACE("++WindowManager::~WindowManager()");
+    SPDLOG_TRACE("--WindowManager::~WindowManager()");
 }
 
 /**
@@ -78,39 +78,38 @@ WindowManager::~WindowManager() {
  * on failure.
  */
 [[maybe_unused]] int WindowManager::dispatch(int timeout) const {
-  struct pollfd fds[1];
-  int dispatch_count = 0;
+    struct pollfd fds[1];
+    int dispatch_count = 0;
 
-  while (g_main_context_iteration(nullptr, FALSE))
-    ;
+    while (g_main_context_iteration(nullptr, FALSE));
 
-  while (wl_display_prepare_read(wl_display_) != 0)
-    dispatch_count += wl_display_dispatch_pending(wl_display_);
+    while (wl_display_prepare_read(wl_display_) != 0)
+        dispatch_count += wl_display_dispatch_pending(wl_display_);
 
-  if (wl_display_flush(wl_display_) < 0 && errno != EAGAIN) {
-    wl_display_cancel_read(wl_display_);
-    return -errno;
-  }
-
-  fds[0] = (struct pollfd){wl_display_get_fd(wl_display_), POLLIN};
-
-  const int ret = poll(fds, std::size(fds), timeout);
-  if (ret > 0) {
-    if (fds[0].revents & POLLIN) {
-      wl_display_read_events(wl_display_);
-      dispatch_count += wl_display_dispatch_pending(wl_display_);
-      return dispatch_count;
-    } else {
-      wl_display_cancel_read(wl_display_);
-      return dispatch_count;
+    if (wl_display_flush(wl_display_) < 0 && errno != EAGAIN) {
+        wl_display_cancel_read(wl_display_);
+        return -errno;
     }
-  } else if (ret == 0) {
-    wl_display_cancel_read(wl_display_);
-    return dispatch_count;
-  } else {
-    wl_display_cancel_read(wl_display_);
-    return -errno;
-  }
+
+    fds[0] = (struct pollfd) {wl_display_get_fd(wl_display_), POLLIN};
+
+    const int ret = poll(fds, std::size(fds), timeout);
+    if (ret > 0) {
+        if (fds[0].revents & POLLIN) {
+            wl_display_read_events(wl_display_);
+            dispatch_count += wl_display_dispatch_pending(wl_display_);
+            return dispatch_count;
+        } else {
+            wl_display_cancel_read(wl_display_);
+            return dispatch_count;
+        }
+    } else if (ret == 0) {
+        wl_display_cancel_read(wl_display_);
+        return dispatch_count;
+    } else {
+        wl_display_cancel_read(wl_display_);
+        return -errno;
+    }
 }
 
 /**
@@ -121,62 +120,62 @@ WindowManager::~WindowManager() {
  * handling events using Wayland protocol.
  */
 int WindowManager::poll_events(int /* timeout */) const {
-  for (auto observer : observers_) {
-    observer->notify_task();
-  }
+    for (auto observer: observers_) {
+        observer->notify_task();
+    }
 
-  while (wl_display_prepare_read(wl_display_) != 0) {
-    wl_display_dispatch_pending(wl_display_);
-  }
-  wl_display_flush(wl_display_);
+    while (wl_display_prepare_read(wl_display_) != 0) {
+        wl_display_dispatch_pending(wl_display_);
+    }
+    wl_display_flush(wl_display_);
 
-  wl_display_read_events(wl_display_);
-  return wl_display_dispatch_pending(wl_display_);
+    wl_display_read_events(wl_display_);
+    return wl_display_dispatch_pending(wl_display_);
 }
 
 int WindowManager::display_dispatch() const {
-  return wl_display_dispatch(wl_display_);
+    return wl_display_dispatch(wl_display_);
 }
 
-struct wl_output* WindowManager::get_primary_output() {
-  auto& outputs = get_outputs();
+struct wl_output *WindowManager::get_primary_output() {
+    auto &outputs = get_outputs();
 
-  if (get_xdg_output_manager()) {
-    for (auto& output : outputs) {
-      if (output.second->get_xdg_output()->is_origin()) {
-        spdlog::debug("get_primary_output: (xdg_output) Origin: {}",
-                      fmt::ptr(output.first));
-        return output.first;
-      }
+    if (get_xdg_output_manager()) {
+        for (auto &output: outputs) {
+            if (output.second->get_xdg_output()->is_origin()) {
+                spdlog::debug("get_primary_output: (xdg_output) Origin: {}",
+                              fmt::ptr(output.first));
+                return output.first;
+            }
+        }
+    } else {
+        for (auto &output: outputs) {
+            spdlog::debug("get_primary_output: (fist) Origin: {}",
+                          fmt::ptr(output.first));
+            return output.first;
+        }
     }
-  } else {
-    for (auto& output : outputs) {
-      spdlog::debug("get_primary_output: (fist) Origin: {}",
-                    fmt::ptr(output.first));
-      return output.first;
-    }
-  }
 
-  spdlog::debug("get_primary_output: (nullptr)");
-  return nullptr;
+    spdlog::debug("get_primary_output: (nullptr)");
+    return nullptr;
 }
 
-struct wl_output* WindowManager::find_output_by_name(
-    const std::string& output_name) {
-  auto& outputs = get_outputs();
+struct wl_output *WindowManager::find_output_by_name(
+        const std::string &output_name) {
+    auto &outputs = get_outputs();
 
-  if (get_xdg_output_manager()) {
-    for (auto& output : outputs) {
-      if (output.second->get_name() == output_name) {
-        spdlog::debug("find_output_by_name: (xdg_output): {}", output_name);
-        return output.first;
-      }
+    if (get_xdg_output_manager()) {
+        for (auto &output: outputs) {
+            if (output.second->get_name() == output_name) {
+                spdlog::debug("find_output_by_name: (xdg_output): {}", output_name);
+                return output.first;
+            }
+        }
+    } else {
+        for (auto &output: outputs) {
+            spdlog::debug("find_output_by_name: (fist): {}", output_name);
+            return output.first;
+        }
     }
-  } else {
-    for (auto& output : outputs) {
-      spdlog::debug("find_output_by_name: (fist): {}", output_name);
-      return output.first;
-    }
-  }
-  return nullptr;
+    return nullptr;
 }

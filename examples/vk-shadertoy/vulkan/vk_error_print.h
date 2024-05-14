@@ -2,8 +2,8 @@
 // Danil, 2021+ Vulkan shader launcher, self https://github.com/danilw/vulkan-shadertoy-launcher
 // The MIT License
 
-#ifndef vk_utils_printf_H
-#define vk_utils_printf_H
+#ifndef EXAMPLES_VK_SHADERTOY_VULKAN_VK_ERROR_PRINT_H_
+#define EXAMPLES_VK_SHADERTOY_VULKAN_VK_ERROR_PRINT_H_
 
 #include <cstdio>
 #include <cstring>
@@ -51,12 +51,6 @@ typedef struct vk_error {
 #define vk_error_set_vkresult(es, e)     vk_error_data_set_vkresult(&(es)->error,     (e), __FILE__, __LINE__)
 #define vk_error_set_errno(es, e)        vk_error_data_set_errno   (&(es)->error,     (e), __FILE__, __LINE__)
 #define vk_error_sub_set_vkresult(es, e) vk_error_data_set_vkresult(&(es)->sub_error, (e), __FILE__, __LINE__)
-#define vk_error_sub_set_errno(es, e)    vk_error_data_set_errno   (&(es)->sub_error, (e), __FILE__, __LINE__)
-#define vk_error_merge(es, os)                                \
-do {                                                            \
-    if (vk_error_data_merge(&(es)->error, &(os)->error))  \
-        (es)->sub_error = (os)->sub_error;              \
-} while (0)
 #define vk_error_sub_merge(es, os)       vk_error_data_merge(&(es)->sub_error, &(os)->error)
 
 void vk_error_data_set_vkresult(struct vk_error_data *error, VkResult vkresult, const char *file, unsigned int line);
@@ -71,9 +65,6 @@ bool vk_error_is_warning(struct vk_error *error);
 
 bool vk_error_is_error(struct vk_error *error);
 
-#if defined(VK_USE_PLATFORM_WIN32_KHR)
-void win_error(char *iout, char *iout2);
-#endif
 #define vk_error_printf(es, ...) vk_error_fprintf(stdout, (es), __VA_ARGS__)
 
 void vk_error_fprintf(FILE *fout, struct vk_error *error, const char *fmt, ...) ATTR_UNUSED;
@@ -82,4 +73,4 @@ void vk_error_fprintf(FILE *fout, struct vk_error *error, const char *fmt, ...) 
 const char *vk_VkPhysicalDeviceType_string(VkPhysicalDeviceType type);
 
 
-#endif
+#endif // EXAMPLES_VK_SHADERTOY_VULKAN_VK_ERROR_PRINT_H_

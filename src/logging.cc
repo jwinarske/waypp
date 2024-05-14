@@ -21,14 +21,14 @@
 static constexpr int32_t kLogFlushInterval = INT32_C(5);
 
 Logging::Logging() {
-  console_sink_ = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-  logger_ = std::make_shared<spdlog::logger>("waypp", console_sink_);
-  spdlog::set_default_logger(logger_);
-  spdlog::set_pattern("[%H:%M:%S.%f] [%L] %v");
+    console_sink_ = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    logger_ = std::make_shared<spdlog::logger>("waypp", console_sink_);
+    spdlog::set_default_logger(logger_);
+    spdlog::set_pattern("[%H:%M:%S.%f] [%L] %v");
 
-  spdlog::flush_on(spdlog::level::err);
-  spdlog::flush_every(std::chrono::seconds(kLogFlushInterval));
-  spdlog::cfg::load_env_levels();
+    spdlog::flush_on(spdlog::level::err);
+    spdlog::flush_every(std::chrono::seconds(kLogFlushInterval));
+    spdlog::cfg::load_env_levels();
 }
 
 Logging::~Logging() {}

@@ -25,13 +25,11 @@
 
 #include <linux/input.h>
 
-#include <thread>
-
 
 void App::draw_frame(void *data, const uint32_t time) {
     auto window = static_cast<Window *>(data);
-    auto shadertoy = static_cast<ShaderToy *>(window->get_user_data());
-    shadertoy->draw_frame(time);
+    auto shader_toy = static_cast<ShaderToy *>(window->get_user_data());
+    shader_toy->draw_frame(time);
 }
 
 App::App(const Configuration &config) : logging_(std::make_unique<Logging>()) {
@@ -43,12 +41,11 @@ App::App(const Configuration &config) : logging_(std::make_unique<Logging>()) {
         exit(EXIT_FAILURE);
     }
 
-    shadertoy_ = std::make_unique<ShaderToy>();
+    shader_toy_ = std::make_unique<ShaderToy>();
     wm_ = std::make_unique<XdgWindowManager>(display_, config.disable_cursor);
     auto seat = wm_->get_seat();
     if (seat.has_value()) {
-        seat.value()->set_user_data(this);
-        seat.value()->register_observer(this);
+        seat.value()->register_observer(this, this);
     }
 
     spdlog::debug("XDG Window Manager Version: {}", wm_->get_version());
@@ -58,21 +55,22 @@ App::App(const Configuration &config) : logging_(std::make_unique<Logging>()) {
             config.maximized, true, config.tearing, draw_frame);
     spdlog::debug("XDG Window Version: {}", toplevel_->get_version());
 
-    shadertoy_->init(config.width,
-                     config.height,
-                     display_,
-                     toplevel_->get_surface(),
-                     config.dev_index,
-                     config.use_gpu_idx,
-                     config.debug,
-                     config.reload_shaders,
-                     static_cast<VkPresentModeKHR>(config.present_mode));
+    shader_toy_->init(config.width,
+                      config.height,
+                      display_,
+                      toplevel_->get_surface(),
+                      config.dev_index,
+                      config.use_gpu_idx,
+                      config.debug,
+                      config.reload_shaders,
+                      static_cast<VkPresentModeKHR>(config.present_mode));
 
-    toplevel_->set_user_data(shadertoy_.get());
 
     /// paint padding
     toplevel_->set_surface_damage(0, 0, config.width, config.height);
-    toplevel_->start_frame_callbacks();
+
+    /// start frame callbacks with user_data pointing to shadertoy
+    toplevel_->start_frame_callbacks(shader_toy_.get());
 }
 
 App::~App() {
@@ -91,15 +89,14 @@ void App::notify_seat_capabilities(Seat *seat,
                                    uint32_t /* caps */) {
     if (seat) {
         auto keyboard = seat->get_keyboard();
+
         if (keyboard.has_value()) {
-            keyboard.value()->set_user_data(this);
-            keyboard.value()->register_observer(this);
+            keyboard.value()->register_observer(this, this);
         }
 
         auto pointer = seat->get_pointer();
         if (pointer.has_value()) {
-            pointer.value()->set_user_data(this);
-            pointer.value()->register_observer(this);
+            pointer.value()->register_observer(this, this);
         }
     }
 }
@@ -142,7 +139,7 @@ void App::notify_keyboard_xkb_v1_key(Keyboard *keyboard,
     if (xdg_key_symbol_count && state == KeyState::KEY_STATE_PRESS) {
 
         auto app = static_cast<App *>(keyboard->get_user_data());
-        auto shader_toy = app->shadertoy_.get();
+        auto shader_toy = app->shader_toy_.get();
 
         switch (xdg_key_symbols[0]) {
             case XKB_KEY_Escape:
@@ -180,7 +177,7 @@ void App::notify_pointer_enter(Pointer *pointer,
                                wl_surface * /* surface */,
                                double /* sx */,
                                double /* sy */) {
-    pointer->set_cursor(serial);
+    pointer->set_cursor(serial, "left_ptr");
 }
 
 void App::notify_pointer_leave(Pointer * /* pointer */,
@@ -194,8 +191,9 @@ void App::notify_pointer_motion(Pointer *pointer,
                                 uint32_t /* time */,
                                 double sx,
                                 double sy) {
+
     auto app = static_cast<App *>(pointer->get_user_data());
-    auto shader_toy = app->shadertoy_.get();
+    auto shader_toy = app->shader_toy_.get();
     auto os_window = shader_toy->get_app_os_window();
     os_window->app_data.iMouse[0] = sx;
     os_window->app_data.iMouse[1] = os_window->app_data.iResolution[1] - sy;
@@ -207,9 +205,9 @@ void App::notify_pointer_button(Pointer *pointer,
                                 uint32_t /* time */,
                                 uint32_t button,
                                 uint32_t state) {
-    // spdlog::info("Pointer Button: pointer: {}, time: {}, button: {}, state: {}", serial, time, button, state);
+
     auto app = static_cast<App *>(pointer->get_user_data());
-    auto shader_toy = app->shadertoy_.get();
+    auto shader_toy = app->shader_toy_.get();
     auto os_window = shader_toy->get_app_os_window();
 
     switch (button) {

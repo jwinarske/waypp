@@ -26,21 +26,21 @@
  * It is used to handle input events from devices such as keyboards, pointers,
  * and touchscreens.
  */
-Seat::Seat(struct wl_seat* seat,
-           struct wl_shm* wl_shm,
-           struct wl_compositor* wl_compositor,
+Seat::Seat(struct wl_seat *seat,
+           struct wl_shm *wl_shm,
+           struct wl_compositor *wl_compositor,
            bool disable_cursor)
-    : wl_seat_(seat),
-      wl_shm_(wl_shm),
-      wl_compositor_(wl_compositor),
-      disable_cursor_(disable_cursor) {
-  wl_seat_add_listener(seat, &listener_, this);
+        : wl_seat_(seat),
+          wl_shm_(wl_shm),
+          wl_compositor_(wl_compositor),
+          disable_cursor_(disable_cursor) {
+    wl_seat_add_listener(seat, &listener_, this);
 }
 
 Seat::~Seat() {
-  if (wl_seat_) {
-    wl_seat_destroy(wl_seat_);
-  }
+    if (wl_seat_) {
+        wl_seat_destroy(wl_seat_);
+    }
 }
 
 /**
@@ -51,41 +51,41 @@ Seat::~Seat() {
  * with a wl_seat object, which contains multiple capabilities such as pointer,
  * keyboard, and touch.
  */
-void Seat::handle_capabilities(void* data,
-                               struct wl_seat* seat,
+void Seat::handle_capabilities(void *data,
+                               struct wl_seat *seat,
                                uint32_t caps) {
-  const auto obj = static_cast<Seat*>(data);
-  if (obj->wl_seat_ != seat) {
-    return;
-  }
+    const auto obj = static_cast<Seat *>(data);
+    if (obj->wl_seat_ != seat) {
+        return;
+    }
 
-  SPDLOG_TRACE("Seat::handle_capabilities: {}", caps);
+    SPDLOG_TRACE("Seat::handle_capabilities: {}", caps);
 
-  obj->capabilities_ = caps;
+    obj->capabilities_ = caps;
 
-  if (caps & WL_SEAT_CAPABILITY_POINTER && !obj->pointer_) {
-    obj->pointer_ = std::make_unique<Pointer>(wl_seat_get_pointer(seat),
-                                              obj->wl_compositor_, obj->wl_shm_,
-                                              obj->disable_cursor_);
-  } else if (!(caps & WL_SEAT_CAPABILITY_POINTER) && obj->pointer_) {
-    obj->pointer_.reset();
-  }
+    if (caps & WL_SEAT_CAPABILITY_POINTER && !obj->pointer_) {
+        obj->pointer_ = std::make_unique<Pointer>(wl_seat_get_pointer(seat),
+                                                  obj->wl_compositor_, obj->wl_shm_,
+                                                  obj->disable_cursor_);
+    } else if (!(caps & WL_SEAT_CAPABILITY_POINTER) && obj->pointer_) {
+        obj->pointer_.reset();
+    }
 
-  if ((caps & WL_SEAT_CAPABILITY_KEYBOARD) && !obj->keyboard_) {
-    obj->keyboard_ = std::make_unique<Keyboard>(wl_seat_get_keyboard(seat));
-  } else if (!(caps & WL_SEAT_CAPABILITY_KEYBOARD) && obj->keyboard_) {
-    obj->keyboard_.reset();
-  }
+    if ((caps & WL_SEAT_CAPABILITY_KEYBOARD) && !obj->keyboard_) {
+        obj->keyboard_ = std::make_unique<Keyboard>(wl_seat_get_keyboard(seat));
+    } else if (!(caps & WL_SEAT_CAPABILITY_KEYBOARD) && obj->keyboard_) {
+        obj->keyboard_.reset();
+    }
 
-  if ((caps & WL_SEAT_CAPABILITY_TOUCH) && !obj->touch_) {
-    obj->touch_ = std::make_unique<Touch>(wl_seat_get_touch(seat));
-  } else if (!(caps & WL_SEAT_CAPABILITY_TOUCH) && obj->touch_) {
-    obj->touch_.reset();
-  }
+    if ((caps & WL_SEAT_CAPABILITY_TOUCH) && !obj->touch_) {
+        obj->touch_ = std::make_unique<Touch>(wl_seat_get_touch(seat));
+    } else if (!(caps & WL_SEAT_CAPABILITY_TOUCH) && obj->touch_) {
+        obj->touch_.reset();
+    }
 
-  for (auto observer : obj->observers_) {
-    observer->notify_seat_capabilities(obj, seat, caps);
-  }
+    for (auto observer: obj->observers_) {
+        observer->notify_seat_capabilities(obj, seat, caps);
+    }
 }
 
 /**
@@ -99,31 +99,31 @@ void Seat::handle_capabilities(void* data,
  * @param seat The wl_seat object for which the event occurred.
  * @param name The name of the seat.
  */
-void Seat::handle_name(void* data, struct wl_seat* seat, const char* name) {
-  const auto obj = static_cast<Seat*>(data);
-  if (obj->wl_seat_ != seat) {
-    return;
-  }
+void Seat::handle_name(void *data, struct wl_seat *seat, const char *name) {
+    const auto obj = static_cast<Seat *>(data);
+    if (obj->wl_seat_ != seat) {
+        return;
+    }
 
-  SPDLOG_TRACE("Seat::handle_name: {}", obj->name_);
+    SPDLOG_TRACE("Seat::handle_name: {}", obj->name_);
 
-  obj->name_ = name;
+    obj->name_ = name;
 
-  for (auto observer : obj->observers_) {
-    observer->notify_seat_name(obj, seat, name);
-  }
+    for (auto observer: obj->observers_) {
+        observer->notify_seat_name(obj, seat, name);
+    }
 }
 
-std::optional<Keyboard*> Seat::get_keyboard() const {
-  if (keyboard_) {
-    return keyboard_.get();
-  }
-  return {};
+std::optional<Keyboard *> Seat::get_keyboard() const {
+    if (keyboard_) {
+        return keyboard_.get();
+    }
+    return {};
 }
 
-std::optional<Pointer*> Seat::get_pointer() const {
-  if (pointer_) {
-    return pointer_.get();
-  }
-  return {};
+std::optional<Pointer *> Seat::get_pointer() const {
+    if (pointer_) {
+        return pointer_.get();
+    }
+    return {};
 }

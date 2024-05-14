@@ -56,15 +56,18 @@ public:
 
     ~Seat();
 
-    void register_observer(SeatObserver *observer) {
+    void register_observer(SeatObserver *observer, void *user_data = nullptr) {
+
         observers_.push_back(observer);
+
+        if (user_data) {
+            user_data_ = user_data;
+        }
     }
 
     void unregister_observer(SeatObserver *observer) {
         observers_.remove(observer);
     }
-
-    void set_user_data(void *user_data) { user_data_ = user_data; }
 
     [[nodiscard]] void *get_user_data() const { return user_data_; }
 
