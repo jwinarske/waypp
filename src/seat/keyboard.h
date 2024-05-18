@@ -67,7 +67,12 @@ public:
 
 class Keyboard {
 public:
-    explicit Keyboard(struct wl_keyboard *keyboard);
+    struct event_mask {
+        bool enabled;
+        bool all;
+    };
+
+    explicit Keyboard(struct wl_keyboard *keyboard, struct event_mask &event_mask);
 
     ~Keyboard();
 
@@ -92,6 +97,8 @@ public:
 
     [[nodiscard]] int32_t get_repeat_rate() const { return repeat_.rate; }
 
+    void set_event_mask(struct event_mask &event_mask);
+
     // Disallow copy and assign.
     Keyboard(const Keyboard &) = delete;
 
@@ -106,6 +113,8 @@ private:
     enum wl_keyboard_keymap_format format_{};
     std::list<KeyboardObserver *> observers_{};
     void *user_data_{};
+
+    struct event_mask event_mask_{};
 
     struct {
         int32_t rate;

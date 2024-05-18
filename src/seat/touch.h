@@ -56,7 +56,12 @@ public:
 
 class Touch {
 public:
-    explicit Touch(struct wl_touch *wl_touch);
+    struct event_mask {
+        bool enabled;
+        bool all;
+    };
+
+    explicit Touch(struct wl_touch *wl_touch, struct event_mask &event_mask);
 
     ~Touch();
 
@@ -68,6 +73,8 @@ public:
         observers_.remove(observer);
     }
 
+    void set_event_mask(struct event_mask &event_mask);
+
     // Disallow copy and assign.
     Touch(const Touch &) = delete;
 
@@ -76,6 +83,8 @@ public:
 private:
     struct wl_touch *touch_;
     std::list<TouchObserver *> observers_{};
+
+    struct event_mask event_mask_{};
 
     static void handle_down(void *data,
                             struct wl_touch *wl_touch,

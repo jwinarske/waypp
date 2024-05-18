@@ -23,9 +23,11 @@
  *
  * The Touch class represents a touch input device.
  */
-Touch::Touch(struct wl_touch *wl_touch) : touch_(wl_touch) {
+Touch::Touch(struct wl_touch *wl_touch, struct event_mask &event_mask) : touch_(wl_touch) {
     SPDLOG_DEBUG("Touch");
     wl_touch_add_listener(wl_touch, &listener_, this);
+
+    event_mask_.enabled = event_mask.enabled;
 }
 
 /**
@@ -67,6 +69,10 @@ void Touch::handle_down(void *data,
         return;
     }
 
+    if (obj->event_mask_.enabled && obj->event_mask_.all) {
+        return;
+    }
+
     SPDLOG_TRACE("Touch::handle_down");
 
     for (auto observer: obj->observers_) {
@@ -96,6 +102,10 @@ void Touch::handle_up(void *data,
                       int32_t id) {
     const auto obj = static_cast<Touch *>(data);
     if (obj->touch_ != touch) {
+        return;
+    }
+
+    if (obj->event_mask_.enabled && obj->event_mask_.all) {
         return;
     }
 
@@ -133,6 +143,10 @@ void Touch::handle_motion(void *data,
         return;
     }
 
+    if (obj->event_mask_.enabled && obj->event_mask_.all) {
+        return;
+    }
+
     SPDLOG_TRACE("Touch::handle_motion");
 
     for (auto observer: obj->observers_) {
@@ -158,6 +172,10 @@ void Touch::handle_cancel(void *data, struct wl_touch *touch) {
         return;
     }
 
+    if (obj->event_mask_.enabled && obj->event_mask_.all) {
+        return;
+    }
+
     SPDLOG_TRACE("Touch::handle_cancel");
 
     for (auto observer: obj->observers_) {
@@ -178,9 +196,18 @@ void Touch::handle_frame(void *data, struct wl_touch *touch) {
         return;
     }
 
+    if (obj->event_mask_.enabled && obj->event_mask_.all) {
+        return;
+    }
+
     SPDLOG_TRACE("Touch::handle_frame");
 
     for (auto observer: obj->observers_) {
         observer->notify_touch_frame(obj, touch);
     }
+}
+
+void Touch::set_event_mask(struct event_mask &event_mask) {
+    event_mask_.enabled = event_mask.enabled;
+    event_mask_.all = event_mask.all;
 }

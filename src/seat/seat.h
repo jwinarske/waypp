@@ -49,10 +49,17 @@ public:
 
 class Seat {
 public:
+    struct event_mask {
+        Pointer::event_mask pointer;
+        Keyboard::event_mask keyboard;
+        Touch::event_mask touch;
+    };
+
     explicit Seat(struct wl_seat *seat,
                   struct wl_shm *wl_shm,
                   struct wl_compositor *wl_compositor,
-                  bool disable_cursor = false);
+                  bool disable_cursor,
+                  const char *ignore_events = nullptr);
 
     ~Seat();
 
@@ -81,6 +88,8 @@ public:
 
     [[nodiscard]] std::optional<Pointer *> get_pointer() const;
 
+    void set_event_mask(const char *ignore_events);
+
     // Disallow copy and assign.
     Seat(const Seat &) = delete;
 
@@ -94,6 +103,7 @@ private:
     struct wl_compositor *wl_compositor_;
     bool disable_cursor_;
     void *user_data_{};
+    struct event_mask event_mask_{};
 
     std::list<SeatObserver *> observers_{};
 
@@ -113,4 +123,6 @@ private:
             .capabilities = handle_capabilities,
             .name = handle_name,
     };
+
+    void event_mask_print() const;
 };

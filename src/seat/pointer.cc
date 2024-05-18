@@ -34,6 +34,7 @@ Pointer::Pointer(wl_pointer *pointer,
                  struct wl_compositor *wl_compositor,
                  struct wl_shm *wl_shm,
                  bool disable_cursor,
+                 struct event_mask &event_mask,
                  int size)
         : wl_pointer_(pointer),
           wl_shm_(wl_shm),
@@ -42,6 +43,11 @@ Pointer::Pointer(wl_pointer *pointer,
     SPDLOG_DEBUG("Pointer");
     wl_pointer_add_listener(pointer, &pointer_listener_, this);
     wl_surface_cursor_ = wl_compositor_create_surface(wl_compositor);
+
+    event_mask_.enabled = event_mask.enabled;
+    event_mask_.axis = event_mask.axis;
+    event_mask_.buttons = event_mask.buttons;
+    event_mask_.motion = event_mask.motion;
 }
 
 /**
@@ -86,6 +92,10 @@ void Pointer::handle_enter(void *data,
         return;
     }
 
+    if (obj->event_mask_.enabled && obj->event_mask_.all) {
+        return;
+    }
+
     SPDLOG_TRACE("Pointer::handle_enter");
 
     for (auto observer: obj->observers_) {
@@ -112,6 +122,10 @@ void Pointer::handle_leave(void *data,
                            struct wl_surface *surface) {
     auto obj = static_cast<Pointer *>(data);
     if (obj->wl_pointer_ != pointer) {
+        return;
+    }
+
+    if (obj->event_mask_.enabled && obj->event_mask_.all) {
         return;
     }
 
@@ -144,6 +158,10 @@ void Pointer::handle_motion(void *data,
         return;
     }
 
+    if (obj->event_mask_.enabled && (obj->event_mask_.all || obj->event_mask_.motion)) {
+        return;
+    }
+
     SPDLOG_TRACE("Pointer::handle_motion");
 
     for (auto observer: obj->observers_) {
@@ -168,6 +186,10 @@ void Pointer::handle_button(void *data,
                             uint32_t state) {
     auto obj = static_cast<Pointer *>(data);
     if (obj->wl_pointer_ != pointer) {
+        return;
+    }
+
+    if (obj->event_mask_.enabled && (obj->event_mask_.all || obj->event_mask_.buttons)) {
         return;
     }
 
@@ -203,6 +225,10 @@ void Pointer::handle_axis(void *data,
         return;
     }
 
+    if (obj->event_mask_.enabled && (obj->event_mask_.all || obj->event_mask_.axis)) {
+        return;
+    }
+
     SPDLOG_TRACE("Pointer::handle_axis");
 
     for (auto observer: obj->observers_) {
@@ -221,6 +247,10 @@ void Pointer::handle_axis(void *data,
 void Pointer::handle_frame(void *data, struct wl_pointer *pointer) {
     auto obj = static_cast<Pointer *>(data);
     if (obj->wl_pointer_ != pointer) {
+        return;
+    }
+
+    if (obj->event_mask_.enabled && obj->event_mask_.all) {
         return;
     }
 
@@ -246,6 +276,10 @@ void Pointer::handle_axis_source(void *data,
                                  uint32_t axis_source) {
     auto obj = static_cast<Pointer *>(data);
     if (obj->wl_pointer_ != pointer) {
+        return;
+    }
+
+    if (obj->event_mask_.enabled && (obj->event_mask_.all || obj->event_mask_.axis)) {
         return;
     }
 
@@ -275,6 +309,10 @@ void Pointer::handle_axis_stop(void *data,
         return;
     }
 
+    if (obj->event_mask_.enabled && obj->event_mask_.all) {
+        return;
+    }
+
     SPDLOG_TRACE("Pointer::handle_axis_stop");
 
     for (auto observer: obj->observers_) {
@@ -298,6 +336,10 @@ void Pointer::handle_axis_discrete(void *data,
                                    int32_t discrete) {
     auto obj = static_cast<Pointer *>(data);
     if (obj->wl_pointer_ != pointer) {
+        return;
+    }
+
+    if (obj->event_mask_.enabled && obj->event_mask_.all) {
         return;
     }
 
@@ -389,4 +431,12 @@ std::vector<std::string> Pointer::get_available_cursors(
     std::sort(cursor_list.begin(), cursor_list.end());
 
     return std::move(cursor_list);
+}
+
+void Pointer::set_event_mask(struct event_mask &event_mask) {
+    event_mask_.enabled = event_mask.enabled;
+    event_mask_.all = event_mask.all;
+    event_mask_.axis = event_mask.axis;
+    event_mask_.buttons = event_mask.buttons;
+    event_mask_.motion = event_mask.motion;
 }

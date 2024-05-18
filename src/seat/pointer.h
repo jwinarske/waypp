@@ -80,10 +80,19 @@ public:
 
 class Pointer {
 public:
+    struct event_mask {
+        bool enabled;
+        bool all;
+        bool axis;
+        bool buttons;
+        bool motion;
+    };
+
     explicit Pointer(struct wl_pointer *pointer,
                      struct wl_compositor *wl_compositor,
                      struct wl_shm *wl_shm,
                      bool disable_cursor,
+                     struct event_mask &event_mask,
                      int size = 24);
 
     ~Pointer();
@@ -116,6 +125,8 @@ public:
 
     [[nodiscard]] bool is_cursor_enabled() const { return !disable_cursor_; }
 
+    void set_event_mask(struct event_mask &event_mask);
+
     // Disallow copy and assign.
     Pointer(const Pointer &) = delete;
 
@@ -130,6 +141,8 @@ private:
     bool disable_cursor_;
     int size_;
     void *user_data_{};
+
+    struct event_mask event_mask_{};
 
     static void handle_enter(void *data,
                              struct wl_pointer *pointer,

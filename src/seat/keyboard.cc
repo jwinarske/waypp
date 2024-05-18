@@ -36,7 +36,7 @@
  * The Keyboard class provides a wrapper for a keyboard device,
  * which interacts with the Wayland compositor.
  */
-Keyboard::Keyboard(struct wl_keyboard *keyboard)
+Keyboard::Keyboard(struct wl_keyboard *keyboard, struct event_mask &event_mask)
         : wl_keyboard_(keyboard),
           xkb_context_(xkb_context_new(XKB_CONTEXT_NO_FLAGS)) {
     SPDLOG_DEBUG("Keyboard");
@@ -124,6 +124,10 @@ void Keyboard::handle_enter(void *data,
 
     obj->wl_surface = wl_surface;
 
+    if (obj->event_mask_.enabled && obj->event_mask_.all) {
+        return;
+    }
+
     if (obj->format_ == WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
         if (keys->size) {
             const uint32_t *key;
@@ -147,9 +151,18 @@ void Keyboard::handle_leave(void *data,
     if (obj->wl_keyboard_ != wl_keyboard) {
         return;
     }
+
+    if (obj->event_mask_.enabled && obj->event_mask_.all) {
+        return;
+    }
+
     SPDLOG_TRACE("[Keyboard] handle_leave");
 
     obj->wl_surface = nullptr;
+
+    if (obj->event_mask_.enabled && obj->event_mask_.all) {
+        return;
+    }
 
     for (auto observer: obj->observers_) {
         observer->notify_keyboard_leave(obj, wl_keyboard, serial, wl_surface);
@@ -204,6 +217,10 @@ void Keyboard::handle_key(void *data,
                 struct itimerspec its{};
                 timer_settime(obj->repeat_.timer, 0, &its, nullptr);
             }
+        }
+
+        if (obj->event_mask_.enabled && obj->event_mask_.all) {
+            return;
         }
 
         for (auto observer: obj->observers_) {
@@ -288,6 +305,10 @@ void Keyboard::repeat_xkb_v1_key_callback(int /* sig */,
                                           void * /* uc */) {
     auto obj = static_cast<Keyboard *>(si->_sifields._rt.si_sigval.sival_ptr);
 
+    if (obj->event_mask_.enabled && obj->event_mask_.all) {
+        return;
+    }
+
     for (auto observer: obj->observers_) {
         observer->notify_keyboard_xkb_v1_key(
                 obj, obj->repeat_.notify.wl_keyboard, obj->repeat_.notify.serial,
@@ -295,4 +316,9 @@ void Keyboard::repeat_xkb_v1_key_callback(int /* sig */,
                 obj->repeat_.notify.key_repeats, WL_KEYBOARD_KEY_STATE_PRESSED,
                 obj->repeat_.notify.xdg_keysym_count, obj->repeat_.notify.key_syms);
     }
+}
+
+void Keyboard::set_event_mask(struct event_mask &event_mask) {
+    event_mask_.enabled = event_mask.enabled;
+    event_mask_.all = event_mask.all;
 }
