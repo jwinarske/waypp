@@ -70,13 +70,7 @@ public:
            bool maximized,
            bool fullscreen_ratio,
            bool tearing,
-           int buffer_bpp = 0,
-           int swap_interval = 0,
-           const int32_t *context_attribs = nullptr,
-           size_t context_attribs_size = 0,
-           const int32_t *config_attribs = nullptr,
-           size_t config_attribs_size = 0,
-           enum Egl::api type = Egl::OPENGL_ES_API);
+           Egl::config *egl_config);
 
     ~Window();
 
@@ -220,8 +214,6 @@ private:
     bool resize_{};
     bool activated_{};
 
-    int buffer_bpp_ = 0;
-    int swap_interval_ = 1;
     int delay_ = 0;
 
     int32_t buffer_scale_ = 1;

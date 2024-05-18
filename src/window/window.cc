@@ -31,13 +31,7 @@ Window::Window(WindowManager *wm,
                bool maximized,
                bool fullscreen_ratio,
                bool tearing,
-               int buffer_bpp,
-               int swap_interval,
-               const int32_t *context_attribs,
-               size_t context_attribs_size,
-               const int32_t *config_attribs,
-               size_t config_attribs_size,
-               enum Egl::api type)
+               Egl::config *egl_config)
         : wm_(wm),
           buffer_transform_(WL_OUTPUT_TRANSFORM_NORMAL),
           frame_callback_(frame_callback),
@@ -49,8 +43,6 @@ Window::Window(WindowManager *wm,
           outputs_(wm->get_outputs()),
           valid_(true),
           logical_size_{.width = width, .height = height},
-          buffer_bpp_(buffer_bpp),
-          swap_interval_(swap_interval),
           buffer_size_{.width = width, .height = height},
           window_size_{.width = buffer_size_.width, .height = buffer_size_.height},
           needs_buffer_geometry_update_(false),
@@ -81,12 +73,9 @@ Window::Window(WindowManager *wm,
     }
 
 #if ENABLE_EGL
-    if (context_attribs_size && config_attribs_size) {
-        egl_ = std::make_unique<Egl>(wm->get_display(), wl_surface_, width, height,
-                                     context_attribs, context_attribs_size,
-                                     config_attribs, config_attribs_size,
-                                     buffer_bpp, type);
-        egl_->set_swap_interval(swap_interval);
+    if (egl_config && egl_config->context_attribs_size && egl_config->config_attribs_size) {
+        egl_ = std::make_unique<Egl>(wm->get_display(), wl_surface_, width, height, egl_config);
+        egl_->set_swap_interval(egl_config->swap_interval);
     }
 #endif
 
@@ -428,7 +417,7 @@ void Window::swap_buffers() {
 bool Window::have_swap_buffers_width_damage() {
 #if ENABLE_EGL
     if (egl_) {
-        return egl_->have_swap_buffers_width_damage();
+        return egl_->have_swap_buffers_with_damage();
     }
 #endif
     return false;

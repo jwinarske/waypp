@@ -530,13 +530,19 @@ int main(int argc, char **argv) {
         }
     }
 
+    Egl::config egl_config{};
+    egl_config.context_attribs_size = kEglContextAttribs.size();
+    egl_config.context_attribs = kEglContextAttribs.data();
+    egl_config.config_attribs_size = kEglConfigAttribs.size();
+    egl_config.config_attribs = kEglConfigAttribs.data();
+    egl_config.buffer_bpp = config.buffer_bpp;
+    egl_config.swap_interval = config.interval;
+    egl_config.type = Egl::OPENGL_ES_API;
+
     auto top_level = wm.create_top_level(
             "simple-egl", "org.freedesktop.gitlab.jwinarske.waypp.simple_egl",
             config.width, config.height, 0, 0, config.fullscreen, config.maximized,
-            config.fullscreen_ratio, config.tearing, draw_frame,
-            kEglContextAttribs.data(), kEglContextAttribs.size(),
-            kEglConfigAttribs.data(), kEglConfigAttribs.size(), Egl::OPENGL_ES_API,
-            config.buffer_bpp, config.interval);
+            config.fullscreen_ratio, config.tearing, draw_frame, &egl_config);
 
     top_level->start_frame_callbacks();
 

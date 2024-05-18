@@ -29,16 +29,21 @@ public:
         OPENGL_API = 0x30A2,
     };
 
+    struct config {
+        int buffer_bpp;
+        int swap_interval;
+        const int32_t *context_attribs;
+        size_t context_attribs_size;
+        const int32_t *config_attribs;
+        size_t config_attribs_size;
+        enum Egl::api type;
+    };
+
     explicit Egl(struct wl_display *display,
                  struct wl_surface *wl_surface,
                  int width,
                  int height,
-                 const int32_t *context_attribs,
-                 size_t context_attribs_size,
-                 const int32_t *config_attribs,
-                 size_t config_attribs_size,
-                 int buffer_bpp,
-                 enum api type = OPENGL_ES_API);
+                 struct config *config);
 
     ~Egl();
 
@@ -50,13 +55,13 @@ public:
 
     void swap_buffers();
 
-    void get_buffer_age(EGLint &age);
-
-    bool have_swap_buffers_width_damage() const {
+    [[nodiscard]] bool have_swap_buffers_with_damage() const {
         return pfSwapBufferWithDamage_ != nullptr;
     }
 
     void swap_buffers_with_damage(const EGLint *rects, EGLint n_rects);
+
+    void get_buffer_age(EGLint &age);
 
     void resize(int width, int height, int dx, int dy);
 

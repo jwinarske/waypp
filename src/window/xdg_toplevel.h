@@ -47,13 +47,7 @@ public:
                 bool fullscreen_ratio,
                 bool tearing,
                 const std::function<void(void *, const uint32_t)> &frame_callback,
-                int buffer_bpp = 0,
-                int swap_interval = 0,
-                const int32_t *context_attribs = nullptr,
-                size_t context_attribs_size = 0,
-                const int32_t *config_attribs = nullptr,
-                size_t config_attribs_size = 0,
-                enum Egl::api type = Egl::OPENGL_ES_API);
+                Egl::config *egl_config);
 
     ~XdgTopLevel();
 
