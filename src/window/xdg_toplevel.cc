@@ -60,8 +60,8 @@ XdgTopLevel::XdgTopLevel(
         exit(EXIT_FAILURE);
     }
 
-    set_window_width(width);
-    set_window_height(height);
+    set_width(width);
+    set_height(height);
 
     auto surface = get_surface();
 

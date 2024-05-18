@@ -42,9 +42,13 @@ Window::Window(WindowManager *wm,
           runtime_mode_(WINDOW_RUNTIME_MODE_FEEDBACK),
           outputs_(wm->get_outputs()),
           valid_(true),
-          logical_size_{.width = width, .height = height},
-          buffer_size_{.width = width, .height = height},
-          window_size_{.width = buffer_size_.width, .height = buffer_size_.height},
+          extents_({
+                           .init = {.width = width, .height = height},
+                           .max = {.width = INT32_MAX, .height = INT32_MAX},
+                           .buffer = {.width = width, .height = height},
+                           .window = {.width = width, .height = height},
+                           .logical = {.width = width, .height = height},
+                   }),
           needs_buffer_geometry_update_(false),
           buffer_count_(buffer_count),
           buffer_format_(buffer_format) {
@@ -164,15 +168,15 @@ void Window::update_buffer_geometry() {
         case WL_OUTPUT_TRANSFORM_180:
         case WL_OUTPUT_TRANSFORM_FLIPPED:
         case WL_OUTPUT_TRANSFORM_FLIPPED_180:
-            new_buffer_size.width = logical_size_.width;
-            new_buffer_size.height = logical_size_.height;
+            new_buffer_size.width = extents_.logical.width;
+            new_buffer_size.height = extents_.logical.height;
             break;
         case WL_OUTPUT_TRANSFORM_90:
         case WL_OUTPUT_TRANSFORM_270:
         case WL_OUTPUT_TRANSFORM_FLIPPED_90:
         case WL_OUTPUT_TRANSFORM_FLIPPED_270:
-            new_buffer_size.width = logical_size_.height;
-            new_buffer_size.height = logical_size_.width;
+            new_buffer_size.width = extents_.logical.height;
+            new_buffer_size.height = extents_.logical.width;
             break;
     }
 
@@ -211,21 +215,21 @@ void Window::update_buffer_geometry() {
         new_buffer_size.height = new_buffer_size_min;
 
         new_viewport_dest_size_min =
-                std::min(logical_size_.width, logical_size_.height);
+                std::min(extents_.logical.width, extents_.logical.height);
         new_viewport_dest_size.width = new_viewport_dest_size_min;
         new_viewport_dest_size.height = new_viewport_dest_size_min;
     } else {
-        new_viewport_dest_size.width = logical_size_.width;
-        new_viewport_dest_size.height = logical_size_.height;
+        new_viewport_dest_size.width = extents_.logical.width;
+        new_viewport_dest_size.height = extents_.logical.height;
     }
 
-    if (buffer_size_.width != new_buffer_size.width ||
-        buffer_size_.height != new_buffer_size.height) {
-        buffer_size_.width = new_buffer_size.width;
-        buffer_size_.height = new_buffer_size.height;
+    if (extents_.buffer.width != new_buffer_size.width ||
+        extents_.buffer.height != new_buffer_size.height) {
+        extents_.buffer.width = new_buffer_size.width;
+        extents_.buffer.height = new_buffer_size.height;
 #if ENABLE_EGL
         if (egl_) {
-            egl_->resize(buffer_size_.width, buffer_size_.height, 0, 0);
+            egl_->resize(extents_.buffer.width, extents_.buffer.height, 0, 0);
         }
 #endif
     }
@@ -383,8 +387,8 @@ void Window::handle_preferred_buffer_transform(void *data,
 void Window::resize(int width, int height) {
 #if ENABLE_EGL
     if (egl_) {
-        logical_size_.width = width;
-        logical_size_.height = height;
+        extents_.logical.width = width;
+        extents_.logical.height = height;
         egl_->resize(width, height, 0, 0);
     }
 #endif
@@ -457,16 +461,16 @@ Buffer *Window::next_buffer() {
         return nullptr;
 
     if (!buffer->get_wl_buffer()) {
-        auto ret = buffer->create_shm_buffer(window_size_.width,
-                                             window_size_.height, buffer_format_);
+        auto ret = buffer->create_shm_buffer(extents_.window.width,
+                                             extents_.window.height, buffer_format_);
 
         if (ret < 0)
             return nullptr;
 
         /* paint the padding */
         memset(buffer->get_shm_data(), 0xff,
-               static_cast<size_t>(window_size_.width) *
-               static_cast<size_t>(window_size_.height) * 4);
+               static_cast<size_t>(extents_.window.width) *
+               static_cast<size_t>(extents_.window.height) * 4);
     }
 
     return buffer;

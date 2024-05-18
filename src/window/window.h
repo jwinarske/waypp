@@ -88,29 +88,25 @@ public:
 
     [[nodiscard]] struct wl_surface *get_surface() const { return wl_surface_; }
 
-    [[nodiscard]] int get_width() const { return logical_size_.width; }
+    [[nodiscard]] int get_width() const { return extents_.logical.width; }
 
-    [[nodiscard]] int get_height() const { return logical_size_.height; }
+    [[nodiscard]] int get_height() const { return extents_.logical.height; }
 
-    void set_max_width(int width) { max_width_ = width; }
+    void set_max_width(int width) { extents_.max.width = width; }
 
-    void set_max_height(int height) { max_height_ = height; }
+    void set_max_height(int height) { extents_.max.height = height; }
 
-    void set_window_width(int width) { window_size_.width = width; }
+    void set_width(int width) { extents_.window.width = width; }
 
-    void set_window_height(int height) { window_size_.height = height; }
+    void set_height(int height) { extents_.window.height = height; }
 
-    void set_init_width(int width) { init_width_ = width; }
+    void set_init_width(int width) { extents_.init.width = width; }
 
-    void set_init_height(int height) { init_height_ = height; }
+    void set_init_height(int height) { extents_.init.height = height; }
 
-    void set_width(int width) { width_ = width; }
+    [[nodiscard]] int get_init_width() const { return extents_.init.width; }
 
-    void set_height(int height) { height_ = height; }
-
-    [[nodiscard]] int get_init_width() const { return init_width_; }
-
-    [[nodiscard]] int get_init_height() const { return init_height_; }
+    [[nodiscard]] int get_init_height() const { return extents_.init.height; }
 
     void set_fullscreen(bool fullscreen) { fullscreen_ = fullscreen; }
 
@@ -126,9 +122,9 @@ public:
         needs_buffer_geometry_update_ = value;
     }
 
-    [[nodiscard]] int32_t get_max_width() const { return max_width_; }
+    [[nodiscard]] int32_t get_max_width() const { return extents_.max.width; }
 
-    [[nodiscard]] int32_t get_max_height() const { return max_height_; }
+    [[nodiscard]] int32_t get_max_height() const { return extents_.max.height; }
 
     [[nodiscard]] bool get_fullscreen() const { return fullscreen_; }
 
@@ -181,6 +177,11 @@ public:
     Window &operator=(const Window &) = delete;
 
 private:
+    struct Extents {
+        int width;
+        int height;
+    };
+
     WindowManager *wm_;
     const std::map<struct wl_output *, std::unique_ptr<Output>> &outputs_;
     struct wp_tearing_control_v1 *tearing_control_{};
@@ -225,29 +226,13 @@ private:
     int buffer_count_;
     uint32_t buffer_format_;
 
-    int init_width_{};
-    int init_height_{};
-
-    int width_{};
-    int height_{};
-
-    int max_width_ = INT32_MAX;
-    int max_height_ = INT32_MAX;
-
     struct {
-        int width;
-        int height;
-    } buffer_size_;
-
-    struct {
-        int width;
-        int height;
-    } window_size_;
-
-    struct {
-        int width;
-        int height;
-    } logical_size_;
+        struct Extents init;
+        struct Extents max;
+        struct Extents buffer;
+        struct Extents window;
+        struct Extents logical;
+    } extents_{};
 
     bool needs_buffer_geometry_update_;
 
