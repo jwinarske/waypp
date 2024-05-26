@@ -61,9 +61,9 @@ public:
     XdgOutput &operator=(const XdgOutput &) = delete;
 
 private:
-    struct zxdg_output_manager_v1 *zxdg_output_manager_v1_;
-
+#if HAS_WAYLAND_PROTOCOL_XDG_OUTPUT_UNSTABLE_V1
     struct zxdg_output_v1 *zxdg_output_v1_;
+#endif
 
     struct {
         struct {

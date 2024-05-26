@@ -353,9 +353,7 @@ void Pointer::set_cursor(uint32_t serial,
 
 std::string Pointer::get_cursor_theme() {
     std::string res;
-    Command::Execute("gsettings get org.gnome.desktop.interface cursor-theme",
-                     res);
-
+    Command::Execute("gsettings get org.gnome.desktop.interface cursor-theme", res);
     if (!res.empty()) {
         // clean up string
         std::string tmp = "\'\n";

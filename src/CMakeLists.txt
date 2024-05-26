@@ -22,12 +22,10 @@ if (ENABLE_EGL)
 endif ()
 
 set(WINDOW_MANAGER_SRC
-        window_manager/agl_shell.cc
         window_manager/output.cc
         window_manager/registrar.cc
         window_manager/weston-capture.cc
         window_manager/window_manager.cc
-        window_manager/xdg_output.cc
 )
 
 set(SEAT_SRC
@@ -65,7 +63,9 @@ endif ()
 if (ENABLE_XDG_CLIENT)
     target_sources(waypp PRIVATE
             window/xdg_toplevel.cc
-            window_manager/xdg_window_manager.cc)
+            window_manager/xdg_output.cc
+            window_manager/xdg_window_manager.cc
+    )
 endif ()
 if (ENABLE_AGL_CLIENT)
     target_sources(waypp PRIVATE window_manager/agl_shell.cc)

@@ -25,17 +25,26 @@ static constexpr uint32_t kWlSeatMinVersion = UINT32_C(8);
 static constexpr uint32_t kWlOutputMinVersion = UINT32_C(4);
 static constexpr uint32_t kPresentationTimeMinVersion = UINT32_C(1);
 
-static constexpr uint32_t kAglShellMinVersion = UINT32_C(11);
 static constexpr uint32_t kXdgWmBaseMinVersion = UINT32_C(6);
+static constexpr uint32_t kXdgActivationV1MinVersion = UINT32_C(1);
+static constexpr uint32_t kXdgOutputManagerMinVersion = UINT32_C(1);
+static constexpr uint32_t kXdgDecorationManagerMinVersion = UINT32_C(1);
+
+static constexpr uint32_t kAglShellMinVersion = UINT32_C(11);
+
 static constexpr uint32_t kIviWmMinVersion = UINT32_C(1);
 static constexpr uint32_t kDrmLeaseDeviceV1MinVersion = UINT32_C(1);
 
-static constexpr uint32_t kXdgOutputManagerMinVersion = UINT32_C(1);
 static constexpr uint32_t kViewporterMinVersion = UINT32_C(1);
 static constexpr uint32_t kTearingControlManagerMinVersion = UINT32_C(1);
 static constexpr uint32_t kFractionalScaleManagerMinVersion = UINT32_C(1);
-static constexpr uint32_t kXdgDecorationManagerMinVersion = UINT32_C(1);
 static constexpr uint32_t kWestonCaptureV1MinVersion = UINT32_C(1);
+static constexpr uint32_t kIdleInhibitManagerV1MinVersion = UINT32_C(1);
 
+static constexpr uint32_t kPointerGesturesV1MinVersion = UINT32_C(3);
+static constexpr uint32_t kPointerConstraintsV1MinVersion = UINT32_C(1);
+static constexpr uint32_t kRelativePointerManagerV1MinVersion = UINT32_C(1);
+
+static constexpr uint32_t kPrimarySelectionDeviceManagerV1MinVersion = UINT32_C(1);
 
 #endif // INCLUDE_CONFIG_H_
