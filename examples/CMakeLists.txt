@@ -43,6 +43,11 @@ if (ENABLE_EGL)
 endif ()
 
 #
+# view-manager
+#
+add_subdirectory(view_manager)
+
+#
 # simple-shm
 #
 add_executable(simple-shm simple-shm.cc)
