@@ -88,6 +88,38 @@ Registrar::Registrar(struct wl_display *wl_display,
             {zxdg_output_manager_v1_interface.name,
              handle_interface_xdg_output_unstable_v1}
 #endif
+#if HAS_WAYLAND_PROTOCOL_IDLE_INHIBIT_UNSTABLE_V1
+            ,
+            {zwp_idle_inhibit_manager_v1_interface.name,
+             handle_interface_zwp_idle_inhibit_manager_v1}
+#endif
+#if HAS_WAYLAND_PROTOCOL_XDG_ACTIVATION_V1
+            ,
+            {xdg_activation_v1_interface.name,
+             handle_interface_xdg_activation_v1}
+#endif
+#if HAS_WAYLAND_PROTOCOL_POINTER_GESTURES_UNSTABLE_V1
+            ,
+            {zwp_pointer_gestures_v1_interface.name,
+             handle_interface_zwp_pointer_gestures_v1}
+#endif
+
+#if HAS_WAYLAND_PROTOCOL_POINTER_CONSTRAINTS_UNSTABLE_V1
+            ,
+            {zwp_pointer_constraints_v1_interface.name,
+             handle_interface_zwp_pointer_constraints_v1}
+#endif
+
+#if HAS_WAYLAND_PROTOCOL_RELATIVE_POINTER_UNSTABLE_V1
+            ,
+            {zwp_relative_pointer_manager_v1_interface.name,
+             handle_interface_zwp_relative_pointer_manager_v1}
+#endif
+#if HAS_WAYLAND_PROTOCOL_PRIMARY_SELECTION_UNSTABLE_V1
+            ,
+            {zwp_primary_selection_device_manager_v1_interface.name,
+             handle_interface_zwp_primary_selection_device_manager_v1}
+#endif
     };
 
     /// Add external interfaces
@@ -142,28 +174,49 @@ Registrar::~Registrar() {
         zxdg_toplevel_decoration_v1_destroy(zxdg_toplevel_decoration_v1_);
     }
 #endif
-
 #if HAS_WAYLAND_PROTOCOL_XDG_DECORATION_UNSTABLE_V1
     if (zxdg_decoration_manager_v1_) {
         zxdg_decoration_manager_v1_destroy(zxdg_decoration_manager_v1_);
     }
 #endif
-
 #if HAS_WAYLAND_PROTOCOL_TEARING_CONTROL_V1
     if (wp_tearing_control_manager_) {
         wp_tearing_control_manager_v1_destroy(wp_tearing_control_manager_);
     }
 #endif
-
 #if HAS_WAYLAND_PROTOCOL_VIEWPORTER
     if (wp_viewporter_) {
         wp_viewporter_destroy(wp_viewporter_);
     }
 #endif
-
 #if HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1
     if (fractional_scale_manager_) {
         wp_fractional_scale_manager_v1_destroy(fractional_scale_manager_);
+    }
+#endif
+#if HAS_WAYLAND_PROTOCOL_IDLE_INHIBIT_UNSTABLE_V1
+    if (zwp_idle_inhibit_manager_v1_) {
+        zwp_idle_inhibit_manager_v1_destroy(zwp_idle_inhibit_manager_v1_);
+    }
+#endif
+#if HAS_WAYLAND_PROTOCOL_POINTER_GESTURES_UNSTABLE_V1
+    if (zwp_pointer_gestures_v1_) {
+        zwp_pointer_gestures_v1_destroy(zwp_pointer_gestures_v1_);
+    }
+#endif
+#if HAS_WAYLAND_PROTOCOL_POINTER_CONSTRAINTS_UNSTABLE_V1
+    if (zwp_pointer_constraints_v1_) {
+        zwp_pointer_constraints_v1_destroy(zwp_pointer_constraints_v1_);
+    }
+#endif
+#if HAS_WAYLAND_PROTOCOL_RELATIVE_POINTER_UNSTABLE_V1
+    if (zwp_relative_pointer_manager_v1_) {
+        zwp_relative_pointer_manager_v1_destroy(zwp_relative_pointer_manager_v1_);
+    }
+#endif
+#if HAS_WAYLAND_PROTOCOL_PRIMARY_SELECTION_UNSTABLE_V1
+    if (zwp_primary_selection_device_manager_v1_) {
+        zwp_primary_selection_device_manager_v1_destroy(zwp_primary_selection_device_manager_v1_);
     }
 #endif
 
@@ -628,6 +681,36 @@ void Registrar::handle_interface_weston_capture_v1(Registrar *r,
                   weston_capture_v1_get_version(r->weston_capture_v1_));
 }
 
+#if HAS_WAYLAND_PROTOCOL_IDLE_INHIBIT_UNSTABLE_V1
+
+void Registrar::handle_interface_zwp_idle_inhibit_manager_v1(Registrar *r,
+                                                             struct wl_registry *registry,
+                                                             uint32_t name,
+                                                             const char *interface,
+                                                             uint32_t version) {
+    r->zwp_idle_inhibit_manager_v1_ = static_cast<struct zwp_idle_inhibit_manager_v1 *>(
+            wl_registry_bind(registry, name, &zwp_idle_inhibit_manager_v1_interface,
+                             std::min(kIdleInhibitManagerV1MinVersion, version)));
+    spdlog::debug("{}: {}", interface, zwp_idle_inhibit_manager_v1_get_version(r->zwp_idle_inhibit_manager_v1_));
+}
+
+#endif
+
+#if HAS_WAYLAND_PROTOCOL_XDG_ACTIVATION_V1
+
+void Registrar::handle_interface_xdg_activation_v1(Registrar *r,
+                                                   struct wl_registry *registry,
+                                                   uint32_t name,
+                                                   const char *interface,
+                                                   uint32_t version) {
+    r->xdg_activation_v1_ = static_cast<struct xdg_activation_v1 *>(
+            wl_registry_bind(registry, name, &xdg_activation_v1_interface,
+                             std::min(kXdgActivationV1MinVersion, version)));
+    spdlog::debug("{}: {}", interface, xdg_activation_v1_get_version(r->xdg_activation_v1_));
+}
+
+#endif
+
 void Registrar::handle_presentation_clock_id(
         void *data,
         struct wp_presentation *wp_presentation,
@@ -738,4 +821,66 @@ void Registrar::handle_interface_drm_lease_device_v1(
   spdlog::debug("{}: {}", interface,
                 wp_drm_lease_device_v1_get_version(wp_drm_lease_device_v1));
 }
+#endif
+
+#if HAS_WAYLAND_PROTOCOL_POINTER_GESTURES_UNSTABLE_V1
+
+void Registrar::handle_interface_zwp_pointer_gestures_v1(Registrar *r,
+                                                         struct wl_registry *registry,
+                                                         uint32_t name,
+                                                         const char *interface,
+                                                         uint32_t version) {
+    r->zwp_pointer_gestures_v1_ = static_cast<struct zwp_pointer_gestures_v1 *>(
+            wl_registry_bind(registry, name, &zwp_pointer_gestures_v1_interface,
+                             std::min(kPointerGesturesV1MinVersion, version)));
+    spdlog::debug("{}: {}", interface, zwp_pointer_gestures_v1_get_version(r->zwp_pointer_gestures_v1_));
+}
+
+#endif
+
+#if HAS_WAYLAND_PROTOCOL_POINTER_CONSTRAINTS_UNSTABLE_V1
+
+void Registrar::handle_interface_zwp_pointer_constraints_v1(Registrar *r,
+                                                            struct wl_registry *registry,
+                                                            uint32_t name,
+                                                            const char *interface,
+                                                            uint32_t version) {
+    r->zwp_pointer_constraints_v1_ = static_cast<struct zwp_pointer_constraints_v1 *>(
+            wl_registry_bind(registry, name, &zwp_pointer_constraints_v1_interface,
+                             std::min(kPointerConstraintsV1MinVersion, version)));
+    spdlog::debug("{}: {}", interface, zwp_pointer_constraints_v1_get_version(r->zwp_pointer_constraints_v1_));
+}
+
+#endif
+
+#if HAS_WAYLAND_PROTOCOL_RELATIVE_POINTER_UNSTABLE_V1
+
+void Registrar::handle_interface_zwp_relative_pointer_manager_v1(Registrar *r,
+                                                                 struct wl_registry *registry,
+                                                                 uint32_t name,
+                                                                 const char *interface,
+                                                                 uint32_t version) {
+    r->zwp_relative_pointer_manager_v1_ = static_cast<struct zwp_relative_pointer_manager_v1 *>(
+            wl_registry_bind(registry, name, &zwp_relative_pointer_manager_v1_interface,
+                             std::min(kRelativePointerManagerV1MinVersion, version)));
+    spdlog::debug("{}: {}", interface,
+                  zwp_relative_pointer_manager_v1_get_version(r->zwp_relative_pointer_manager_v1_));
+}
+
+#endif
+
+#if HAS_WAYLAND_PROTOCOL_PRIMARY_SELECTION_UNSTABLE_V1
+
+void Registrar::handle_interface_zwp_primary_selection_device_manager_v1(Registrar *r,
+                                                                         struct wl_registry *registry,
+                                                                         uint32_t name,
+                                                                         const char *interface,
+                                                                         uint32_t version) {
+    r->zwp_primary_selection_device_manager_v1_ = static_cast<struct zwp_primary_selection_device_manager_v1 *>(
+            wl_registry_bind(registry, name, &zwp_primary_selection_device_manager_v1_interface,
+                             std::min(kPrimarySelectionDeviceManagerV1MinVersion, version)));
+    spdlog::debug("{}: {}", interface,
+                  zwp_primary_selection_device_manager_v1_get_version(r->zwp_primary_selection_device_manager_v1_));
+}
+
 #endif

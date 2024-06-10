@@ -19,10 +19,8 @@
 #include "logging.h"
 
 XdgOutput::XdgOutput(struct zxdg_output_manager_v1 *zxdg_output_manager_v1,
-                     struct wl_output *wl_output)
-        : zxdg_output_manager_v1_(zxdg_output_manager_v1) {
-    zxdg_output_v1_ =
-            zxdg_output_manager_v1_get_xdg_output(zxdg_output_manager_v1, wl_output);
+                     struct wl_output *wl_output) {
+    zxdg_output_v1_ = zxdg_output_manager_v1_get_xdg_output(zxdg_output_manager_v1, wl_output);
     zxdg_output_v1_add_listener(zxdg_output_v1_, &listener_, this);
 }
 

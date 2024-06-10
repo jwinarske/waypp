@@ -37,8 +37,15 @@
 #cmakedefine01 HAS_WAYLAND_PROTOCOL_TEARING_CONTROL_V1
 #cmakedefine01 HAS_WAYLAND_PROTOCOL_XDG_OUTPUT_UNSTABLE_V1
 #cmakedefine01 HAS_WAYLAND_PROTOCOL_XDG_DECORATION_UNSTABLE_V1
-#cmakedefine01 HAS_WAYLAND_PROTOCOL_LINUX_DMABUF_V1GLOBAL
+#cmakedefine01 HAS_WAYLAND_PROTOCOL_XDG_ACTIVATION_V1
+#cmakedefine01 HAS_WAYLAND_PROTOCOL_LINUX_DMABUF_V1
 #cmakedefine01 HAS_WAYLAND_PROTOCOL_WESTON_OUTPUT_CAPTURE
+#cmakedefine01 HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
+#cmakedefine01 HAS_WAYLAND_PROTOCOL_POINTER_CONSTRAINTS_UNSTABLE_V1
+#cmakedefine01 HAS_WAYLAND_PROTOCOL_POINTER_GESTURES_UNSTABLE_V1
+#cmakedefine01 HAS_WAYLAND_PROTOCOL_RELATIVE_POINTER_UNSTABLE_V1
+#cmakedefine01 HAS_WAYLAND_PROTOCOL_IDLE_INHIBIT_UNSTABLE_V1
+#cmakedefine01 HAS_WAYLAND_PROTOCOL_PRIMARY_SELECTION_UNSTABLE_V1
 
 #cmakedefine01 HAVE_MEMFD_CREATE
 #cmakedefine01 HAVE_POSIX_FALLOCATE
@@ -66,45 +73,52 @@
 
 #if HAS_WAYLAND_PROTOCOL_XDG_DECORATION_UNSTABLE_V1
 #include "xdg-decoration-unstable-v1-client-protocol.h"
-#else
-struct zxdg_decoration_manager_v1;
-struct zxdg_toplevel_decoration_v1;
 #endif
 
 #include "presentation-time-client-protocol.h"
 
 #if HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1
 #include "fractional-scale-v1-client-protocol.h"
-#else
-struct wp_fractional_scale_manager_v1;
-struct wp_fractional_scale_v1;
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_TEARING_CONTROL_V1
 #include "tearing-control-v1-client-protocol.h"
-#else
-struct wp_tearing_control_manager_v1;
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_VIEWPORTER
 #include "viewporter-client-protocol.h"
-#else
-struct wp_viewporter;
-struct wp_viewport;
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_XDG_OUTPUT_UNSTABLE_V1
 #include "xdg-output-unstable-v1-client-protocol.h"
-#else
-struct zxdg_output_manager_v1;
-struct zxdg_output_v1;
 #endif
 
+#if HAS_WAYLAND_PROTOCOL_XDG_ACTIVATION_V1
+#include "xdg-activation-v1-client-protocol.h"
+#endif
+#if HAS_WAYLAND_PROTOCOL_LINUX_DMABUF_V1
+#include "linux-dmabuf-v1-client-protocol.h"
+#endif
 #if HAS_WAYLAND_PROTOCOL_WESTON_OUTPUT_CAPTURE
 #include "weston-output-capture-client-protocol.h"
-#else
-struct weston_capture_source_v1;
-struct weston_capture_v1;
+#endif
+#if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
+#include "cursor-shape-v1-client-protocol.h"
+#endif
+#if HAS_WAYLAND_PROTOCOL_POINTER_CONSTRAINTS_UNSTABLE_V1
+#include "pointer-constraints-unstable-v1-client-protocol.h"
+#endif
+#if HAS_WAYLAND_PROTOCOL_POINTER_GESTURES_UNSTABLE_V1
+#include "pointer-gestures-unstable-v1-client-protocol.h"
+#endif
+#if HAS_WAYLAND_PROTOCOL_RELATIVE_POINTER_UNSTABLE_V1
+#include "relative-pointer-unstable-v1-client-protocol.h"
+#endif
+#if HAS_WAYLAND_PROTOCOL_IDLE_INHIBIT_UNSTABLE_V1
+#include "idle-inhibit-unstable-v1-client-protocol.h"
+#endif
+#if HAS_WAYLAND_PROTOCOL_PRIMARY_SELECTION_UNSTABLE_V1
+#include "primary-selection-unstable-v1-client-protocol.h"
 #endif
 
 #endif //INCLUDE_PROTOCOLS_H_
