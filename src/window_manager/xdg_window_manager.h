@@ -47,6 +47,7 @@ public:
             const char *app_id,
             int width,
             int height,
+            int resize_margin,
             int buffer_count,
             uint32_t buffer_format,
             bool fullscreen,

@@ -27,6 +27,7 @@
 #include <GLES2/gl2.h>
 #include <sys/time.h>
 #include <cxxopts.hpp>
+#include <linux/input.h>
 
 #include "window/xdg_toplevel.h"
 
@@ -35,6 +36,8 @@
 static volatile bool running = true;
 
 volatile bool scene_initialized = false;
+
+static constexpr int kResizeMargin = 12;
 
 /// EGL Context Attribute configuration
 static constexpr std::array<EGLint, 3> kEglContextAttribs = {
@@ -81,6 +84,9 @@ struct {
     GLuint pos;
     GLuint col;
 } gl;
+
+std::shared_ptr<XdgTopLevel> toplevel_;
+Seat *seat_{};
 
 /**
  * @brief Signal handler function to handle signals.
@@ -385,7 +391,7 @@ static void draw_frame(void *userdata, uint32_t /* time */) {
     frames++;
 }
 
-class KeyboardHandler : public SeatObserver, public KeyboardObserver {
+class Observer : public SeatObserver, public KeyboardObserver, public PointerObserver {
 public:
     void notify_seat_capabilities(Seat *seat,
                                   wl_seat * /* seat */,
@@ -394,6 +400,10 @@ public:
             auto keyboard = seat->get_keyboard();
             if (keyboard.has_value()) {
                 keyboard.value()->register_observer(this);
+            }
+            auto pointer = seat->get_pointer();
+            if (pointer.has_value()) {
+                pointer.value()->register_observer(this);
             }
         }
     }
@@ -445,6 +455,83 @@ public:
                 serial, time, xkb_scancode, key_repeats,
                 state == KeyState::KEY_STATE_PRESS ? "press" : "release",
                 xdg_key_symbol_count, xdg_key_symbols[0]);
+    }
+
+    void notify_pointer_enter(Pointer * /* pointer */,
+                              wl_pointer * /* pointer */,
+                              uint32_t serial, wl_surface *surface, double sx, double sy) override {
+        spdlog::info("Pointer Enter: serial: {}, surface: {}, x: {}, y: {}", serial,
+                     fmt::ptr(surface), sx, sy);
+    }
+
+    void notify_pointer_leave(Pointer * /* pointer */,
+                              wl_pointer * /* pointer */,
+                              uint32_t serial,
+                              wl_surface *surface) override {
+        spdlog::info("Pointer Leave: serial: {}, surface: {}", serial,
+                     fmt::ptr(surface));
+    }
+
+    void notify_pointer_motion(Pointer * /* pointer  */,
+                               wl_pointer * /* pointer */,
+                               uint32_t time,
+                               double sx,
+                               double sy) override {
+        spdlog::info("Pointer: time: {}, x: {}, y: {}", time, sx, sy);
+        if (toplevel_->is_resizing()) {
+            spdlog::info("Resizing: x: {}, y: {}", sx, sy);
+        }
+    }
+
+    void notify_pointer_button(Pointer *pointer,
+                               wl_pointer * /* pointer  */,
+                               uint32_t serial,
+                               uint32_t time,
+                               uint32_t button,
+                               uint32_t state) override {
+        spdlog::info("Pointer Button: pointer: {}, time: {}, button: {}, state: {}",
+                     serial, time, button, state);
+        if (button == BTN_LEFT && state == WL_POINTER_BUTTON_STATE_PRESSED) {
+            auto edge = toplevel_->check_edge_resize(pointer->get_xy());
+            if (edge != XDG_TOPLEVEL_RESIZE_EDGE_NONE) {
+                toplevel_->resize(seat_->get_seat(), serial, edge);
+            }
+        }
+    }
+
+    void notify_pointer_axis(Pointer * /* pointer */,
+                             wl_pointer * /* pointer */,
+                             uint32_t time,
+                             uint32_t axis,
+                             double value) override {
+        spdlog::info("Pointer Axis: time: {}, axis: {}, value: {}", time, axis,
+                     value);
+    }
+
+    void notify_pointer_frame(Pointer * /* pointer */,
+                              wl_pointer * /* pointer */) override {
+        spdlog::info("Pointer Frame");
+    };
+
+    void notify_pointer_axis_source(Pointer * /* pointer */,
+                                    wl_pointer * /* pointer */,
+                                    uint32_t axis_source) override {
+        spdlog::info("Pointer Axis Source: axis_source: {}", axis_source);
+    };
+
+    void notify_pointer_axis_stop(Pointer * /* pointer */,
+                                  wl_pointer * /* pointer */,
+                                  uint32_t /* time */,
+                                  uint32_t axis) override {
+        spdlog::info("Pointer Axis Stop: axis: {}", axis);
+    };
+
+    void notify_pointer_axis_discrete(Pointer * /* pointer */,
+                                      wl_pointer * /*pointer */,
+                                      uint32_t axis,
+                                      int32_t discrete) override {
+        spdlog::info("Pointer Axis Discrete: axis: {}, discrete: {}", axis,
+                     discrete);
     }
 };
 
@@ -519,15 +606,13 @@ int main(int argc, char **argv) {
         kEglConfigAttribs[9] = 0;
     }
 
-    auto keyboard_handler = std::make_unique<KeyboardHandler>();
 
     auto wm = std::make_shared<XdgWindowManager>(display);
+    auto observer = std::make_unique<Observer>();
     auto seat = wm->get_seat();
     if (seat.has_value()) {
-        auto keyboard = seat.value()->get_keyboard();
-        if (keyboard.has_value()) {
-            keyboard.value()->register_observer(keyboard_handler.get());
-        }
+        seat_ = seat.value();
+        seat_->register_observer(observer.get());
     }
 
     Egl::config egl_config{};
@@ -539,17 +624,17 @@ int main(int argc, char **argv) {
     egl_config.swap_interval = config.interval;
     egl_config.type = Egl::OPENGL_ES_API;
 
-    auto top_level = wm->create_top_level(
+    toplevel_ = wm->create_top_level(
             "simple-egl", "org.freedesktop.gitlab.jwinarske.waypp.simple_egl",
-            config.width, config.height, 0, 0, config.fullscreen, config.maximized,
+            config.width, config.height, kResizeMargin, 0, 0, config.fullscreen, config.maximized,
             config.fullscreen_ratio, config.tearing, draw_frame, &egl_config);
 
-    top_level->start_frame_callbacks();
+    toplevel_->start_frame_callbacks();
 
-    while (running && top_level->is_valid() && wm->display_dispatch() != -1) {
+    while (running && toplevel_->is_valid() && wm->display_dispatch() != -1) {
     }
 
-    top_level.reset();
+    toplevel_.reset();
     wm.reset();
 
     wl_display_flush(display);

@@ -32,7 +32,8 @@ ViewWayland::ViewWayland(std::shared_ptr<XdgWindowManager> xdg_window_manager, c
     xdg_wm_ = std::move(xdg_window_manager);
 
     if (toplevel) {
-        toplevel_ = xdg_wm_->create_top_level(app_title, app_id, width, height, 2, WL_SHM_FORMAT_XRGB8888, fullscreen,
+        toplevel_ = xdg_wm_->create_top_level(app_title, app_id, width, height, kResizeMargin, 2,
+                                              WL_SHM_FORMAT_XRGB8888, fullscreen,
                                               maximized, fullscreen_ratio, tearing, draw_frame);
         spdlog::debug("XDG Window Version: {}", toplevel_->get_version());
 
@@ -59,7 +60,6 @@ void ViewWayland::toggle_fullscreen() {
 }
 
 void ViewWayland::create_random_color_grid(uint32_t width, uint32_t height, uint32_t grid_size, uint32_t *buffer) {
-
     uint32_t grid_width = width / grid_size;
     uint32_t grid_height = height / grid_size;
 
@@ -122,4 +122,12 @@ void ViewWayland::draw_frame(void *data, const uint32_t /* time */) {
     wl_surface_damage(window->get_surface(), 0, 0, window->get_width(), window->get_height());
 
     buffer->set_busy();
+}
+
+uint32_t ViewWayland::check_edge_resize(std::pair<double, double> xy) {
+    return toplevel_->check_edge_resize(std::move(xy));
+}
+
+void ViewWayland::resize(struct wl_seat *seat, uint32_t serial, uint32_t edges) {
+    toplevel_->resize(seat, serial, edges);
 }

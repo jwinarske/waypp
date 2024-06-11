@@ -53,6 +53,7 @@ public:
     void toggle_fullscreen() { toplevel_->set_fullscreen(); }
 
 private:
+    static constexpr int kResizeMargin = 12;
     struct wl_display *display_;
     std::unique_ptr<Logging> logging_;
     std::shared_ptr<XdgWindowManager> wm_;
@@ -121,7 +122,7 @@ private:
                              wl_pointer *,
                              uint32_t,
                              uint32_t,
-                             wl_fixed_t) override;
+                             double) override;
 
     void notify_pointer_frame(Pointer *, wl_pointer *) override;
 

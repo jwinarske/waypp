@@ -41,6 +41,8 @@ struct Configuration {
     bool tearing;
 };
 
+static constexpr int kResizeMargin = 12;
+
 static volatile bool running = true;
 
 /**
@@ -187,7 +189,7 @@ int main(int argc, char **argv) {
     auto top_level = wm->create_top_level(
             "simple-ext-protocol",
             "jwinarske.waypp.simple_ext_protocol",
-            config.width, config.height, 2, WL_SHM_FORMAT_XRGB8888, config.fullscreen,
+            config.width, config.height, kResizeMargin, 2, WL_SHM_FORMAT_XRGB8888, config.fullscreen,
             config.maximized, config.fullscreen_ratio, config.tearing, draw_frame);
     spdlog::info("XDG Window Version: {}", top_level->get_version());
 

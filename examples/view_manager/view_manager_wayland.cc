@@ -41,7 +41,8 @@ ViewManagerWayland::ViewManagerWayland(const ViewManager::Configuration &config)
     wm_ = std::make_shared<XdgWindowManager>(display_, config.disable_cursor);
     auto seat = wm_->get_seat();
     if (seat.has_value()) {
-        seat.value()->register_observer(this, this);
+        seat_ = seat.value();
+        seat_->register_observer(this);
     }
 
     spdlog::debug("XDG Window Manager Version: {}", wm_->get_version());
@@ -92,11 +93,9 @@ void ViewManagerWayland::notify_seat_capabilities(Seat *seat,
                                                   uint32_t /* caps */) {
     if (seat) {
         auto keyboard = seat->get_keyboard();
-
         if (keyboard.has_value()) {
             keyboard.value()->register_observer(this, this);
         }
-
         auto pointer = seat->get_pointer();
         if (pointer.has_value()) {
             pointer.value()->register_observer(this, this);
@@ -176,28 +175,19 @@ void ViewManagerWayland::notify_pointer_motion(Pointer * /* pointer */,
                                                uint32_t /* time */,
                                                double /* sx */,
                                                double /* sy */) {
-
-    //auto view_manager = static_cast<ViewManager *>(pointer->get_user_data());
 }
 
-void ViewManagerWayland::notify_pointer_button(Pointer * /* pointer */,
+void ViewManagerWayland::notify_pointer_button(Pointer * pointer,
                                                wl_pointer * /* pointer  */,
-                                               uint32_t /* serial */,
+                                               uint32_t serial,
                                                uint32_t /* time */,
                                                uint32_t button,
-                                               uint32_t /* state */) {
-
-    //auto view_manager = static_cast<ViewManager *>(pointer->get_user_data());
-
-    switch (button) {
-        case BTN_LEFT:
-            break;
-        case BTN_MIDDLE:
-            break;
-        case BTN_RIGHT:
-            break;
-        default:
-            break;
+                                               uint32_t state) {
+    if (button == BTN_LEFT && state == WL_POINTER_BUTTON_STATE_PRESSED) {
+        uint32_t edge = views_.front()->check_edge_resize(pointer->get_xy());
+        if (edge != XDG_TOPLEVEL_RESIZE_EDGE_NONE) {
+            views_.front()->resize(seat_->get_seat(), serial, edge);
+        }
     }
 }
 
@@ -205,7 +195,7 @@ void ViewManagerWayland::notify_pointer_axis(Pointer * /* pointer */,
                                              wl_pointer * /* pointer */,
                                              uint32_t /* time */,
                                              uint32_t /* axis */,
-                                             wl_fixed_t /* value */) {
+                                             double /* value */) {
 }
 
 void ViewManagerWayland::notify_pointer_frame(Pointer * /* pointer */,

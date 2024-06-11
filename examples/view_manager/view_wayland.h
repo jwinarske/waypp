@@ -45,12 +45,17 @@ public:
 
     void toggle_fullscreen() override;
 
+    uint32_t check_edge_resize(std::pair<double, double> xy) override;
+
+    void resize(struct wl_seat *seat, uint32_t serial, uint32_t edges) override;
+
     // Disallow copy and assign.
     ViewWayland(const ViewWayland &) = delete;
 
     ViewWayland &operator=(const ViewWayland &) = delete;
 
 private:
+    static constexpr int kResizeMargin = 12;
     std::shared_ptr<XdgTopLevel> toplevel_{};
     std::shared_ptr<XdgWindowManager> xdg_wm_;
 

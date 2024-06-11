@@ -38,6 +38,8 @@ static volatile bool running = true;
 
 volatile bool scene_initialized = false;
 
+static constexpr int kResizeMargin = 12;
+
 /// EGL Context Attribute configuration
 std::array<EGLint, 7> kEglContextAttribs = {
         {
@@ -263,7 +265,7 @@ static void draw_frame(void *userdata, uint32_t /* time */) {
     window->swap_buffers();
 }
 
-class KeyboardHandler : public SeatObserver, public KeyboardObserver {
+class EventObserver : public SeatObserver, public KeyboardObserver {
 public:
     void notify_seat_capabilities(Seat *seat,
                                   wl_seat * /* seat */,
@@ -383,15 +385,11 @@ int main(int argc, char **argv) {
         kEglConfigAttribs[15] = 0;
     }
 
-    auto keyboard_handler = std::make_unique<KeyboardHandler>();
-
     auto wm = std::make_shared<XdgWindowManager>(display);
+    auto event_observer = std::make_unique<EventObserver>();
     auto seat = wm->get_seat();
     if (seat.has_value()) {
-        auto keyboard = seat.value()->get_keyboard();
-        if (keyboard.has_value()) {
-            keyboard.value()->register_observer(keyboard_handler.get());
-        }
+        seat.value()->register_observer(event_observer.get());
     }
 
     Egl::config egl_config{};
@@ -405,7 +403,7 @@ int main(int argc, char **argv) {
 
     auto top_level = wm->create_top_level(
             "simple-egl", "org.freedesktop.gitlab.jwinarske.waypp.gl-shadertoy",
-            config.width, config.height, 0, 0, config.fullscreen, config.maximized,
+            config.width, config.height, kResizeMargin, 0, 0, config.fullscreen, config.maximized,
             config.fullscreen_ratio, config.tearing, draw_frame, &egl_config);
 
     top_level->start_frame_callbacks();

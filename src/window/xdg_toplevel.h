@@ -40,6 +40,7 @@ public:
                 const char *app_id,
                 int width,
                 int height,
+                int resize_margin,
                 int buffer_count,
                 uint32_t buffer_format,
                 bool fullscreen,
@@ -67,7 +68,9 @@ public:
         xdg_toplevel_set_title(xdg_toplevel_, title);
     }
 
-    void set_fullscreen() { xdg_toplevel_set_fullscreen(xdg_toplevel_, nullptr); }
+    void set_fullscreen() {
+        xdg_toplevel_set_fullscreen(xdg_toplevel_, nullptr);
+    }
 
     void set_maximize() { xdg_toplevel_set_maximized(xdg_toplevel_); }
 
@@ -81,11 +84,15 @@ public:
         xdg_toplevel_set_max_size(xdg_toplevel_, width, height);
     }
 
-    void resize(int width, int height);
+    void resize(struct wl_seat *seat, uint32_t serial, uint32_t edges);
 
     void set_surface_damage(int x, int y, int width, int height) {
         wl_surface_damage(get_surface(), x, y, width, height);
     }
+
+    enum xdg_toplevel_resize_edge check_edge_resize(std::pair<double, double> xy);
+
+    bool is_resizing() const { return get_resizing(); }
 
     // Disallow copy and assign.
     XdgTopLevel(const XdgTopLevel &) = delete;
@@ -99,6 +106,9 @@ private:
 
     std::string title_;
     std::string app_id_;
+
+    bool prev_state_[6]{false};
+    int resize_margin_;
 
     uint32_t configure_serial_{};
     volatile bool wait_for_configure_;

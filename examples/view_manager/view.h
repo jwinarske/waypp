@@ -40,6 +40,10 @@ public:
 
     virtual void toggle_fullscreen() = 0;
 
+    virtual uint32_t check_edge_resize(std::pair<double, double> xy) = 0;
+
+    virtual void resize(struct wl_seat *seat, uint32_t serial, uint32_t edges) = 0;
+
     // Disallow copy and assign.
     View(const View &) = delete;
 

@@ -23,6 +23,7 @@
 
 #include "command.h"
 #include "logging.h"
+#include "wayland-protocols.h"
 
 /**
  * @brief Pointer class represents a Wayland pointer device.
@@ -101,10 +102,11 @@ void Pointer::handle_enter(void *data,
 
     SPDLOG_TRACE("Pointer::handle_enter");
 
+    obj->sx_ = wl_fixed_to_double(sx);
+    obj->sy_ = wl_fixed_to_double(sy);
+
     for (auto observer: obj->observers_) {
-        observer->notify_pointer_enter(obj, pointer, serial, surface,
-                                       wl_fixed_to_double(sx),
-                                       wl_fixed_to_double(sy));
+        observer->notify_pointer_enter(obj, pointer, serial, surface, obj->sx_, obj->sy_);
     }
 }
 
@@ -167,8 +169,11 @@ void Pointer::handle_motion(void *data,
 
     SPDLOG_TRACE("Pointer::handle_motion");
 
+    obj->sx_ = wl_fixed_to_double(sx);
+    obj->sy_ = wl_fixed_to_double(sy);
+
     for (auto observer: obj->observers_) {
-        observer->notify_pointer_motion(obj, pointer, time, sx, sy);
+        observer->notify_pointer_motion(obj, pointer, time, obj->sx_, obj->sy_);
     }
 }
 
@@ -235,7 +240,7 @@ void Pointer::handle_axis(void *data,
     SPDLOG_TRACE("Pointer::handle_axis");
 
     for (auto observer: obj->observers_) {
-        observer->notify_pointer_axis(obj, pointer, time, axis, value);
+        observer->notify_pointer_axis(obj, pointer, time, axis, wl_fixed_to_double(value));
     }
 }
 

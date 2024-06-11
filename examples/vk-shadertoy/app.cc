@@ -51,7 +51,7 @@ App::App(const Configuration &config) : logging_(std::make_unique<Logging>()) {
     spdlog::debug("XDG Window Manager Version: {}", wm_->get_version());
 
     toplevel_ = wm_->create_top_level(
-            kAppTitle, kAppId, config.width, config.height, 0, 0, config.fullscreen,
+            kAppTitle, kAppId, config.width, config.height, kResizeMargin, 0, 0, config.fullscreen,
             config.maximized, true, config.tearing, draw_frame);
     spdlog::debug("XDG Window Version: {}", toplevel_->get_version());
 
@@ -245,7 +245,7 @@ void App::notify_pointer_axis(Pointer * /* pointer */,
                               wl_pointer * /* pointer */,
                               uint32_t /* time */,
                               uint32_t /* axis */,
-                              wl_fixed_t /* value */) {
+                              double /* value */) {
 }
 
 void App::notify_pointer_frame(Pointer * /* pointer */,

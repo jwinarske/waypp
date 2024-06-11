@@ -151,6 +151,7 @@ void Window::update_buffer_geometry() {
         return;
     }
 
+    SPDLOG_DEBUG("update_buffer_geometry");
     enum wl_output_transform new_buffer_transform;
     struct {
         int width;
@@ -233,6 +234,7 @@ void Window::update_buffer_geometry() {
         extents_.buffer.height = new_buffer_size.height;
 #if ENABLE_EGL
         if (egl_) {
+            SPDLOG_DEBUG("egl_->resize({}, {}, 0, 0)", extents_.buffer.width, extents_.buffer.height);
             egl_->resize(extents_.buffer.width, extents_.buffer.height, 0, 0);
         }
 #endif

@@ -58,7 +58,7 @@ public:
                                      struct wl_pointer *wl_pointer,
                                      uint32_t time,
                                      uint32_t axis,
-                                     wl_fixed_t value) = 0;
+                                     double value) = 0;
 
     virtual void notify_pointer_frame(Pointer *pointer,
                                       struct wl_pointer *wl_pointer) = 0;
@@ -80,6 +80,8 @@ public:
 
 class Pointer {
 public:
+    static constexpr int kResizeMargin = 10;
+
     struct event_mask {
         bool enabled;
         bool all;
@@ -127,6 +129,8 @@ public:
 
     void set_event_mask(struct event_mask &event_mask);
 
+    std::pair<double, double> get_xy() const { return {sx_, sy_}; }
+
     // Disallow copy and assign.
     Pointer(const Pointer &) = delete;
 
@@ -141,6 +145,13 @@ private:
     bool disable_cursor_;
     int size_;
     void *user_data_{};
+
+    double sx_{};
+    double sy_{};
+
+#if ENABLE_XDG_CLIENT
+    enum xdg_toplevel_resize_edge prev_resize_edge_ = XDG_TOPLEVEL_RESIZE_EDGE_NONE;
+#endif
 
     struct event_mask event_mask_{};
 

@@ -96,9 +96,9 @@ public:
 
     void set_max_height(int height) { extents_.max.height = height; }
 
-    void set_width(int width) { extents_.window.width = width; }
+    void set_width(int width) { extents_.logical.width = width; }
 
-    void set_height(int height) { extents_.window.height = height; }
+    void set_height(int height) { extents_.logical.height = height; }
 
     void set_init_width(int width) { extents_.init.width = width; }
 
@@ -112,7 +112,9 @@ public:
 
     void set_maximized(bool maximized) { maximized_ = maximized; }
 
-    void set_resize(bool resize) { resize_ = resize; }
+    void set_resizing(bool resizing) { resizing_ = resizing; }
+
+    bool get_resizing() const { return resizing_; }
 
     void set_activated(bool activated) { activated_ = activated; }
 
@@ -212,7 +214,7 @@ private:
     bool fullscreen_ratio_;
     bool valid_{};
 
-    bool resize_{};
+    bool resizing_{};
     bool activated_{};
 
     int delay_ = 0;

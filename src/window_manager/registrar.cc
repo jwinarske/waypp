@@ -277,9 +277,7 @@ enum wl_output_transform Registrar::get_output_buffer_transform(
         struct wl_output *wl_output) {
     for (auto &output: outputs_) {
         if (wl_output == output.first) {
-            output.second->print();
             return output.second->get_transform();
-            break;
         }
     }
     return WL_OUTPUT_TRANSFORM_NORMAL;

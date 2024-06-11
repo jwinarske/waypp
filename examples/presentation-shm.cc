@@ -44,6 +44,8 @@ static constexpr char run_mode_name[3][16] = {
         "low-lat present",
 };
 
+static constexpr int kResizeMargin = 12;
+
 struct Configuration {
     int width;
     int height;
@@ -306,7 +308,7 @@ int main(int argc, char **argv) {
     ctx->toplevel = ctx->wm->create_top_level(
             title.str().c_str(),
             "jwinarske.waypp.simple_presentation",
-            ctx->config.width, ctx->config.height, kBufferCount,
+            ctx->config.width, ctx->config.height, kResizeMargin, kBufferCount,
             WL_SHM_FORMAT_XRGB8888, false, false, false, false, redraw_mode_feedback);
     spdlog::info("XDG Window Version: {}", ctx->toplevel->get_version());
 

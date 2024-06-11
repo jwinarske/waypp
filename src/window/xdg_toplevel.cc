@@ -30,6 +30,7 @@ XdgTopLevel::XdgTopLevel(
         const char *app_id,
         int width,
         int height,
+        int resize_margin,
         int buffer_count,
         uint32_t buffer_format,
         bool fullscreen,
@@ -52,7 +53,8 @@ XdgTopLevel::XdgTopLevel(
                  egl_config),
           wm_(wm),
           title_(title),
-          app_id_(app_id) {
+          app_id_(app_id),
+          resize_margin_(resize_margin) {
     auto xdg_wm_base = wm_->get_xdg_wm_base();
     if (!xdg_wm_base) {
         spdlog::critical("xdg_wm_base is not available");
@@ -106,7 +108,9 @@ XdgTopLevel::~XdgTopLevel() {
     }
 }
 
-void XdgTopLevel::resize(int /* width */, int /* height */) {}
+void XdgTopLevel::resize(struct wl_seat *seat, uint32_t serial, uint32_t edges) {
+    xdg_toplevel_resize(xdg_toplevel_, seat, serial, edges);
+}
 
 /**
  * @brief Handles the configure event for xdg_surface.
@@ -155,38 +159,96 @@ void XdgTopLevel::handle_xdg_toplevel_configure(void *data,
         return;
     }
 
-    tl->Window::set_fullscreen(false);
-    tl->set_maximized(false);
-    tl->set_resize(false);
-    tl->set_activated(false);
-
     const uint32_t *state;
     WL_ARRAY_FOR_EACH(state, states, const uint32_t*) {
+        uint32_t idx = *state - 1;
         switch (*state) {
-            case XDG_TOPLEVEL_STATE_FULLSCREEN:
-                SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_FULLSCREEN");
-                tl->Window::set_fullscreen(true);
-                break;
-            case XDG_TOPLEVEL_STATE_MAXIMIZED:
+            case XDG_TOPLEVEL_STATE_MAXIMIZED: {
                 SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_MAXIMIZED");
-                tl->set_maximized(true);
+                if (tl->prev_state_[idx] != true) {
+                    tl->prev_state_[idx] = true;
+                    tl->Window::set_fullscreen(true);
+                }
                 break;
-            case XDG_TOPLEVEL_STATE_RESIZING:
-                SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_RESIZING");
-                tl->set_resize(true);
+            }
+            case XDG_TOPLEVEL_STATE_FULLSCREEN: {
+                SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_FULLSCREEN");
+                if (tl->prev_state_[idx] != true) {
+                    tl->prev_state_[idx] = true;
+                    tl->Window::set_fullscreen(true);
+                }
                 break;
-            case XDG_TOPLEVEL_STATE_ACTIVATED:
+            }
+            case XDG_TOPLEVEL_STATE_RESIZING: {
+                SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_RESIZING: {} x {}", width, height);
+                if (tl->prev_state_[idx] != true) {
+                    tl->prev_state_[idx] = true;
+                    tl->Window::set_fullscreen(true);
+                }
+                break;
+            }
+            case XDG_TOPLEVEL_STATE_ACTIVATED: {
                 SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_ACTIVATED");
-                tl->set_activated(true);
+                if (tl->prev_state_[idx] != true) {
+                    tl->prev_state_[idx] = true;
+                    tl->Window::set_fullscreen(true);
+                }
                 break;
+            }
+#ifdef XDG_TOPLEVEL_STATE_TILED_LEFT_SINCE_VERSION
+            case XDG_TOPLEVEL_STATE_TILED_LEFT: {
+                SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_TILED_LEFT");
+                if (tl->prev_state_[idx] != true) {
+                    tl->prev_state_[idx] = true;
+                    tl->Window::set_fullscreen(true);
+                }
+                break;
+            }
+#endif
+#ifdef XDG_TOPLEVEL_STATE_TILED_RIGHT_SINCE_VERSION
+            case XDG_TOPLEVEL_STATE_TILED_RIGHT: {
+                SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_TILED_RIGHT");
+                if (tl->prev_state_[idx] != true) {
+                    tl->prev_state_[idx] = true;
+                    tl->Window::set_fullscreen(true);
+                }
+                break;
+            }
+#endif
+#ifdef XDG_TOPLEVEL_STATE_TILED_TOP_SINCE_VERSION
+            case XDG_TOPLEVEL_STATE_TILED_TOP: {
+                SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_TILED_TOP");
+                if (tl->prev_state_[idx] != true) {
+                    tl->prev_state_[idx] = true;
+                    tl->Window::set_fullscreen(true);
+                }
+                break;
+            }
+#endif
+#ifdef XDG_TOPLEVEL_STATE_TILED_BOTTOM_SINCE_VERSION
+            case XDG_TOPLEVEL_STATE_TILED_BOTTOM: {
+                SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_TILED_BOTTOM");
+                if (tl->prev_state_[idx] != true) {
+                    tl->prev_state_[idx] = true;
+                    tl->Window::set_fullscreen(true);
+                }
+                break;
+            }
+#endif
+#ifdef XDG_TOPLEVEL_STATE_SUSPENDED_SINCE_VERSION
+            case XDG_TOPLEVEL_STATE_SUSPENDED: {
+                SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_SUSPENDED");
+                if (tl->prev_state_[idx] != true) {
+                    tl->prev_state_[idx] = true;
+                    tl->Window::set_fullscreen(true);
+                }
+                break;
+            }
+#endif
         }
     }
 
     if (width > 0 && height > 0) {
-        if (!tl->get_fullscreen() && !tl->get_maximized()) {
-            tl->set_init_width(width);
-            tl->set_init_height(height);
-        }
         tl->set_width(width);
         tl->set_height(height);
     } else if (!tl->get_fullscreen() && !tl->get_maximized()) {
@@ -280,3 +342,34 @@ void XdgTopLevel::handle_xdg_toplevel_wm_capabilities(
 }
 
 #endif
+
+enum xdg_toplevel_resize_edge XdgTopLevel::check_edge_resize(std::pair<double, double> xy) {
+    bool top = xy.second < resize_margin_;
+    bool bottom = xy.second > (get_height() - resize_margin_);
+    bool left = xy.first < resize_margin_;
+    bool right = xy.first > (get_width() - resize_margin_);
+
+    if (top) {
+        if (left) {
+            return XDG_TOPLEVEL_RESIZE_EDGE_TOP_LEFT;
+        } else if (right) {
+            return XDG_TOPLEVEL_RESIZE_EDGE_TOP_RIGHT;
+        } else {
+            return XDG_TOPLEVEL_RESIZE_EDGE_TOP;
+        }
+    } else if (bottom) {
+        if (left) {
+            return XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_LEFT;
+        } else if (right) {
+            return XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_RIGHT;
+        } else {
+            return XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM;
+        }
+    } else if (left) {
+        return XDG_TOPLEVEL_RESIZE_EDGE_LEFT;
+    } else if (right) {
+        return XDG_TOPLEVEL_RESIZE_EDGE_RIGHT;
+    } else {
+        return XDG_TOPLEVEL_RESIZE_EDGE_NONE;
+    }
+}

@@ -49,6 +49,7 @@ private:
     struct wl_display *display_;
     std::shared_ptr<XdgWindowManager> wm_;
     std::vector<std::unique_ptr<View>> views_{};
+    Seat* seat_{};
 
     void notify_seat_capabilities(Seat *seat, wl_seat *, uint32_t) override;
 
@@ -110,7 +111,7 @@ private:
                              wl_pointer *,
                              uint32_t,
                              uint32_t,
-                             wl_fixed_t) override;
+                             double) override;
 
     void notify_pointer_frame(Pointer *, wl_pointer *) override;
 

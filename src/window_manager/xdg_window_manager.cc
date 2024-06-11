@@ -88,6 +88,7 @@ std::shared_ptr<XdgTopLevel> XdgWindowManager::create_top_level(
         const char *app_id,
         int width,
         int height,
+        int resize_margin,
         int buffer_count,
         uint32_t buffer_format,
         bool fullscreen,
@@ -98,7 +99,7 @@ std::shared_ptr<XdgTopLevel> XdgWindowManager::create_top_level(
         Egl::config *egl_config) {
 
     xdg_top_level_ = std::make_shared<XdgTopLevel>(
-            shared_from_this(), title, app_id, width, height, buffer_count, buffer_format, fullscreen,
+            shared_from_this(), title, app_id, width, height, resize_margin, buffer_count, buffer_format, fullscreen,
             maximized, fullscreen_ratio, tearing, frame_callback, egl_config);
     return xdg_top_level_;
 }

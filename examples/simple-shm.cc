@@ -26,6 +26,7 @@
 #include <csignal>
 #include <random>
 
+#include <linux/input.h>
 #include <cxxopts.hpp>
 
 #include <wayland-client.h>
@@ -41,6 +42,8 @@ struct Configuration {
     bool fullscreen_ratio;
     bool tearing;
 };
+
+static constexpr int kResizeMargin = 12;
 
 static volatile bool gRunning = true;
 
@@ -142,18 +145,18 @@ public:
             exit(EXIT_FAILURE);
         }
 
-        wm_ =
-                std::make_unique<XdgWindowManager>(wl_display_, config.disable_cursor);
+        wm_ = std::make_unique<XdgWindowManager>(wl_display_, config.disable_cursor);
         auto seat = wm_->get_seat();
         if (seat.has_value()) {
-            seat.value()->register_observer(this);
+            seat_ = seat.value();
+            seat_->register_observer(this);
         }
 
         spdlog::info("XDG Window Manager Version: {}", wm_->get_version());
 
         toplevel_ = wm_->create_top_level(
                 "simple-shm", "org.freedesktop.gitlab.jwinarske.waypp.simple_shm",
-                config.width, config.height, 2, WL_SHM_FORMAT_XRGB8888,
+                config.width, config.height, kResizeMargin, 2, WL_SHM_FORMAT_XRGB8888,
                 config.fullscreen, config.maximized, config.fullscreen_ratio,
                 config.tearing, draw_frame);
         spdlog::info("XDG Window Version: {}", toplevel_->get_version());
@@ -277,7 +280,7 @@ public:
         spdlog::info("Pointer: time: {}, x: {}, y: {}", time, sx, sy);
     }
 
-    void notify_pointer_button(Pointer * /* pointer */,
+    void notify_pointer_button(Pointer * pointer,
                                wl_pointer * /* pointer  */,
                                uint32_t serial,
                                uint32_t time,
@@ -285,13 +288,19 @@ public:
                                uint32_t state) override {
         spdlog::info("Pointer Button: pointer: {}, time: {}, button: {}, state: {}",
                      serial, time, button, state);
+        if (button == BTN_LEFT && state == WL_POINTER_BUTTON_STATE_PRESSED) {
+            auto edge = toplevel_->check_edge_resize(pointer->get_xy());
+            if (edge != XDG_TOPLEVEL_RESIZE_EDGE_NONE) {
+                toplevel_->resize(seat_->get_seat(), serial, edge);
+            }
+        }
     }
 
     void notify_pointer_axis(Pointer * /* pointer */,
                              wl_pointer * /* pointer */,
                              uint32_t time,
                              uint32_t axis,
-                             wl_fixed_t value) override {
+                             double value) override {
         spdlog::info("Pointer Axis: time: {}, axis: {}, value: {}", time, axis,
                      value);
     }
@@ -326,6 +335,7 @@ private:
     struct wl_display *wl_display_;
     std::unique_ptr<Logging> logging_;
     std::shared_ptr<XdgWindowManager> wm_;
+    Seat *seat_{};
     std::shared_ptr<XdgTopLevel> toplevel_;
     std::random_device rd_;
     std::mt19937 gen_;

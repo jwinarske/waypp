@@ -43,6 +43,8 @@ struct Configuration {
     bool tearing;
 };
 
+static constexpr int kResizeMargin = 12;
+
 static volatile bool gRunning = true;
 
 static std::vector<std::string> gCursors = Pointer::get_available_cursors();
@@ -152,7 +154,7 @@ public:
 
         toplevel_ = agl_shell_->create_top_level(
                 "agl-simple-shm", "org.freedesktop.gitlab.jwinarske.waypp.agl-simple-shm",
-                config.width, config.height, 2, WL_SHM_FORMAT_XRGB8888,
+                config.width, config.height, kResizeMargin, 2, WL_SHM_FORMAT_XRGB8888,
                 config.fullscreen, config.maximized, config.fullscreen_ratio,
                 config.tearing, draw_frame);
         spdlog::info("XDG Window Version: {}", toplevel_->get_version());
@@ -297,7 +299,7 @@ public:
                              wl_pointer * /* pointer */,
                              uint32_t time,
                              uint32_t axis,
-                             wl_fixed_t value) override {
+                             double value) override {
         spdlog::info("Pointer Axis: time: {}, axis: {}, value: {}", time, axis,
                      value);
     }
