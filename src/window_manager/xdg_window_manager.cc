@@ -47,6 +47,7 @@ XdgWindowManager::XdgWindowManager(
     }
 
     xdg_wm_base_add_listener(xdg_wm_base_, &xdg_wm_base_listener_, this);
+
     SPDLOG_TRACE("--XdgWindowManager::XdgWindowManager()");
 }
 
@@ -82,7 +83,7 @@ void XdgWindowManager::xdg_wm_base_ping(void *data,
     xdg_wm_base_pong(xdg_wm_base, serial);
 }
 
-XdgTopLevel *XdgWindowManager::create_top_level(
+std::shared_ptr<XdgTopLevel> XdgWindowManager::create_top_level(
         const char *title,
         const char *app_id,
         int width,
@@ -95,10 +96,9 @@ XdgTopLevel *XdgWindowManager::create_top_level(
         bool tearing,
         const std::function<void(void *, const uint32_t)> &frame_callback,
         Egl::config *egl_config) {
-    auto wm = reinterpret_cast<WindowManager *>(this);
 
-    xdg_top_level_ = std::make_unique<XdgTopLevel>(
-            wm, title, app_id, width, height, buffer_count, buffer_format, fullscreen,
+    xdg_top_level_ = std::make_shared<XdgTopLevel>(
+            shared_from_this(), title, app_id, width, height, buffer_count, buffer_format, fullscreen,
             maximized, fullscreen_ratio, tearing, frame_callback, egl_config);
-    return xdg_top_level_.get();
+    return xdg_top_level_;
 }

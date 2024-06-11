@@ -26,6 +26,7 @@ DrmLeaseDevice_v1::DrmLeaseDevice_v1(
 }
 
 DrmLeaseDevice_v1::~DrmLeaseDevice_v1() {
+    SPDLOG_TRACE("[DrmLeaseDevice_v1] wp_drm_lease_device_v1_destroy(wp_drm_lease_device_v1_)");
     wp_drm_lease_device_v1_destroy(wp_drm_lease_device_v1_);
 }
 

@@ -25,7 +25,7 @@
        (pos)++)
 
 XdgTopLevel::XdgTopLevel(
-        WindowManager *wm,
+        std::shared_ptr<WindowManager> wm,
         const char *title,
         const char *app_id,
         int width,
@@ -53,8 +53,7 @@ XdgTopLevel::XdgTopLevel(
           wm_(wm),
           title_(title),
           app_id_(app_id) {
-    auto xwm = reinterpret_cast<XdgWindowManager *>(wm_);
-    auto xdg_wm_base = xwm->get_xdg_wm_base();
+    auto xdg_wm_base = wm_->get_xdg_wm_base();
     if (!xdg_wm_base) {
         spdlog::critical("xdg_wm_base is not available");
         exit(EXIT_FAILURE);
@@ -96,11 +95,15 @@ XdgTopLevel::XdgTopLevel(
 }
 
 XdgTopLevel::~XdgTopLevel() {
-    if (xdg_toplevel_)
+    if (xdg_toplevel_) {
+        SPDLOG_TRACE("[XdgTopLevel] xdg_toplevel_destroy(xdg_toplevel_)");
         xdg_toplevel_destroy(xdg_toplevel_);
+    }
 
-    if (xdg_surface_)
+    if (xdg_surface_) {
+        SPDLOG_TRACE("[XdgTopLevel] xdg_surface_destroy(xdg_surface_)");
         xdg_surface_destroy(xdg_surface_);
+    }
 }
 
 void XdgTopLevel::resize(int /* width */, int /* height */) {}

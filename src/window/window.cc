@@ -20,7 +20,7 @@
 
 #include "logging.h"
 
-Window::Window(WindowManager *wm,
+Window::Window(std::shared_ptr<WindowManager> wm,
                const char *name,
                int buffer_count,
                uint32_t buffer_format,
@@ -120,18 +120,22 @@ Window::Window(WindowManager *wm,
 Window::~Window() {
     if (viewport_) {
 #if HAS_WAYLAND_PROTOCOL_VIEWPORTER
+        SPDLOG_TRACE("[Window] wp_viewport_destroy(viewport_)");
         wp_viewport_destroy(viewport_);
 #endif
     }
     if (fractional_scale_) {
 #if HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1
+        SPDLOG_TRACE("[Window] wp_fractional_scale_v1_destroy(fractional_scale_)");
         wp_fractional_scale_v1_destroy(fractional_scale_);
 #endif
     }
     if (wl_callback_) {
+        SPDLOG_TRACE("[Window] wl_callback_destroy(wl_callback_)");
         wl_callback_destroy(wl_callback_);
     }
     if (wl_surface_) {
+        SPDLOG_TRACE("[Window] wl_surface_destroy(wl_surface_)");
         wl_surface_destroy(wl_surface_);
     }
 
@@ -307,6 +311,7 @@ void Window::start_frame_callbacks(void *user_data) {
 void Window::stop_frame_callbacks() {
     SPDLOG_TRACE("[Window] stop_frame_callbacks");
     if (wl_callback_) {
+        SPDLOG_TRACE("[Window] wl_callback_destroy");
         wl_callback_destroy(wl_callback_);
         wl_callback_ = nullptr;
     }
@@ -326,7 +331,7 @@ void Window::stop_frame_callbacks() {
 void Window::handle_frame_callback(void *data,
                                    struct wl_callback *callback,
                                    const uint32_t time) {
-    SPDLOG_TRACE("++Window::handle_frame_callback()");
+    //SPDLOG_TRACE("++Window::handle_frame_callback()");
     const auto obj = static_cast<Window *>(data);
 
     obj->wl_callback_ = nullptr;
@@ -357,7 +362,7 @@ void Window::handle_frame_callback(void *data,
         }
         wl_surface_commit(obj->wl_surface_);
     }
-    SPDLOG_TRACE("--Window::handle_frame_callback()");
+    //SPDLOG_TRACE("--Window::handle_frame_callback()");
 }
 
 void Window::handle_preferred_buffer_scale(void *data,
@@ -483,6 +488,7 @@ void Window::opaque_region_add(int32_t x,
     auto region = wl_compositor_create_region(wm_->get_compositor());
     wl_region_add(region, x, y, width, height);
     wl_surface_set_opaque_region(wl_surface_, region);
+    SPDLOG_TRACE("[Window] wl_region_destroy(region)");
     wl_region_destroy(region);
 }
 

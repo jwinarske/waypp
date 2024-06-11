@@ -45,6 +45,7 @@ Seat::Seat(struct wl_seat *seat,
 
 Seat::~Seat() {
     if (wl_seat_) {
+        SPDLOG_TRACE("[Seat] wl_seat_destroy(wl_seat_)");
         wl_seat_destroy(wl_seat_);
     }
 }

@@ -48,6 +48,12 @@ ViewManagerWayland::ViewManagerWayland(const ViewManager::Configuration &config)
 }
 
 ViewManagerWayland::~ViewManagerWayland() {
+    if (!views_.empty()) {
+        if (views_.front()) {
+            views_.front().reset();
+        }
+    }
+    wm_.reset();
     wl_display_flush(display_);
     wl_display_disconnect(display_);
 }
@@ -56,8 +62,9 @@ uint32_t
 ViewManagerWayland::create_view(const char *app_title, const char *app_id, int width, int height, bool fullscreen,
                                 bool maximized, bool fullscreen_ratio, bool tearing) {
     if (views_.empty()) {
+        // toplevel is always index 0
         views_.emplace_back(
-                std::make_unique<ViewWayland>(get_xdg_wm(), app_title, app_id, width, height, fullscreen, maximized,
+                std::make_unique<ViewWayland>(wm_, app_title, app_id, width, height, fullscreen, maximized,
                                               fullscreen_ratio, tearing));
     }
     return 0;
@@ -69,7 +76,11 @@ bool ViewManagerWayland::poll_events() {
 }
 
 void ViewManagerWayland::quit() {
-    views_[0]->close();
+    if (!views_.empty()) {
+        if (views_.front()) {
+            views_.front()->close();
+        }
+    }
 }
 
 void ViewManagerWayland::toggle_fullscreen() {

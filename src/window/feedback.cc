@@ -3,6 +3,8 @@
 
 #include <chrono>
 
+#include "logging.h"
+
 unsigned Feedback::sequence_ = 0;
 
 Feedback::Feedback(struct wp_presentation *wp_presentation,
@@ -23,6 +25,7 @@ Feedback::Feedback(struct wp_presentation *wp_presentation,
 
 Feedback::~Feedback() {
     if (feedback_) {
+        SPDLOG_TRACE("[Feedback] wp_presentation_feedback_destroy(feedback_)");
         wp_presentation_feedback_destroy(feedback_);
     }
 }

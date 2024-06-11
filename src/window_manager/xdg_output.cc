@@ -26,6 +26,7 @@ XdgOutput::XdgOutput(struct zxdg_output_manager_v1 *zxdg_output_manager_v1,
 
 XdgOutput::~XdgOutput() {
     if (zxdg_output_v1_) {
+        SPDLOG_TRACE("[Registrar] zxdg_output_v1_destroy(zxdg_output_v1_)");
         zxdg_output_v1_destroy(zxdg_output_v1_);
     }
 }

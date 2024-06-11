@@ -63,12 +63,15 @@ Pointer::Pointer(wl_pointer *pointer,
  */
 Pointer::~Pointer() {
     if (theme_) {
+        SPDLOG_TRACE("[Pointer] wl_cursor_theme_destroy(theme_)");
         wl_cursor_theme_destroy(theme_);
     }
     if (wl_surface_cursor_) {
+        SPDLOG_TRACE("[Pointer] wl_surface_destroy(wl_surface_cursor_)");
         wl_surface_destroy(wl_surface_cursor_);
     }
     if (wl_pointer_) {
+        SPDLOG_TRACE("[Pointer] wl_pointer_release(wl_pointer_)");
         wl_pointer_release(wl_pointer_);
     }
 }

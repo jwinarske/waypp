@@ -42,7 +42,7 @@ App::App(const Configuration &config) : logging_(std::make_unique<Logging>()) {
     }
 
     shader_toy_ = std::make_unique<ShaderToy>();
-    wm_ = std::make_unique<XdgWindowManager>(display_, config.disable_cursor);
+    wm_ = std::make_shared<XdgWindowManager>(display_, config.disable_cursor);
     auto seat = wm_->get_seat();
     if (seat.has_value()) {
         seat.value()->register_observer(this, this);
@@ -74,7 +74,8 @@ App::App(const Configuration &config) : logging_(std::make_unique<Logging>()) {
 }
 
 App::~App() {
-    toplevel_->stop_frame_callbacks();
+    toplevel_.reset();
+    wm_.reset();
     wl_display_flush(display_);
     wl_display_flush(display_);
 }

@@ -181,10 +181,10 @@ int main(int argc, char **argv) {
             .tearing = result["tearing"].as<bool>(),
     };
 
-    XdgWindowManager wm = XdgWindowManager(display, false, ext_interfaces.size(),
+    auto wm = std::make_shared<XdgWindowManager>(display, false, ext_interfaces.size(),
                                            ext_interfaces.data());
-    spdlog::info("XDG Window Manager Version: {}", wm.get_version());
-    auto top_level = wm.create_top_level(
+    spdlog::info("XDG Window Manager Version: {}", wm->get_version());
+    auto top_level = wm->create_top_level(
             "simple-ext-protocol",
             "jwinarske.waypp.simple_ext_protocol",
             config.width, config.height, 2, WL_SHM_FORMAT_XRGB8888, config.fullscreen,
@@ -196,10 +196,11 @@ int main(int argc, char **argv) {
     top_level->update_buffer_geometry();
     top_level->start_frame_callbacks();
 
-    while (running && top_level->is_valid() && wm.display_dispatch() != -1) {
+    while (running && top_level->is_valid() && wm->display_dispatch() != -1) {
     }
 
-    top_level->stop_frame_callbacks();
+    top_level.reset();
+    wm.reset();
 
     wl_display_flush(display);
     wl_display_disconnect(display);

@@ -51,7 +51,7 @@ public:
     ViewWayland &operator=(const ViewWayland &) = delete;
 
 private:
-    XdgTopLevel *toplevel_{};
+    std::shared_ptr<XdgTopLevel> toplevel_{};
     std::shared_ptr<XdgWindowManager> xdg_wm_;
 
     std::random_device rd_;

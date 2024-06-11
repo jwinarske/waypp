@@ -164,7 +164,8 @@ public:
     }
 
     ~App() override {
-        toplevel_->stop_frame_callbacks();
+        toplevel_.reset();
+        wm_.reset();
 
         if (wl_display_) {
             wl_display_flush(wl_display_);
@@ -324,8 +325,8 @@ public:
 private:
     struct wl_display *wl_display_;
     std::unique_ptr<Logging> logging_;
-    std::unique_ptr<XdgWindowManager> wm_;
-    XdgTopLevel *toplevel_;
+    std::shared_ptr<XdgWindowManager> wm_;
+    std::shared_ptr<XdgTopLevel> toplevel_;
     std::random_device rd_;
     std::mt19937 gen_;
 };

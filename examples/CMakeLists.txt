@@ -91,27 +91,34 @@ if (HAS_WAYLAND_PROTOCOL_XDG_OUTPUT_UNSTABLE_V1)
 endif ()
 
 #
-# agl-simple-shm
+# AGL specific apps
 #
-add_executable(agl-simple-shm agl-simple-shm.cc)
+if (ENABLE_AGL_SHELL_CLIENT)
 
-target_link_libraries(agl-simple-shm PRIVATE waypp wayland-gen cxxopts::cxxopts)
+    #
+    # agl-simple-shm
+    #
+    add_executable(agl-simple-shm agl-simple-shm.cc)
 
-if (IPO_SUPPORT_RESULT)
-    set_property(TARGET agl-simple-shm PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+    target_link_libraries(agl-simple-shm PRIVATE waypp wayland-gen cxxopts::cxxopts)
+
+    if (IPO_SUPPORT_RESULT)
+        set_property(TARGET agl-simple-shm PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+    endif ()
+
+    add_sanitizers(agl-simple-shm)
+
+    add_executable(agl-capture agl-capture.cc agl-capture.cc)
+
+    target_link_libraries(agl-capture PRIVATE waypp wayland-gen cxxopts::cxxopts)
+
+    if (IPO_SUPPORT_RESULT)
+        set_property(TARGET agl-capture PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+    endif ()
+
+    add_sanitizers(agl-capture)
+
 endif ()
-
-add_sanitizers(agl-simple-shm)
-
-add_executable(agl-capture agl-capture.cc agl-capture.cc)
-
-target_link_libraries(agl-capture PRIVATE waypp wayland-gen cxxopts::cxxopts)
-
-if (IPO_SUPPORT_RESULT)
-    set_property(TARGET agl-capture PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-endif ()
-
-add_sanitizers(agl-capture)
 
 #
 # Vulkan

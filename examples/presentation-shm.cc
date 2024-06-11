@@ -64,9 +64,9 @@ struct Feedback {
 
 struct Context {
     struct wl_display *display;
-    std::unique_ptr<XdgWindowManager> wm;
+    std::shared_ptr<XdgWindowManager> wm;
+    std::shared_ptr<XdgTopLevel> toplevel;
     Configuration config;
-    XdgTopLevel *toplevel;
     std::vector<std::unique_ptr<Feedback>> feedback_list;
 };
 
@@ -343,7 +343,8 @@ int main(int argc, char **argv) {
            ctx->wm->display_dispatch() != -1) {
     }
 
-    ctx->toplevel->stop_frame_callbacks();
+    ctx->toplevel.reset()
+    ctx->wm.reset();
 
     wl_display_flush(ctx->display);
     wl_display_disconnect(ctx->display);

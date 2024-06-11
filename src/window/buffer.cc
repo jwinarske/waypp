@@ -29,6 +29,7 @@ Buffer::~Buffer() {
     munmap(shm_data_, static_cast<size_t>(size_));
 
     if (buffer_) {
+        SPDLOG_TRACE("[Buffer] wl_buffer_destroy(buffer_)");
         wl_buffer_destroy(buffer_);
     }
 }
@@ -71,6 +72,7 @@ int Buffer::create_shm_buffer(int width, int height, uint32_t format) {
     auto wl_shm_pool = wl_shm_create_pool(wl_shm_, fd, size_);
     buffer_ =
             wl_shm_pool_create_buffer(wl_shm_pool, 0, width, height, pitch, format_);
+    SPDLOG_TRACE("[Buffer] wl_shm_pool_destroy(wl_shm_pool)");
     wl_shm_pool_destroy(wl_shm_pool);
     close(fd);
 

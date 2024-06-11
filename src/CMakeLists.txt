@@ -67,7 +67,7 @@ if (ENABLE_XDG_CLIENT)
             window_manager/xdg_window_manager.cc
     )
 endif ()
-if (ENABLE_AGL_CLIENT)
+if (ENABLE_AGL_SHELL_CLIENT)
     target_sources(waypp PRIVATE window_manager/agl_shell.cc)
 endif ()
 if (ENABLE_IVI_SHELL_CLIENT)

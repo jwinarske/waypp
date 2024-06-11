@@ -59,7 +59,7 @@ public:
         WINDOW_STATE_RESIZING = 1 << 8,
     };
 
-    Window(WindowManager *wm,
+    Window(std::shared_ptr<WindowManager> wm,
            const char *name,
            int buffer_count,
            uint32_t buffer_format,
@@ -182,7 +182,7 @@ private:
         int height;
     };
 
-    WindowManager *wm_;
+    std::shared_ptr<WindowManager> wm_;
     const std::map<struct wl_output *, std::unique_ptr<Output>> &outputs_;
     struct wp_tearing_control_v1 *tearing_control_{};
     wl_output_transform buffer_transform_;

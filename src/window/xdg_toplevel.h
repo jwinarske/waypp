@@ -35,7 +35,7 @@ class XdgWindowManager;
 
 class XdgTopLevel : public Window {
 public:
-    XdgTopLevel(WindowManager *wm,
+    XdgTopLevel(std::shared_ptr<WindowManager> wm,
                 const char *title,
                 const char *app_id,
                 int width,
@@ -93,9 +93,9 @@ public:
     XdgTopLevel &operator=(const XdgTopLevel &) = delete;
 
 private:
-    WindowManager *wm_;
-    struct xdg_surface *xdg_surface_;
-    struct xdg_toplevel *xdg_toplevel_;
+    std::shared_ptr<WindowManager> wm_;
+    struct xdg_surface *xdg_surface_{};
+    struct xdg_toplevel *xdg_toplevel_{};
 
     std::string title_;
     std::string app_id_;

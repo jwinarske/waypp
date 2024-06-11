@@ -55,9 +55,9 @@ public:
 private:
     struct wl_display *display_;
     std::unique_ptr<Logging> logging_;
-    std::unique_ptr<XdgWindowManager> wm_;
+    std::shared_ptr<XdgWindowManager> wm_;
     std::unique_ptr<ShaderToy> shader_toy_;
-    XdgTopLevel *toplevel_;
+    std::shared_ptr<XdgTopLevel> toplevel_;
 
     static void draw_frame(void *data, uint32_t time);
 

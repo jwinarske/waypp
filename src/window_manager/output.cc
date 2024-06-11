@@ -38,6 +38,7 @@ Output::Output(struct wl_output *wl_output,
 
 Output::~Output() {
     if (wl_output_) {
+        SPDLOG_TRACE("[Output] wl_output_destroy(wl_output_)");
         wl_output_destroy(wl_output_);
     }
     if (xdg_output_) {

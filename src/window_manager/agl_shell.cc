@@ -62,7 +62,7 @@ AglShell::AglShell(struct wl_display *display,
     }
 }
 
-AglShell::~AglShell() = default;
+AglShell::~AglShell() {}
 
 void AglShell::handle_bound_ok(void *data, struct agl_shell *agl_shell) {
     auto *obj = static_cast<AglShell *>(data);

@@ -40,9 +40,7 @@ ViewWayland::ViewWayland(std::shared_ptr<XdgWindowManager> xdg_window_manager, c
     }
 }
 
-ViewWayland::~ViewWayland() {
-    toplevel_->stop_frame_callbacks();
-}
+ViewWayland::~ViewWayland() = default;
 
 void ViewWayland::close() {
     if (toplevel_) {

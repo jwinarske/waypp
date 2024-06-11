@@ -27,7 +27,7 @@
 
 class XdgTopLevel;
 
-class XdgWindowManager : public WindowManager {
+class XdgWindowManager : public std::enable_shared_from_this<XdgWindowManager>, public WindowManager {
 public:
     explicit XdgWindowManager(
             struct wl_display *display,
@@ -42,7 +42,7 @@ public:
         return xdg_wm_base_get_version(xdg_wm_base_);
     }
 
-    XdgTopLevel *create_top_level(
+    std::shared_ptr<XdgTopLevel> create_top_level(
             const char *title,
             const char *app_id,
             int width,
@@ -63,7 +63,7 @@ public:
 
 private:
     struct xdg_wm_base *xdg_wm_base_;
-    std::unique_ptr<XdgTopLevel> xdg_top_level_;
+    std::shared_ptr<XdgTopLevel> xdg_top_level_;
 
     static void xdg_wm_base_ping(void *data,
                                  struct xdg_wm_base *xdg_wm_base,

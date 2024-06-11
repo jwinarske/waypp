@@ -141,86 +141,103 @@ Registrar::~Registrar() {
     seats_.clear();
 
     if (wl_shm_) {
+        SPDLOG_TRACE("[Registrar] wl_shm_destroy(wl_shm_)");
         wl_shm_destroy(wl_shm_);
         wl_shm_formats_.clear();
     }
 
     if (wl_compositor_) {
+        SPDLOG_TRACE("[Registrar] wl_compositor_destroy(wl_compositor_)");
         wl_compositor_destroy(wl_compositor_);
     }
 
     if (wl_subcompositor_) {
+        SPDLOG_TRACE("[Registrar] wl_subcompositor_destroy(wl_subcompositor_)");
         wl_subcompositor_destroy(wl_subcompositor_);
     }
 
 #if ENABLE_AGL_SHELL_CLIENT
     if (agl_shell_) {
-      agl_shell_destroy(agl_shell_);
+        SPDLOG_TRACE("[Registrar] agl_shell_destroy(agl_shell_)");
+        agl_shell_destroy(agl_shell_);
     }
 #endif
 
 #if ENABLE_XDG_CLIENT
     if (xdg_wm_base_) {
+        SPDLOG_TRACE("[Registrar] xdg_wm_base_destroy(xdg_wm_base_)");
         xdg_wm_base_destroy(xdg_wm_base_);
     }
 #endif
 
     if (presentation_time_.wp_presentation) {
+        SPDLOG_TRACE("[Registrar] wp_presentation_destroy(presentation_time_.wp_presentation)");
         wp_presentation_destroy(presentation_time_.wp_presentation);
     }
 
 #if HAS_WAYLAND_PROTOCOL_XDG_DECORATION_UNSTABLE_V1
     if (zxdg_toplevel_decoration_v1_) {
+        SPDLOG_TRACE("[Registrar] zxdg_toplevel_decoration_v1_destroy(zxdg_toplevel_decoration_v1_)");
         zxdg_toplevel_decoration_v1_destroy(zxdg_toplevel_decoration_v1_);
     }
 #endif
 #if HAS_WAYLAND_PROTOCOL_XDG_DECORATION_UNSTABLE_V1
     if (zxdg_decoration_manager_v1_) {
+        SPDLOG_TRACE("[Registrar] zxdg_decoration_manager_v1_destroy(zxdg_decoration_manager_v1_)");
         zxdg_decoration_manager_v1_destroy(zxdg_decoration_manager_v1_);
     }
 #endif
 #if HAS_WAYLAND_PROTOCOL_TEARING_CONTROL_V1
     if (wp_tearing_control_manager_) {
+        SPDLOG_TRACE("[Registrar] wp_tearing_control_manager_v1_destroy(wp_tearing_control_manager_)");
         wp_tearing_control_manager_v1_destroy(wp_tearing_control_manager_);
     }
 #endif
 #if HAS_WAYLAND_PROTOCOL_VIEWPORTER
     if (wp_viewporter_) {
+        SPDLOG_TRACE("[Registrar] wp_viewporter_destroy(wp_viewporter_)");
         wp_viewporter_destroy(wp_viewporter_);
     }
 #endif
 #if HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1
     if (fractional_scale_manager_) {
+        SPDLOG_TRACE("[Registrar] wp_fractional_scale_manager_v1_destroy(fractional_scale_manager_)");
         wp_fractional_scale_manager_v1_destroy(fractional_scale_manager_);
     }
 #endif
 #if HAS_WAYLAND_PROTOCOL_IDLE_INHIBIT_UNSTABLE_V1
     if (zwp_idle_inhibit_manager_v1_) {
+        SPDLOG_TRACE("[Registrar] zwp_idle_inhibit_manager_v1_destroy(zwp_idle_inhibit_manager_v1_)");
         zwp_idle_inhibit_manager_v1_destroy(zwp_idle_inhibit_manager_v1_);
     }
 #endif
 #if HAS_WAYLAND_PROTOCOL_POINTER_GESTURES_UNSTABLE_V1
     if (zwp_pointer_gestures_v1_) {
+        SPDLOG_TRACE("[Registrar] zwp_pointer_gestures_v1_destroy(zwp_pointer_gestures_v1_)");
         zwp_pointer_gestures_v1_destroy(zwp_pointer_gestures_v1_);
     }
 #endif
 #if HAS_WAYLAND_PROTOCOL_POINTER_CONSTRAINTS_UNSTABLE_V1
     if (zwp_pointer_constraints_v1_) {
+        SPDLOG_TRACE("[Registrar] zwp_pointer_constraints_v1_destroy(zwp_pointer_constraints_v1_)");
         zwp_pointer_constraints_v1_destroy(zwp_pointer_constraints_v1_);
     }
 #endif
 #if HAS_WAYLAND_PROTOCOL_RELATIVE_POINTER_UNSTABLE_V1
     if (zwp_relative_pointer_manager_v1_) {
+        SPDLOG_TRACE("[Registrar] zwp_relative_pointer_manager_v1_destroy(zwp_relative_pointer_manager_v1_)");
         zwp_relative_pointer_manager_v1_destroy(zwp_relative_pointer_manager_v1_);
     }
 #endif
 #if HAS_WAYLAND_PROTOCOL_PRIMARY_SELECTION_UNSTABLE_V1
     if (zwp_primary_selection_device_manager_v1_) {
+        SPDLOG_TRACE("[Registrar] zwp_primary_selection_device_manager_v1_destroy(zwp_primary_selection_device_manager_v1_)");
         zwp_primary_selection_device_manager_v1_destroy(zwp_primary_selection_device_manager_v1_);
     }
 #endif
 
     if (wl_registry_) {
+        SPDLOG_TRACE("[Registrar] wl_registry_destroy(wl_registry_)");
         wl_registry_destroy(wl_registry_);
     }
     SPDLOG_TRACE("--Registrar::~Registrar()");

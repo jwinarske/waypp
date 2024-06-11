@@ -45,8 +45,6 @@ public:
 
     void toggle_fullscreen() override;
 
-    [[nodiscard]] std::shared_ptr<XdgWindowManager> get_xdg_wm() const { return wm_; }
-
 private:
     struct wl_display *display_;
     std::shared_ptr<XdgWindowManager> wm_;

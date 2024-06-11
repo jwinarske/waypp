@@ -29,6 +29,7 @@
 #include <cxxopts.hpp>
 
 #include "logging.h"
+
 #include "window/xdg_toplevel.h"
 #include "window_manager/agl_shell.h"
 
@@ -142,7 +143,7 @@ public:
             exit(EXIT_FAILURE);
         }
 
-        agl_shell_ = std::make_unique<AglShell>(display_, config.disable_cursor);
+        agl_shell_ = std::make_shared<AglShell>(display_, config.disable_cursor);
         spdlog::info("AGL Shell Version: {}", agl_shell_->get_version());
         auto seat = agl_shell_->get_seat();
         if (seat.has_value()) {
@@ -150,7 +151,7 @@ public:
         }
 
         toplevel_ = agl_shell_->create_top_level(
-                "agl-simple-shm", "org.freedesktop.gitlab.jwinarske.waypp.simple_shm",
+                "agl-simple-shm", "org.freedesktop.gitlab.jwinarske.waypp.agl-simple-shm",
                 config.width, config.height, 2, WL_SHM_FORMAT_XRGB8888,
                 config.fullscreen, config.maximized, config.fullscreen_ratio,
                 config.tearing, draw_frame);
@@ -170,8 +171,8 @@ public:
     }
 
     ~App() override {
-        toplevel_->stop_frame_callbacks();
-
+        toplevel_.reset();
+        agl_shell_.reset();
         if (display_) {
             wl_display_flush(display_);
             wl_display_disconnect(display_);
@@ -330,9 +331,9 @@ public:
 private:
     struct wl_display *display_;
     std::unique_ptr<Logging> logging_;
-    std::unique_ptr<AglShell> agl_shell_;
+    std::shared_ptr<AglShell> agl_shell_;
+    std::shared_ptr<XdgTopLevel> toplevel_;
     struct wl_output *output_;
-    XdgTopLevel *toplevel_;
     struct wl_surface *surface_;
 
     std::random_device rd_;

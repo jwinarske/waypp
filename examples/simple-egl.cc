@@ -521,8 +521,8 @@ int main(int argc, char **argv) {
 
     auto keyboard_handler = std::make_unique<KeyboardHandler>();
 
-    XdgWindowManager wm(display);
-    auto seat = wm.get_seat();
+    auto wm = std::make_shared<XdgWindowManager>(display);
+    auto seat = wm->get_seat();
     if (seat.has_value()) {
         auto keyboard = seat.value()->get_keyboard();
         if (keyboard.has_value()) {
@@ -539,17 +539,18 @@ int main(int argc, char **argv) {
     egl_config.swap_interval = config.interval;
     egl_config.type = Egl::OPENGL_ES_API;
 
-    auto top_level = wm.create_top_level(
+    auto top_level = wm->create_top_level(
             "simple-egl", "org.freedesktop.gitlab.jwinarske.waypp.simple_egl",
             config.width, config.height, 0, 0, config.fullscreen, config.maximized,
             config.fullscreen_ratio, config.tearing, draw_frame, &egl_config);
 
     top_level->start_frame_callbacks();
 
-    while (running && top_level->is_valid() && wm.display_dispatch() != -1) {
+    while (running && top_level->is_valid() && wm->display_dispatch() != -1) {
     }
 
-    top_level->stop_frame_callbacks();
+    top_level.reset();
+    wm.reset();
 
     wl_display_flush(display);
     wl_display_disconnect(display);
