@@ -16,7 +16,7 @@
 
 #include "logging.h"
 
-#include "config.h"
+#include "waypp/config.h"
 
 static constexpr int32_t kLogFlushInterval = INT32_C(5);
 

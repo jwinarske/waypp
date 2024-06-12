@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef INCLUDE_CONFIG_H_
-#define INCLUDE_CONFIG_H_
+#ifndef INCLUDE_WAYPP_CONFIG_H_
+#define INCLUDE_WAYPP_CONFIG_H_
 
 /// Wayland interface version selection
 static constexpr uint32_t kWlCompositorMinVersion = UINT32_C(5);
@@ -45,6 +45,7 @@ static constexpr uint32_t kPointerGesturesV1MinVersion = UINT32_C(3);
 static constexpr uint32_t kPointerConstraintsV1MinVersion = UINT32_C(1);
 static constexpr uint32_t kRelativePointerManagerV1MinVersion = UINT32_C(1);
 
-static constexpr uint32_t kPrimarySelectionDeviceManagerV1MinVersion = UINT32_C(1);
+static constexpr uint32_t kPrimarySelectionDeviceManagerV1MinVersion =
+    UINT32_C(1);
 
-#endif // INCLUDE_CONFIG_H_
+#endif  // INCLUDE_WAYPP_CONFIG_H_

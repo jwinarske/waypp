@@ -24,7 +24,7 @@
 #include <mutex>
 #include <vector>
 
-#include "config.h"
+#include "waypp/config.h"
 #include "output.h"
 #include "seat/seat.h"
 #include "wayland-protocols.h"

@@ -26,6 +26,7 @@
 
 #include <list>
 #include <vector>
+#include <memory>
 
 #include "view.h"
 

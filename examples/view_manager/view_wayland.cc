@@ -115,7 +115,7 @@ void ViewWayland::draw_frame(void *data, const uint32_t /* time */) {
     }
 
     view->create_random_color_grid(static_cast<uint32_t>(window->get_width()),
-                                   static_cast<uint32_t>(window->get_height()), 10,
+                                   static_cast<uint32_t>(window->get_height()), 8,
                                    static_cast<uint32_t *>(buffer->get_shm_data()));
 
     wl_surface_attach(window->get_surface(), buffer->get_wl_buffer(), 0, 0);

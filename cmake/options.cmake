@@ -27,7 +27,7 @@ option(ENABLE_EGL "Enable EGL dependency" ON)
 #
 # Link Time Optimization
 #
-option(ENABLE_LTO "Link Time Optimization" ON)
+option(ENABLE_LTO "Link Time Optimization" OFF)
 MESSAGE(STATUS "Link Time Optimizaiton.. ${ENABLE_LTO}")
 
 #
