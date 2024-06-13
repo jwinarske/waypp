@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include "touch.h"
+#include "waypp/seat/touch.h"
 
-#include "logging.h"
+#include "logging/logging.h"
 
 /**
  * @class Touch
@@ -29,7 +29,7 @@ Touch::Touch(struct wl_touch *wl_touch, struct event_mask &event_mask) :
                             .enabled = event_mask.enabled,
                             .all = event_mask.all
                     }) {
-    SPDLOG_DEBUG("Touch");
+    DLOG_DEBUG("Touch");
     wl_touch_add_listener(wl_touch, &listener_, this);
 
     event_mask_.enabled = event_mask.enabled;
@@ -78,7 +78,7 @@ void Touch::handle_down(void *data,
         return;
     }
 
-    SPDLOG_TRACE("Touch::handle_down");
+    DLOG_TRACE("Touch::handle_down");
 
     for (auto observer: obj->observers_) {
         observer->notify_touch_down(obj, touch, serial, time, surface, id, x_w,
@@ -114,7 +114,7 @@ void Touch::handle_up(void *data,
         return;
     }
 
-    SPDLOG_TRACE("Touch::handle_up");
+    DLOG_TRACE("Touch::handle_up");
 
     for (auto observer: obj->observers_) {
         observer->notify_touch_up(obj, touch, serial, time, id);
@@ -152,7 +152,7 @@ void Touch::handle_motion(void *data,
         return;
     }
 
-    SPDLOG_TRACE("Touch::handle_motion");
+    DLOG_TRACE("Touch::handle_motion");
 
     for (auto observer: obj->observers_) {
         observer->notify_touch_motion(obj, touch, time, id, x_w, y_w);
@@ -181,7 +181,7 @@ void Touch::handle_cancel(void *data, struct wl_touch *touch) {
         return;
     }
 
-    SPDLOG_TRACE("Touch::handle_cancel");
+    DLOG_TRACE("Touch::handle_cancel");
 
     for (auto observer: obj->observers_) {
         observer->notify_touch_cancel(obj, touch);
@@ -205,7 +205,7 @@ void Touch::handle_frame(void *data, struct wl_touch *touch) {
         return;
     }
 
-    SPDLOG_TRACE("Touch::handle_frame");
+    DLOG_TRACE("Touch::handle_frame");
 
     for (auto observer: obj->observers_) {
         observer->notify_touch_frame(obj, touch);

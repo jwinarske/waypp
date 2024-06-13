@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include "xdg_output.h"
+#include "waypp/window_manager/xdg_output.h"
 
-#include "logging.h"
+#include "logging/logging.h"
 
 XdgOutput::XdgOutput(struct zxdg_output_manager_v1 *zxdg_output_manager_v1,
                      struct wl_output *wl_output) {
@@ -26,7 +26,7 @@ XdgOutput::XdgOutput(struct zxdg_output_manager_v1 *zxdg_output_manager_v1,
 
 XdgOutput::~XdgOutput() {
     if (zxdg_output_v1_) {
-        SPDLOG_TRACE("[Registrar] zxdg_output_v1_destroy(zxdg_output_v1_)");
+        DLOG_TRACE("[Registrar] zxdg_output_v1_destroy(zxdg_output_v1_)");
         zxdg_output_v1_destroy(zxdg_output_v1_);
     }
 }
@@ -39,7 +39,7 @@ void XdgOutput::handle_logical_position(void *data,
     if (obj->zxdg_output_v1_ != zxdg_output_v1) {
         return;
     }
-    spdlog::debug("XdgOutput::handle_logical_position: x: {}, y: {}", x, y);
+    LOG_DEBUG("XdgOutput::handle_logical_position: x: {}, y: {}", x, y);
 
     obj->output_.logical_position = {
             .x = x,
@@ -55,7 +55,7 @@ void XdgOutput::handle_logical_size(void *data,
     if (obj->zxdg_output_v1_ != zxdg_output_v1) {
         return;
     }
-    spdlog::debug("XdgOutput::handle_logical_size: width: {}, height: {}", width,
+    LOG_DEBUG("XdgOutput::handle_logical_size: width: {}, height: {}", width,
                   height);
 
     obj->output_.logical_size = {
@@ -69,7 +69,7 @@ void XdgOutput::handle_done(void *data, struct zxdg_output_v1 *zxdg_output_v1) {
     if (obj->zxdg_output_v1_ != zxdg_output_v1) {
         return;
     }
-    spdlog::debug("XdgOutput::handle_done");
+    LOG_DEBUG("XdgOutput::handle_done");
     obj->output_.done = true;
 }
 
@@ -80,7 +80,7 @@ void XdgOutput::handle_name(void *data,
     if (obj->zxdg_output_v1_ != zxdg_output_v1) {
         return;
     }
-    spdlog::debug("XdgOutput::handle_name: {}", name);
+    LOG_DEBUG("XdgOutput::handle_name: {}", name);
     obj->output_.name = name;
 }
 
@@ -91,19 +91,19 @@ void XdgOutput::handle_description(void *data,
     if (obj->zxdg_output_v1_ != zxdg_output_v1) {
         return;
     }
-    spdlog::debug("XdgOutput::handle_description: {}", description);
+    LOG_DEBUG("XdgOutput::handle_description: {}", description);
     obj->output_.description = description;
 }
 
 void XdgOutput::print() const {
-    spdlog::info("XDG Output");
-    spdlog::info("\tDone: {}", output_.done);
-    spdlog::info("\tName: {}", output_.name);
-    spdlog::info("\tDescription: {}", output_.description);
-    spdlog::info("\tlogical_position");
-    spdlog::info("\t\tx: {}", output_.logical_position.x);
-    spdlog::info("\t\ty: {}", output_.logical_position.y);
-    spdlog::info("\tlogical_size");
-    spdlog::info("\t\tx: {}", output_.logical_size.width);
-    spdlog::info("\t\ty: {}", output_.logical_size.height);
+    LOG_INFO("XDG Output");
+    LOG_INFO("\tDone: {}", output_.done);
+    LOG_INFO("\tName: {}", output_.name);
+    LOG_INFO("\tDescription: {}", output_.description);
+    LOG_INFO("\tlogical_position");
+    LOG_INFO("\t\tx: {}", output_.logical_position.x);
+    LOG_INFO("\t\ty: {}", output_.logical_position.y);
+    LOG_INFO("\tlogical_size");
+    LOG_INFO("\t\tx: {}", output_.logical_size.width);
+    LOG_INFO("\t\ty: {}", output_.logical_size.height);
 }

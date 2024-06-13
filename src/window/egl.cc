@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-#include "egl.h"
+#include "waypp/window/egl.h"
 
 #include <wayland-egl.h>
 #include <cstring>
+#include <stdexcept>
 
-#include "logging.h"
+#include "logging/logging.h"
 
 /**
  * @brief The Egl class represents an EGL object used for OpenGL rendering.
@@ -33,13 +34,15 @@ Egl::Egl(struct wl_display *display,
          int height,
          struct config *config)
         : dpy_(eglGetDisplay(display)),
-          context_attribs_(config->context_attribs, config->context_attribs + config->context_attribs_size),
-          config_attribs_(config->config_attribs, config->config_attribs + config->config_attribs_size),
+          context_attribs_(config->context_attribs,
+                           config->context_attribs + config->context_attribs_size),
+          config_attribs_(config->config_attribs,
+                          config->config_attribs + config->config_attribs_size),
           buffer_bpp_(config->buffer_bpp),
           wl_surface_(wl_surface),
           width_(width),
           height_(height) {
-    SPDLOG_TRACE("++Egl::Egl()");
+    DLOG_TRACE("++Egl::Egl()");
     EGLBoolean ret = eglInitialize(dpy_, &major_, &minor_);
     if (ret == EGL_FALSE) {
         throw std::runtime_error("eglInitialize failed.");
@@ -52,7 +55,7 @@ Egl::Egl(struct wl_display *display,
 
     EGLint count;
     eglGetConfigs(dpy_, nullptr, 0, &count);
-    SPDLOG_DEBUG("EGL has {} configs", count);
+    DLOG_DEBUG("EGL has {} configs", count);
 
     auto *configs = reinterpret_cast<EGLConfig *>(
             calloc(static_cast<size_t>(count), sizeof(EGLConfig)));
@@ -60,7 +63,7 @@ Egl::Egl(struct wl_display *display,
     EGLint n;
     ret = eglChooseConfig(dpy_, config_attribs_.data(), configs, count, &n);
     if (n == 0) {
-        SPDLOG_DEBUG("EGL Config: Check Config Attributes");
+        DLOG_DEBUG("EGL Config: Check Config Attributes");
         exit(EXIT_FAILURE);
     }
 
@@ -68,16 +71,17 @@ Egl::Egl(struct wl_display *display,
     for (EGLint i = 0; i < n; i++) {
         eglGetConfigAttrib(dpy_, configs[i], EGL_BUFFER_SIZE, &config->buffer_bpp);
         eglGetConfigAttrib(dpy_, configs[i], EGL_RED_SIZE, &red_size);
-        SPDLOG_DEBUG("EGL_BUFFER_SIZE: {}", config->buffer_bpp);
-        SPDLOG_DEBUG("EGL_RED_SIZE: {}", red_size);
-        if ((buffer_bpp_ == 0 || buffer_bpp_ == config->buffer_bpp) && red_size < 10) {
+        DLOG_DEBUG("EGL_BUFFER_SIZE: {}", config->buffer_bpp);
+        DLOG_DEBUG("EGL_RED_SIZE: {}", red_size);
+        if ((buffer_bpp_ == 0 || buffer_bpp_ == config->buffer_bpp) &&
+            red_size < 10) {
             config_ = configs[i];
             break;
         }
     }
     free(configs);
     if (config_ == nullptr) {
-        spdlog::critical("did not find config with buffer size {}", buffer_bpp_);
+        LOG_CRITICAL("did not find config with buffer size {}", buffer_bpp_);
         exit(EXIT_FAILURE);
     }
 
@@ -117,7 +121,7 @@ Egl::Egl(struct wl_display *display,
             dpy_, config_, reinterpret_cast<EGLNativeWindowType>(wl_egl_window_),
             nullptr);
     eglMakeCurrent(dpy_, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-    SPDLOG_TRACE("--Egl::Egl()");
+    DLOG_TRACE("--Egl::Egl()");
 }
 
 /**
@@ -127,10 +131,10 @@ Egl::Egl(struct wl_display *display,
  * with the EGL thread.
  */
 Egl::~Egl() {
-    SPDLOG_TRACE("++Egl::~Egl()");
+    DLOG_TRACE("++Egl::~Egl()");
     eglTerminate(dpy_);
     eglReleaseThread();
-    SPDLOG_TRACE("--Egl::~Egl()");
+    DLOG_TRACE("--Egl::~Egl()");
 }
 
 /**
@@ -143,11 +147,11 @@ Egl::~Egl() {
  * \return True if the context was made current successfully, false otherwise.
  */
 void Egl::make_current() {
-    SPDLOG_TRACE("++Egl::make_current()");
+    DLOG_TRACE("++Egl::make_current()");
     if (eglGetCurrentContext() != context_) {
         eglMakeCurrent(dpy_, egl_surface_, egl_surface_, context_);
     }
-    SPDLOG_TRACE("--Egl::make_current()");
+    DLOG_TRACE("--Egl::make_current()");
 }
 
 /**
@@ -162,11 +166,11 @@ void Egl::make_current() {
  * otherwise.
  */
 void Egl::clear_current() {
-    SPDLOG_TRACE("++Egl::clear_current()");
+    DLOG_TRACE("++Egl::clear_current()");
     if (eglGetCurrentContext() != EGL_NO_CONTEXT) {
         eglMakeCurrent(dpy_, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     }
-    SPDLOG_TRACE("--Egl::clear_current()");
+    DLOG_TRACE("--Egl::clear_current()");
 }
 
 /**
@@ -178,9 +182,9 @@ void Egl::clear_current() {
  * @return True if the swap was successful, false otherwise.
  */
 void Egl::swap_buffers() {
-    SPDLOG_TRACE("++Egl::swap_buffers()");
+    DLOG_TRACE("++Egl::swap_buffers()");
     eglSwapBuffers(dpy_, egl_surface_);
-    SPDLOG_TRACE("--Egl::swap_buffers()");
+    DLOG_TRACE("--Egl::swap_buffers()");
 }
 
 void Egl::get_buffer_age(EGLint &buffer_age) {
@@ -237,54 +241,54 @@ void Egl::debug_callback(EGLenum error,
                          EGLLabelKHR threadLabel,
                          EGLLabelKHR objectLabel,
                          const char *message) {
-    spdlog::error("**** EGL Error");
-    spdlog::error("\terror: {}", error);
-    spdlog::error("\tcommand: {}", command);
+    LOG_ERROR("**** EGL Error");
+    LOG_ERROR("\terror: {}", error);
+    LOG_ERROR("\tcommand: {}", command);
     switch (error) {
         case EGL_BAD_ACCESS:
-            spdlog::error("\terror: EGL_BAD_ACCESS");
+            LOG_ERROR("\terror: EGL_BAD_ACCESS");
             break;
         case EGL_BAD_ALLOC:
-            spdlog::error("\terror: EGL_BAD_ALLOC");
+            LOG_ERROR("\terror: EGL_BAD_ALLOC");
             break;
         case EGL_BAD_ATTRIBUTE:
-            spdlog::error("\terror: EGL_BAD_ATTRIBUTE");
+            LOG_ERROR("\terror: EGL_BAD_ATTRIBUTE");
             break;
         case EGL_BAD_CONFIG:
-            spdlog::error("\terror: EGL_BAD_CONFIG");
+            LOG_ERROR("\terror: EGL_BAD_CONFIG");
             break;
         case EGL_BAD_CONTEXT:
-            spdlog::error("\terror: EGL_BAD_CONTEXT");
+            LOG_ERROR("\terror: EGL_BAD_CONTEXT");
             break;
         case EGL_BAD_CURRENT_SURFACE:
-            spdlog::error("\terror: EGL_BAD_CURRENT_SURFACE");
+            LOG_ERROR("\terror: EGL_BAD_CURRENT_SURFACE");
             break;
         case EGL_BAD_DISPLAY:
-            spdlog::error("\terror: EGL_BAD_DISPLAY");
+            LOG_ERROR("\terror: EGL_BAD_DISPLAY");
             break;
         case EGL_BAD_MATCH:
-            spdlog::error("\terror: EGL_BAD_MATCH");
+            LOG_ERROR("\terror: EGL_BAD_MATCH");
             break;
         case EGL_BAD_NATIVE_PIXMAP:
-            spdlog::error("\terror: EGL_BAD_NATIVE_PIXMAP");
+            LOG_ERROR("\terror: EGL_BAD_NATIVE_PIXMAP");
             break;
         case EGL_BAD_NATIVE_WINDOW:
-            spdlog::error("\terror: EGL_BAD_NATIVE_WINDOW");
+            LOG_ERROR("\terror: EGL_BAD_NATIVE_WINDOW");
             break;
         case EGL_BAD_PARAMETER:
-            spdlog::error("\terror: EGL_BAD_PARAMETER");
+            LOG_ERROR("\terror: EGL_BAD_PARAMETER");
             break;
         case EGL_BAD_SURFACE:
-            spdlog::error("\terror: EGL_BAD_SURFACE");
+            LOG_ERROR("\terror: EGL_BAD_SURFACE");
             break;
         default:
-            spdlog::error("\terror: {}", error);
+            LOG_ERROR("\terror: {}", error);
             break;
     }
-    spdlog::error("\tmessageType: {}", messageType);
-    spdlog::error("\tthreadLabel: {}", threadLabel);
-    spdlog::error("\tobjectLabel: {}", objectLabel);
-    spdlog::error("\tmessage: {}", ((message == nullptr) ? "" : message));
+    LOG_ERROR("\tmessageType: {}", messageType);
+    LOG_ERROR("\tthreadLabel: {}", threadLabel);
+    LOG_ERROR("\tobjectLabel: {}", objectLabel);
+    LOG_ERROR("\tmessage: {}", ((message == nullptr) ? "" : message));
 }
 
 /**

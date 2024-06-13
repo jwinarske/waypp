@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include "seat.h"
+#include "waypp/seat/seat.h"
 
-#include "logging.h"
+#include "logging/logging.h"
 
 /**
  * @class Seat
@@ -45,7 +45,7 @@ Seat::Seat(struct wl_seat *seat,
 
 Seat::~Seat() {
     if (wl_seat_) {
-        SPDLOG_TRACE("[Seat] wl_seat_destroy(wl_seat_)");
+        DLOG_TRACE("[Seat] wl_seat_destroy(wl_seat_)");
         wl_seat_destroy(wl_seat_);
     }
 }
@@ -66,7 +66,7 @@ void Seat::handle_capabilities(void *data,
         return;
     }
 
-    SPDLOG_TRACE("Seat::handle_capabilities: {}", caps);
+    DLOG_TRACE("Seat::handle_capabilities: {}", caps);
 
     obj->capabilities_ = caps;
 
@@ -119,7 +119,7 @@ void Seat::handle_name(void *data, struct wl_seat *seat, const char *name) {
         return;
     }
 
-    SPDLOG_TRACE("Seat::handle_name: {}", obj->name_);
+    DLOG_TRACE("Seat::handle_name: {}", obj->name_);
 
     obj->name_ = name;
 
@@ -165,7 +165,7 @@ void Seat::event_mask_print() const {
     if (event_mask_.touch.all)
         ss << "\n\ttouch";
 
-    spdlog::info(ss.str());
+    LOG_INFO(ss.str());
 }
 
 void Seat::set_event_mask(const char *ignore_events) {
@@ -217,7 +217,7 @@ void Seat::set_event_mask(const char *ignore_events) {
                 touch_->set_event_mask(event_mask_.touch);
             }
         } else {
-            spdlog::warn("Unknown Wayland Event Mask: [{}]", event);
+            LOG_WARN("Unknown Wayland Event Mask: [{}]", event);
         }
     }
 

@@ -19,7 +19,7 @@
 #include <cstdint>
 #include <string>
 
-#include "wayland-protocols.h"
+#include <waypp/waypp.h>
 
 #include "window_manager.h"
 

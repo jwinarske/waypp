@@ -14,14 +14,16 @@
  * limitations under the License.
  */
 
-#include "keyboard.h"
+#include "waypp/seat/keyboard.h"
+
+#include <cstring>
 
 #include <sys/mman.h>
 #include <unistd.h>
 #include <wayland-client.h>
 #include <xkbcommon/xkbcommon.h>
 
-#include "logging.h"
+#include "logging/logging.h"
 
 // workaround for Wayland macro not compiling in C++
 #define WL_ARRAY_FOR_EACH(pos, array, type)                             \
@@ -41,9 +43,9 @@ Keyboard::Keyboard(struct wl_keyboard *keyboard, struct event_mask &event_mask)
           xkb_context_(xkb_context_new(XKB_CONTEXT_NO_FLAGS)),
           event_mask_({
                               .enabled = event_mask.enabled,
-                              .all = event_mask.all
+                              .all = event_mask.all,
                       }) {
-    SPDLOG_DEBUG("Keyboard");
+    DLOG_DEBUG("Keyboard");
     wl_keyboard_add_listener(wl_keyboard_, &keyboard_listener_, this);
 }
 
@@ -106,7 +108,7 @@ void Keyboard::handle_keymap(void *data,
         xkb_state_unref(obj->xkb_state_);
         obj->xkb_state_ = xkb_state_new(obj->xkb_keymap_);
     } else {
-        spdlog::warn("Usage without libxkbcommon is currently not supported.");
+        LOG_WARN("Usage without libxkbcommon is currently not supported.");
     }
 
     for (auto observer: obj->observers_) {
@@ -124,7 +126,7 @@ void Keyboard::handle_enter(void *data,
         return;
     }
 
-    SPDLOG_TRACE("[Keyboard] handle_enter");
+    DLOG_TRACE("[Keyboard] handle_enter");
 
     obj->wl_surface = wl_surface;
 
@@ -160,7 +162,7 @@ void Keyboard::handle_leave(void *data,
         return;
     }
 
-    SPDLOG_TRACE("[Keyboard] handle_leave");
+    DLOG_TRACE("[Keyboard] handle_leave");
 
     obj->wl_surface = nullptr;
 
@@ -247,7 +249,7 @@ void Keyboard::handle_modifiers(void *data,
         return;
     }
 
-    SPDLOG_TRACE("[Keyboard] handle_modifiers");
+    DLOG_TRACE("[Keyboard] handle_modifiers");
 
     if (obj->format_ == WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
         xkb_state_update_mask(obj->xkb_state_, mods_depressed, mods_latched,
@@ -264,7 +266,7 @@ void Keyboard::handle_repeat_info(void *data,
         return;
     }
 
-    SPDLOG_TRACE("[Keyboard] handle_repeat_info: rate: {}, delay: {}", rate,
+    DLOG_TRACE("[Keyboard] handle_repeat_info: rate: {}, delay: {}", rate,
                  delay);
 
     obj->repeat_.rate = rate;
@@ -279,7 +281,7 @@ void Keyboard::handle_repeat_info(void *data,
             auto res =
                     timer_create(CLOCK_REALTIME, &obj->repeat_.sev, &obj->repeat_.timer);
             if (res != 0) {
-                spdlog::critical("Error timer_create: {}", strerror(errno));
+                LOG_CRITICAL("Error timer_create: {}", std::strerror(errno));
                 abort();
             }
 
@@ -288,7 +290,7 @@ void Keyboard::handle_repeat_info(void *data,
             obj->repeat_.sa.sa_sigaction = repeat_xkb_v1_key_callback;
             sigemptyset(&obj->repeat_.sa.sa_mask);
             if (sigaction(SIGRTMIN, &obj->repeat_.sa, nullptr) == -1) {
-                spdlog::critical("Error sigaction: {}", strerror(errno));
+                LOG_CRITICAL("Error sigaction: {}", std::strerror(errno));
                 abort();
             }
         }

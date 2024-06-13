@@ -20,9 +20,9 @@
 #include <functional>
 #include <string>
 
-#include "wayland-protocols.h"
+#include <waypp/waypp.h>
 
-#include "window/egl.h"
+#include "waypp/window/egl.h"
 #include "window_manager.h"
 
 class XdgTopLevel;

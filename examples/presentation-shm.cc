@@ -28,7 +28,7 @@
 
 #include <cxxopts.hpp>
 
-#include "logging.h"
+#include "logging/logging.h"
 #include "presentation-time-client-protocol.h"
 #include "window/xdg_toplevel.h"
 
@@ -148,7 +148,7 @@ static void feedback_sync_output(
     if (ctx->wp_presentation_feedback != wp_presentation_feedback) {
         return;
     }
-    SPDLOG_DEBUG("feedback_sync_output: 0x{:x}", fmt::ptr(output));
+    DLOG_DEBUG("feedback_sync_output: 0x{:x}", fmt::ptr(output));
     (void) output;
 }
 
@@ -173,7 +173,7 @@ static void feedback_presented(
 
     uint64_t seq = (static_cast<uint64_t>(seq_hi) << 32) + seq_lo;
 
-    SPDLOG_DEBUG(
+    LOG_DEBUG(
             "feedback_presented: ts: {} nS, refresh: {} nS, sequence: {}, flags: {}",
             std::chrono::nanoseconds(duration).count(), refresh_nsec, seq, flags);
 }
@@ -212,10 +212,10 @@ static constexpr struct wp_presentation_feedback_listener feedback_listener = {
 };
 
 void create_feedback(Window *window, uint32_t time) {
-    SPDLOG_DEBUG("create_feedback: {}", time);
+    LOG_DEBUG("create_feedback: {}", time);
     static unsigned seq = 0;
     auto *ctx = static_cast<Context *>(window->get_user_data());
-    SPDLOG_DEBUG("context: {}", fmt::ptr(ctx));
+    LOG_DEBUG("context: {}", fmt::ptr(ctx));
 
     auto feedback = std::make_unique<Feedback>();
     feedback->window = window;
@@ -234,7 +234,7 @@ void create_feedback(Window *window, uint32_t time) {
 }
 
 static void emulate_rendering(Window *window) {
-    SPDLOG_DEBUG("emulate_rendering");
+    LOG_DEBUG("emulate_rendering");
     auto *config = static_cast<Configuration *>(window->get_user_data());
     if (config->commit_delay_msecs <= 0) {
         return;
@@ -303,7 +303,7 @@ int main(int argc, char **argv) {
     std::stringstream title;
     title << "presentation-shm: " << run_mode_name[ctx->config.mode] << "[Delay "
           << ctx->config.commit_delay_msecs << " msecs]";
-    SPDLOG_DEBUG("title: {}", title.str().c_str());
+    LOG_DEBUG("title: {}", title.str().c_str());
 
     ctx->toplevel = ctx->wm->create_top_level(
             title.str().c_str(),
@@ -312,7 +312,7 @@ int main(int argc, char **argv) {
             WL_SHM_FORMAT_XRGB8888, false, false, false, false, redraw_mode_feedback);
     spdlog::info("XDG Window Version: {}", ctx->toplevel->get_version());
 
-    SPDLOG_DEBUG("context: {}", fmt::ptr(&ctx->config));
+    LOG_DEBUG("context: {}", fmt::ptr(&ctx->config));
     ctx->toplevel->set_user_data(&ctx->config);
     ctx->toplevel->set_min_size(ctx->config.width, ctx->config.height);
     ctx->toplevel->set_max_size(ctx->config.width, ctx->config.height);

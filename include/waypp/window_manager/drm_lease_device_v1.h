@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "wayland-protocols.h"
+#include <waypp/waypp.h>
 
 class DrmLeaseDevice_v1 {
 public:

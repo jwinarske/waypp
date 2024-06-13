@@ -25,7 +25,7 @@
 
 #include <cxxopts.hpp>
 
-#include "logging.h"
+#include "logging/logging.h"
 #include "window_manager/agl_shell.h"
 #include "window_manager/weston-capture.h"
 

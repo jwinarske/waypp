@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include "xdg_toplevel.h"
+#include "waypp/window/xdg_toplevel.h"
 
-#include "logging.h"
+#include "logging/logging.h"
 
 // workaround for Wayland macro not compiling in C++
 #define WL_ARRAY_FOR_EACH(pos, array, type)                             \
@@ -57,7 +57,7 @@ XdgTopLevel::XdgTopLevel(
           resize_margin_(resize_margin) {
     auto xdg_wm_base = wm_->get_xdg_wm_base();
     if (!xdg_wm_base) {
-        spdlog::critical("xdg_wm_base is not available");
+        LOG_CRITICAL("xdg_wm_base is not available");
         exit(EXIT_FAILURE);
     }
 
@@ -98,12 +98,12 @@ XdgTopLevel::XdgTopLevel(
 
 XdgTopLevel::~XdgTopLevel() {
     if (xdg_toplevel_) {
-        SPDLOG_TRACE("[XdgTopLevel] xdg_toplevel_destroy(xdg_toplevel_)");
+        DLOG_TRACE("[XdgTopLevel] xdg_toplevel_destroy(xdg_toplevel_)");
         xdg_toplevel_destroy(xdg_toplevel_);
     }
 
     if (xdg_surface_) {
-        SPDLOG_TRACE("[XdgTopLevel] xdg_surface_destroy(xdg_surface_)");
+        DLOG_TRACE("[XdgTopLevel] xdg_surface_destroy(xdg_surface_)");
         xdg_surface_destroy(xdg_surface_);
     }
 }
@@ -164,7 +164,7 @@ void XdgTopLevel::handle_xdg_toplevel_configure(void *data,
         uint32_t idx = *state - 1;
         switch (*state) {
             case XDG_TOPLEVEL_STATE_MAXIMIZED: {
-                SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_MAXIMIZED");
+                DLOG_DEBUG("XDG_TOPLEVEL_STATE_MAXIMIZED");
                 if (tl->prev_state_[idx] != true) {
                     tl->prev_state_[idx] = true;
                     tl->Window::set_fullscreen(true);
@@ -172,7 +172,7 @@ void XdgTopLevel::handle_xdg_toplevel_configure(void *data,
                 break;
             }
             case XDG_TOPLEVEL_STATE_FULLSCREEN: {
-                SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_FULLSCREEN");
+                DLOG_DEBUG("XDG_TOPLEVEL_STATE_FULLSCREEN");
                 if (tl->prev_state_[idx] != true) {
                     tl->prev_state_[idx] = true;
                     tl->Window::set_fullscreen(true);
@@ -180,7 +180,7 @@ void XdgTopLevel::handle_xdg_toplevel_configure(void *data,
                 break;
             }
             case XDG_TOPLEVEL_STATE_RESIZING: {
-                SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_RESIZING: {} x {}", width, height);
+                DLOG_DEBUG("XDG_TOPLEVEL_STATE_RESIZING: {} x {}", width, height);
                 if (tl->prev_state_[idx] != true) {
                     tl->prev_state_[idx] = true;
                     tl->Window::set_fullscreen(true);
@@ -188,7 +188,7 @@ void XdgTopLevel::handle_xdg_toplevel_configure(void *data,
                 break;
             }
             case XDG_TOPLEVEL_STATE_ACTIVATED: {
-                SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_ACTIVATED");
+                LOG_DEBUG("XDG_TOPLEVEL_STATE_ACTIVATED");
                 if (tl->prev_state_[idx] != true) {
                     tl->prev_state_[idx] = true;
                     tl->Window::set_fullscreen(true);
@@ -197,7 +197,7 @@ void XdgTopLevel::handle_xdg_toplevel_configure(void *data,
             }
 #ifdef XDG_TOPLEVEL_STATE_TILED_LEFT_SINCE_VERSION
             case XDG_TOPLEVEL_STATE_TILED_LEFT: {
-                SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_TILED_LEFT");
+                LOG_DEBUG("XDG_TOPLEVEL_STATE_TILED_LEFT");
                 if (tl->prev_state_[idx] != true) {
                     tl->prev_state_[idx] = true;
                     tl->Window::set_fullscreen(true);
@@ -207,7 +207,7 @@ void XdgTopLevel::handle_xdg_toplevel_configure(void *data,
 #endif
 #ifdef XDG_TOPLEVEL_STATE_TILED_RIGHT_SINCE_VERSION
             case XDG_TOPLEVEL_STATE_TILED_RIGHT: {
-                SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_TILED_RIGHT");
+                LOG_DEBUG("XDG_TOPLEVEL_STATE_TILED_RIGHT");
                 if (tl->prev_state_[idx] != true) {
                     tl->prev_state_[idx] = true;
                     tl->Window::set_fullscreen(true);
@@ -217,7 +217,7 @@ void XdgTopLevel::handle_xdg_toplevel_configure(void *data,
 #endif
 #ifdef XDG_TOPLEVEL_STATE_TILED_TOP_SINCE_VERSION
             case XDG_TOPLEVEL_STATE_TILED_TOP: {
-                SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_TILED_TOP");
+                LOG_DEBUG("XDG_TOPLEVEL_STATE_TILED_TOP");
                 if (tl->prev_state_[idx] != true) {
                     tl->prev_state_[idx] = true;
                     tl->Window::set_fullscreen(true);
@@ -227,7 +227,7 @@ void XdgTopLevel::handle_xdg_toplevel_configure(void *data,
 #endif
 #ifdef XDG_TOPLEVEL_STATE_TILED_BOTTOM_SINCE_VERSION
             case XDG_TOPLEVEL_STATE_TILED_BOTTOM: {
-                SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_TILED_BOTTOM");
+                LOG_DEBUG("XDG_TOPLEVEL_STATE_TILED_BOTTOM");
                 if (tl->prev_state_[idx] != true) {
                     tl->prev_state_[idx] = true;
                     tl->Window::set_fullscreen(true);
@@ -237,7 +237,7 @@ void XdgTopLevel::handle_xdg_toplevel_configure(void *data,
 #endif
 #ifdef XDG_TOPLEVEL_STATE_SUSPENDED_SINCE_VERSION
             case XDG_TOPLEVEL_STATE_SUSPENDED: {
-                SPDLOG_DEBUG("XDG_TOPLEVEL_STATE_SUSPENDED");
+                LOG_DEBUG("XDG_TOPLEVEL_STATE_SUSPENDED");
                 if (tl->prev_state_[idx] != true) {
                     tl->prev_state_[idx] = true;
                     tl->Window::set_fullscreen(true);
@@ -271,7 +271,7 @@ void XdgTopLevel::handle_xdg_toplevel_configure(void *data,
  */
 void XdgTopLevel::handle_xdg_toplevel_close(void *data,
                                             struct xdg_toplevel *xdg_toplevel) {
-    SPDLOG_DEBUG("XdgWm::handle_toplevel_close");
+    LOG_DEBUG("XdgWm::handle_toplevel_close");
 
     auto *w = static_cast<XdgTopLevel *>(data);
     if (w->xdg_toplevel_ != xdg_toplevel) {
@@ -298,7 +298,7 @@ void XdgTopLevel::handle_xdg_toplevel_configure_bounds(
     if (w->xdg_toplevel_ != xdg_toplevel) {
         return;
     }
-    SPDLOG_DEBUG("Configure Bounds: {}x{}", width, height);
+    LOG_DEBUG("Configure Bounds: {}x{}", width, height);
     w->set_max_width(width);
     w->set_max_height(height);
 }
@@ -321,21 +321,21 @@ void XdgTopLevel::handle_xdg_toplevel_wm_capabilities(
     if (w->xdg_toplevel_ != xdg_toplevel) {
         return;
     }
-    SPDLOG_DEBUG("WM Capabilities:");
+    LOG_DEBUG("WM Capabilities:");
     const uint32_t *cap;
     WL_ARRAY_FOR_EACH(cap, capabilities, const uint32_t*) {
         switch (*cap) {
             case XDG_TOPLEVEL_WM_CAPABILITIES_WINDOW_MENU:
-                SPDLOG_DEBUG("\tXDG_TOPLEVEL_WM_CAPABILITIES_WINDOW_MENU");
+                LOG_DEBUG("\tXDG_TOPLEVEL_WM_CAPABILITIES_WINDOW_MENU");
                 break;
             case XDG_TOPLEVEL_WM_CAPABILITIES_MAXIMIZE:
-                SPDLOG_DEBUG("\tXDG_TOPLEVEL_WM_CAPABILITIES_MAXIMIZE");
+                LOG_DEBUG("\tXDG_TOPLEVEL_WM_CAPABILITIES_MAXIMIZE");
                 break;
             case XDG_TOPLEVEL_WM_CAPABILITIES_FULLSCREEN:
-                SPDLOG_DEBUG("\tXDG_TOPLEVEL_WM_CAPABILITIES_FULLSCREEN");
+                LOG_DEBUG("\tXDG_TOPLEVEL_WM_CAPABILITIES_FULLSCREEN");
                 break;
             case XDG_TOPLEVEL_WM_CAPABILITIES_MINIMIZE:
-                SPDLOG_DEBUG("\tXDG_TOPLEVEL_WM_CAPABILITIES_MINIMIZE");
+                LOG_DEBUG("\tXDG_TOPLEVEL_WM_CAPABILITIES_MINIMIZE");
                 break;
         }
     }

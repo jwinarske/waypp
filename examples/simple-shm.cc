@@ -27,20 +27,20 @@
 #include <random>
 
 #include <linux/input.h>
+#include <wayland-client.h>
 #include <cxxopts.hpp>
 
-#include <wayland-client.h>
-#include "logging.h"
-#include "window/xdg_toplevel.h"
+#include "logging/logging.h"
+#include "waypp/window/xdg_toplevel.h"
 
 struct Configuration {
-    int width;
-    int height;
-    bool disable_cursor;
-    bool fullscreen;
-    bool maximized;
-    bool fullscreen_ratio;
-    bool tearing;
+  int width;
+  int height;
+  bool disable_cursor;
+  bool fullscreen;
+  bool maximized;
+  bool fullscreen_ratio;
+  bool tearing;
 };
 
 static constexpr int kResizeMargin = 12;
@@ -61,9 +61,9 @@ static std::vector<std::string> gCursors = Pointer::get_available_cursors();
  * @return void
  */
 void handle_signal(int signal) {
-    if (signal == SIGINT) {
-        gRunning = false;
-    }
+  if (signal == SIGINT) {
+    gRunning = false;
+  }
 }
 
 static void paint_pixels(void *image,

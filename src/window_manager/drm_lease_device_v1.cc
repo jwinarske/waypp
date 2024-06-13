@@ -16,7 +16,7 @@
 
 #include "drm_lease_device_v1.h"
 
-#include "logging.h"
+#include "logging/logging.h"
 
 DrmLeaseDevice_v1::DrmLeaseDevice_v1(
         struct wp_drm_lease_device_v1 *wp_drm_lease_device_v1)
@@ -26,7 +26,7 @@ DrmLeaseDevice_v1::DrmLeaseDevice_v1(
 }
 
 DrmLeaseDevice_v1::~DrmLeaseDevice_v1() {
-    SPDLOG_TRACE("[DrmLeaseDevice_v1] wp_drm_lease_device_v1_destroy(wp_drm_lease_device_v1_)");
+    DLOG_TRACE("[DrmLeaseDevice_v1] wp_drm_lease_device_v1_destroy(wp_drm_lease_device_v1_)");
     wp_drm_lease_device_v1_destroy(wp_drm_lease_device_v1_);
 }
 
@@ -38,7 +38,7 @@ void DrmLeaseDevice_v1::handle_device_drm_fd(
     if (obj->wp_drm_lease_device_v1_ != wp_drm_lease_device_v1) {
         return;
     }
-    SPDLOG_DEBUG("handle_device_drm_fd: fd: {}", fd);
+    DLOG_DEBUG("handle_device_drm_fd: fd: {}", fd);
 }
 
 void DrmLeaseDevice_v1::handle_device_connector(
@@ -49,7 +49,7 @@ void DrmLeaseDevice_v1::handle_device_connector(
     if (obj->wp_drm_lease_device_v1_ != wp_drm_lease_device_v1) {
         return;
     }
-    SPDLOG_DEBUG("handle_device_connector: fd: 0x{:x}", fmt::ptr(id));
+    DLOG_DEBUG("handle_device_connector: fd: 0x{:x}", fmt::ptr(id));
 }
 
 void DrmLeaseDevice_v1::handle_device_done(
@@ -59,7 +59,7 @@ void DrmLeaseDevice_v1::handle_device_done(
     if (obj->wp_drm_lease_device_v1_ != wp_drm_lease_device_v1) {
         return;
     }
-    SPDLOG_DEBUG("handle_device_done");
+    DLOG_DEBUG("handle_device_done");
 }
 
 void DrmLeaseDevice_v1::handle_device_released(
@@ -69,7 +69,7 @@ void DrmLeaseDevice_v1::handle_device_released(
     if (obj->wp_drm_lease_device_v1_ != wp_drm_lease_device_v1) {
         return;
     }
-    SPDLOG_DEBUG("handle_device_released");
+    DLOG_DEBUG("handle_device_released");
 }
 
 void DrmLeaseDevice_v1::handle_connector_name(
@@ -80,7 +80,7 @@ void DrmLeaseDevice_v1::handle_connector_name(
     if (obj->wp_drm_lease_connector_v1_ != wp_drm_lease_connector_v1) {
         return;
     }
-    SPDLOG_DEBUG("handle_connector_name: name: {}", name);
+    DLOG_DEBUG("handle_connector_name: name: {}", name);
 }
 
 void DrmLeaseDevice_v1::handle_connector_description(
@@ -91,7 +91,7 @@ void DrmLeaseDevice_v1::handle_connector_description(
     if (obj->wp_drm_lease_connector_v1_ != wp_drm_lease_connector_v1) {
         return;
     }
-    SPDLOG_DEBUG("handle_connector_description: description: {}", description);
+    DLOG_DEBUG("handle_connector_description: description: {}", description);
 }
 
 void DrmLeaseDevice_v1::handle_connector_connector_id(
@@ -102,7 +102,7 @@ void DrmLeaseDevice_v1::handle_connector_connector_id(
     if (obj->wp_drm_lease_connector_v1_ != wp_drm_lease_connector_v1) {
         return;
     }
-    SPDLOG_DEBUG("handle_connector_connector_id: connector_id: {}", connector_id);
+    DLOG_DEBUG("handle_connector_connector_id: connector_id: {}", connector_id);
 }
 
 void DrmLeaseDevice_v1::handle_connector_done(
@@ -112,7 +112,7 @@ void DrmLeaseDevice_v1::handle_connector_done(
     if (obj->wp_drm_lease_connector_v1_ != wp_drm_lease_connector_v1) {
         return;
     }
-    SPDLOG_DEBUG("handle_connector_done");
+    LOG_DEBUG("handle_connector_done");
 }
 
 void DrmLeaseDevice_v1::handle_connector_withdrawn(
@@ -122,7 +122,7 @@ void DrmLeaseDevice_v1::handle_connector_withdrawn(
     if (obj->wp_drm_lease_connector_v1_ != wp_drm_lease_connector_v1) {
         return;
     }
-    SPDLOG_DEBUG("handle_connector_withdrawn");
+    LOG_DEBUG("handle_connector_withdrawn");
 }
 
 void DrmLeaseDevice_v1::handle_lease_fd(void *data,
@@ -133,7 +133,7 @@ void DrmLeaseDevice_v1::handle_lease_fd(void *data,
         return;
     }
     obj->leased_fd_ = leased_fd;
-    SPDLOG_DEBUG("handle_lease_fd: leased_fd: {}", leased_fd);
+    LOG_DEBUG("handle_lease_fd: leased_fd: {}", leased_fd);
 }
 
 void DrmLeaseDevice_v1::handle_lease_finished(
@@ -143,5 +143,5 @@ void DrmLeaseDevice_v1::handle_lease_finished(
     if (obj->wp_drm_lease_v1_ != wp_drm_lease_v1) {
         return;
     }
-    SPDLOG_DEBUG("handle_lease_finished");
+    LOG_DEBUG("handle_lease_finished");
 }

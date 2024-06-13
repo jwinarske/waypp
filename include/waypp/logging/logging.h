@@ -14,8 +14,12 @@
  * limitations under the License.
  */
 
-#ifndef INCLUDE_LOGGING_H_
-#define INCLUDE_LOGGING_H_
+#ifndef SRC_LOGGING_LOGGING_H_
+#define SRC_LOGGING_LOGGING_H_
+
+#include <waypp/waypp.h>
+
+#if BUILD_WAYPP_STANDALONE
 
 #if !defined(NDEBUG)
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
@@ -27,11 +31,33 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog-inl.h>
 
+#define DLOG_DEBUG    SPDLOG_DEBUG
+#define DLOG_TRACE    SPDLOG_TRACE
+#define DLOG_CRITICAL SPDLOG_CRITICAL
+
+#define LOG_INFO      spdlog::info
+#define LOG_DEBUG     spdlog::debug
+#define LOG_ERROR     spdlog::error
+#define LOG_TRACE     spdlog::trace
+#define LOG_WARN      spdlog::warn
+#define LOG_CRITICAL  spdlog::critical
+
 class Logging {
 public:
-    Logging();
+    static constexpr int32_t kLogFlushInterval = INT32_C(5);
 
-    ~Logging();
+    Logging() {
+        console_sink_ = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+        logger_ = std::make_shared<spdlog::logger>("waypp", console_sink_);
+        spdlog::set_default_logger(logger_);
+        spdlog::set_pattern("[%H:%M:%S.%f] [%L] %v");
+
+        spdlog::flush_on(spdlog::level::err);
+        spdlog::flush_every(std::chrono::seconds(kLogFlushInterval));
+        spdlog::cfg::load_env_levels();
+    }
+
+    ~Logging() = default;
 
     // Disallow copy and assign.
     Logging(const Logging &) = delete;
@@ -45,4 +71,6 @@ private:
             console_sink_;
 };
 
-#endif  // INCLUDE_LOGGING_H_
+#endif
+
+#endif  // SRC_LOGGING_LOGGING_H_

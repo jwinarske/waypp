@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#include "xdg_window_manager.h"
+#include "waypp/window_manager/xdg_window_manager.h"
 
-#include "logging.h"
-#include "window/xdg_toplevel.h"
+#include "logging/logging.h"
+#include "waypp/window/xdg_toplevel.h"
 
 /**
  * @class XdgWindowManager
@@ -39,16 +39,16 @@ XdgWindowManager::XdgWindowManager(
                         ext_interface_count,
                         ext_interface_data,
                         context) {
-    SPDLOG_TRACE("++XdgWindowManager::XdgWindowManager()");
+    DLOG_TRACE("++XdgWindowManager::XdgWindowManager()");
     xdg_wm_base_ = get_xdg_wm_base();
     if (!xdg_wm_base_) {
-        spdlog::critical("XDG Window Manager is not supported.");
+        LOG_CRITICAL("XDG Window Manager is not supported.");
         exit(EXIT_FAILURE);
     }
 
     xdg_wm_base_add_listener(xdg_wm_base_, &xdg_wm_base_listener_, this);
 
-    SPDLOG_TRACE("--XdgWindowManager::XdgWindowManager()");
+    DLOG_TRACE("--XdgWindowManager::XdgWindowManager()");
 }
 
 /**
@@ -76,10 +76,10 @@ void XdgWindowManager::xdg_wm_base_ping(void *data,
                                         uint32_t serial) {
     auto wm = static_cast<XdgWindowManager *>(data);
     if (wm->get_xdg_wm_base() != xdg_wm_base) {
-        SPDLOG_CRITICAL("wm->get_xdg_wm_base().value() != xdg_wm_base");
+        DLOG_CRITICAL("wm->get_xdg_wm_base().value() != xdg_wm_base");
         return;
     }
-    SPDLOG_TRACE("xdg_wm_base_ping");
+    DLOG_TRACE("xdg_wm_base_ping");
     xdg_wm_base_pong(xdg_wm_base, serial);
 }
 

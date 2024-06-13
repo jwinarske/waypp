@@ -29,9 +29,9 @@
 #include <cxxopts.hpp>
 #include <linux/input.h>
 
-#include "window/xdg_toplevel.h"
+#include "waypp/window/xdg_toplevel.h"
 
-#include "logging.h"
+#include "logging/logging.h"
 
 static volatile bool running = true;
 
@@ -40,7 +40,7 @@ volatile bool scene_initialized = false;
 static constexpr int kResizeMargin = 12;
 
 /// EGL Context Attribute configuration
-static constexpr std::array<EGLint, 3> kEglContextAttribs = {
+static constexpr std::array<EGLint, 3> kLocalEglContextAttribs = {
         {
                 // clang-format off
                 EGL_CONTEXT_MAJOR_VERSION, 2,
@@ -50,7 +50,7 @@ static constexpr std::array<EGLint, 3> kEglContextAttribs = {
 };
 
 /// EGL Configuration Attributes
-std::array<EGLint, 13> kEglConfigAttribs = {
+std::array<EGLint, 13> kLocalEglConfigAttribs = {
         {
                 // clang-format off
                 EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
@@ -603,7 +603,7 @@ int main(int argc, char **argv) {
 
     /// Control EGL_ALPHA_SIZE value
     if (config.opaque || config.buffer_bpp == 16) {
-        kEglConfigAttribs[9] = 0;
+        kLocalEglConfigAttribs[9] = 0;
     }
 
 
@@ -616,10 +616,10 @@ int main(int argc, char **argv) {
     }
 
     Egl::config egl_config{};
-    egl_config.context_attribs_size = kEglContextAttribs.size();
-    egl_config.context_attribs = kEglContextAttribs.data();
-    egl_config.config_attribs_size = kEglConfigAttribs.size();
-    egl_config.config_attribs = kEglConfigAttribs.data();
+    egl_config.context_attribs_size = kLocalEglContextAttribs.size();
+    egl_config.context_attribs = kLocalEglContextAttribs.data();
+    egl_config.config_attribs_size = kLocalEglConfigAttribs.size();
+    egl_config.config_attribs = kLocalEglConfigAttribs.data();
     egl_config.buffer_bpp = config.buffer_bpp;
     egl_config.swap_interval = config.interval;
     egl_config.type = Egl::OPENGL_ES_API;

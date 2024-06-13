@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#include "window.h"
+#include "waypp/window/window.h"
 
 #include <wayland-egl.h>
 
-#include "logging.h"
+#include "logging/logging.h"
 
 Window::Window(std::shared_ptr<WindowManager> wm,
                const char *name,
@@ -57,7 +57,7 @@ Window::Window(std::shared_ptr<WindowManager> wm,
 
     if (buffer_count) {
         if (!wm->shm_has_format(static_cast<wl_shm_format>(buffer_format))) {
-            spdlog::critical("{} is not supported.",
+            LOG_CRITICAL("{} is not supported.",
                              WindowManager::shm_format_to_text(
                                      static_cast<wl_shm_format>(buffer_format)));
             abort();
@@ -103,11 +103,11 @@ Window::Window(std::shared_ptr<WindowManager> wm,
         tearing_control_ = wp_tearing_control_manager_v1_get_tearing_control(
                 wm->get_tearing_control_manager(), wl_surface_);
         if (tearing) {
-            SPDLOG_DEBUG("[Surface] Set Presentation Hint: ASYNC");
+            DLOG_DEBUG("[Surface] Set Presentation Hint: ASYNC");
             wp_tearing_control_v1_set_presentation_hint(
                     tearing_control_, WP_TEARING_CONTROL_V1_PRESENTATION_HINT_ASYNC);
         } else {
-            SPDLOG_DEBUG("[Surface] Set Presentation Hint: VSYNC");
+            DLOG_DEBUG("[Surface] Set Presentation Hint: VSYNC");
             wp_tearing_control_v1_set_presentation_hint(
                     tearing_control_, WP_TEARING_CONTROL_V1_PRESENTATION_HINT_VSYNC);
         }
@@ -120,22 +120,22 @@ Window::Window(std::shared_ptr<WindowManager> wm,
 Window::~Window() {
     if (viewport_) {
 #if HAS_WAYLAND_PROTOCOL_VIEWPORTER
-        SPDLOG_TRACE("[Window] wp_viewport_destroy(viewport_)");
+        DLOG_TRACE("[Window] wp_viewport_destroy(viewport_)");
         wp_viewport_destroy(viewport_);
 #endif
     }
     if (fractional_scale_) {
 #if HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1
-        SPDLOG_TRACE("[Window] wp_fractional_scale_v1_destroy(fractional_scale_)");
+        DLOG_TRACE("[Window] wp_fractional_scale_v1_destroy(fractional_scale_)");
         wp_fractional_scale_v1_destroy(fractional_scale_);
 #endif
     }
     if (wl_callback_) {
-        SPDLOG_TRACE("[Window] wl_callback_destroy(wl_callback_)");
+        DLOG_TRACE("[Window] wl_callback_destroy(wl_callback_)");
         wl_callback_destroy(wl_callback_);
     }
     if (wl_surface_) {
-        SPDLOG_TRACE("[Window] wl_surface_destroy(wl_surface_)");
+        DLOG_TRACE("[Window] wl_surface_destroy(wl_surface_)");
         wl_surface_destroy(wl_surface_);
     }
 
@@ -151,7 +151,7 @@ void Window::update_buffer_geometry() {
         return;
     }
 
-    SPDLOG_DEBUG("update_buffer_geometry");
+    DLOG_DEBUG("update_buffer_geometry");
     enum wl_output_transform new_buffer_transform;
     struct {
         int width;
@@ -234,7 +234,7 @@ void Window::update_buffer_geometry() {
         extents_.buffer.height = new_buffer_size.height;
 #if ENABLE_EGL
         if (egl_) {
-            SPDLOG_DEBUG("egl_->resize({}, {}, 0, 0)", extents_.buffer.width, extents_.buffer.height);
+            LOG_DEBUG("egl_->resize({}, {}, 0, 0)", extents_.buffer.width, extents_.buffer.height);
             egl_->resize(extents_.buffer.width, extents_.buffer.height, 0, 0);
         }
 #endif
@@ -254,7 +254,7 @@ void Window::handle_preferred_scale(
         void *data,
         struct wp_fractional_scale_v1 *wp_fractional_scale_v1,
         uint32_t scale) {
-    SPDLOG_TRACE("[Window] handle_preferred_scale()");
+    LOG_TRACE("[Window] handle_preferred_scale()");
     auto *w = static_cast<Window *>(data);
     if (w->fractional_scale_ != wp_fractional_scale_v1) {
         return;
@@ -270,7 +270,7 @@ void Window::handle_surface_enter(void *data,
     if (obj->wl_surface_ != wl_surface) {
         return;
     }
-    SPDLOG_TRACE("handle_surface_enter: {} [{}]", fmt::ptr(wl_output),
+    LOG_TRACE("handle_surface_enter: {} [{}]", fmt::ptr(wl_output),
                  obj->name_);
     obj->wl_output_ = wl_output;
 }
@@ -283,7 +283,7 @@ void Window::handle_surface_leave(void *data,
         return;
     }
 #if !defined(NDEBUG)
-    SPDLOG_TRACE("handle_surface_leave: {} [{}]", fmt::ptr(output), obj->name_);
+    LOG_TRACE("handle_surface_leave: {} [{}]", fmt::ptr(output), obj->name_);
 #else
     (void)output;
 #endif
@@ -299,7 +299,7 @@ void Window::handle_surface_leave(void *data,
  * @note This function assumes that the surface has been initialized properly.
  */
 void Window::start_frame_callbacks(void *user_data) {
-    SPDLOG_TRACE("[Window] start_frame_callbacks");
+    LOG_TRACE("[Window] start_frame_callbacks");
     if (user_data) {
         user_data_ = user_data;
     }
@@ -311,9 +311,9 @@ void Window::start_frame_callbacks(void *user_data) {
  * This function is intended to be called from outside the Window class.
  */
 void Window::stop_frame_callbacks() {
-    SPDLOG_TRACE("[Window] stop_frame_callbacks");
+    LOG_TRACE("[Window] stop_frame_callbacks");
     if (wl_callback_) {
-        SPDLOG_TRACE("[Window] wl_callback_destroy");
+        LOG_TRACE("[Window] wl_callback_destroy");
         wl_callback_destroy(wl_callback_);
         wl_callback_ = nullptr;
     }
@@ -333,7 +333,7 @@ void Window::stop_frame_callbacks() {
 void Window::handle_frame_callback(void *data,
                                    struct wl_callback *callback,
                                    const uint32_t time) {
-    //SPDLOG_TRACE("++Window::handle_frame_callback()");
+    //LOG_TRACE("++Window::handle_frame_callback()");
     const auto obj = static_cast<Window *>(data);
 
     obj->wl_callback_ = nullptr;
@@ -364,13 +364,13 @@ void Window::handle_frame_callback(void *data,
         }
         wl_surface_commit(obj->wl_surface_);
     }
-    //SPDLOG_TRACE("--Window::handle_frame_callback()");
+    //LOG_TRACE("--Window::handle_frame_callback()");
 }
 
 void Window::handle_preferred_buffer_scale(void *data,
                                            struct wl_surface *wl_surface,
                                            int32_t factor) {
-    SPDLOG_DEBUG("[Window] handle_preferred_buffer_scale()");
+    LOG_DEBUG("[Window] handle_preferred_buffer_scale()");
     auto w = static_cast<Window *>(data);
     if (w->wl_surface_ != wl_surface) {
         return;
@@ -382,7 +382,7 @@ void Window::handle_preferred_buffer_scale(void *data,
 void Window::handle_preferred_buffer_transform(void *data,
                                                struct wl_surface *wl_surface,
                                                uint32_t transform) {
-    SPDLOG_DEBUG("[Window] handle_preferred_buffer_transform()");
+    LOG_DEBUG("[Window] handle_preferred_buffer_transform()");
     auto w = static_cast<Window *>(data);
     if (w->wl_surface_ != wl_surface) {
         return;
@@ -490,7 +490,7 @@ void Window::opaque_region_add(int32_t x,
     auto region = wl_compositor_create_region(wm_->get_compositor());
     wl_region_add(region, x, y, width, height);
     wl_surface_set_opaque_region(wl_surface_, region);
-    SPDLOG_TRACE("[Window] wl_region_destroy(region)");
+    LOG_TRACE("[Window] wl_region_destroy(region)");
     wl_region_destroy(region);
 }
 

@@ -5,7 +5,8 @@
 
 #include <cstdint>
 
-#include "wayland-protocols.h"
+#include <waypp/waypp.h>
+
 
 class WestonCapture;
 

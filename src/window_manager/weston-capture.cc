@@ -1,7 +1,7 @@
 
-#include "weston-capture.h"
+#include "waypp/window_manager/weston-capture.h"
 
-#include "logging.h"
+#include "logging/logging.h"
 
 WestonCapture::WestonCapture(struct weston_capture_v1 *weston_capture_v1,
                              struct wl_output *wl_output,
@@ -33,7 +33,7 @@ void WestonCapture::handle_format(
         return;
     }
 
-    SPDLOG_TRACE("WestonCapture: drm_format: {}", drm_format);
+    DLOG_TRACE("WestonCapture: drm_format: {}", drm_format);
 
     for (auto observer: obj->observers_) {
         observer->notify_weston_capture_format(
@@ -51,7 +51,7 @@ void WestonCapture::handle_size(
         return;
     }
 
-    SPDLOG_TRACE("WestonCapture: size: width: {}, height: {}", width, height);
+    DLOG_TRACE("WestonCapture: size: width: {}, height: {}", width, height);
 
     for (auto observer: obj->observers_) {
         observer->notify_weston_capture_size(
@@ -67,7 +67,7 @@ void WestonCapture::handle_complete(
         return;
     }
 
-    SPDLOG_TRACE("WestonCapture: complete");
+    DLOG_TRACE("WestonCapture: complete");
 
     for (auto observer: obj->observers_) {
         observer->notify_weston_capture_complete(obj->user_data_,
@@ -83,7 +83,7 @@ void WestonCapture::handle_retry(
         return;
     }
 
-    SPDLOG_TRACE("WestonCapture: retry");
+    DLOG_TRACE("WestonCapture: retry");
 
     for (auto observer: obj->observers_) {
         observer->notify_weston_capture_retry(obj->user_data_,
@@ -100,7 +100,7 @@ void WestonCapture::handle_failed(
         return;
     }
 
-    SPDLOG_TRACE("WestonCapture: failed: {}", msg);
+    DLOG_TRACE("WestonCapture: failed: {}", msg);
 
     for (auto observer: obj->observers_) {
         observer->notify_weston_capture_failed(obj->user_data_,

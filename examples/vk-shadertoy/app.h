@@ -21,7 +21,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include "logging.h"
+#include "logging/logging.h"
 #include "shader_toy.h"
 #include "window/xdg_toplevel.h"
 

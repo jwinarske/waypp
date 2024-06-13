@@ -24,10 +24,10 @@
 
 #include <wayland-client.h>
 
-#include "buffer.h"
+#include "waypp/window/buffer.h"
 #include "egl.h"
 #include "feedback.h"
-#include "window_manager/xdg_window_manager.h"
+#include "waypp/window_manager/xdg_window_manager.h"
 
 class Buffer;
 

@@ -24,7 +24,7 @@
 #ifndef EXAMPLES_VIEW_MANAGER_APP_H_
 #define EXAMPLES_VIEW_MANAGER_APP_H_
 
-#include "logging.h"
+#include "logging/logging.h"
 
 #include "view_manager.h"
 #include "view_manager_wayland.h"

@@ -28,7 +28,7 @@
 
 #include <cxxopts.hpp>
 
-#include "logging.h"
+#include "logging/logging.h"
 
 #include "window/xdg_toplevel.h"
 #include "window_manager/agl_shell.h"

@@ -21,7 +21,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include "logging.h"
+#include "logging/logging.h"
 #include "view_wayland.h"
 
 

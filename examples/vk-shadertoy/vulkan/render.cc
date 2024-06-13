@@ -28,7 +28,7 @@
 
 #include <cmath>
 
-#include "logging.h"
+#include "logging/logging.h"
 #include "utils.h"
 
 #define d VULKAN_HPP_DEFAULT_DISPATCHER

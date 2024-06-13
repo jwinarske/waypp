@@ -28,7 +28,7 @@
 #include <cxxopts.hpp>
 #include <glm/glm.hpp>
 
-#include "logging.h"
+#include "logging/logging.h"
 #include "shaders/glsl-ray-tracing-shaders.h"
 #include "window/xdg_toplevel.h"
 

@@ -27,7 +27,7 @@
 
 #include <linux/input.h>
 
-#include "logging.h"
+#include "logging/logging.h"
 #include "view_wayland.h"
 
 

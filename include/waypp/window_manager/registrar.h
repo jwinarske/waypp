@@ -23,11 +23,11 @@
 #include <map>
 #include <mutex>
 #include <vector>
+#include <waypp/waypp.h>
 
 #include "waypp/config.h"
 #include "output.h"
-#include "seat/seat.h"
-#include "wayland-protocols.h"
+#include "waypp/seat/seat.h"
 
 #if ENABLE_DRM_LEASE_CLIENT
 #include "drm_lease_device_v1.h"

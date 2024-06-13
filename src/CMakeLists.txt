@@ -21,43 +21,30 @@ if (ENABLE_EGL)
     find_package(OpenGL REQUIRED COMPONENTS EGL)
 endif ()
 
-set(WINDOW_MANAGER_SRC
-        window_manager/output.cc
-        window_manager/registrar.cc
-        window_manager/weston-capture.cc
-        window_manager/window_manager.cc
-)
+add_library(waypp
 
-set(SEAT_SRC
         seat/seat.cc
         seat/keyboard.cc
         seat/pointer.cc
         seat/touch.cc
-)
 
-set(WINDOW_SRC
         window/anonymous_file.cc
         window/buffer.cc
         window/feedback.cc
         window/window.cc
-)
 
-add_library(waypp
-        ${WINDOW_MANAGER_SRC}
-        ${SEAT_SRC}
-        ${WINDOW_SRC}
+        window_manager/output.cc
+        window_manager/registrar.cc
+        window_manager/weston-capture.cc
+        window_manager/window_manager.cc
+
         command.cc
 )
-
-if (BUILD_STANDALONE)
-    target_sources(waypp PRIVATE
-            logging.cc)
-endif ()
+target_include_directories(waypp PUBLIC ${LOGGING_INCLUDE_DIRS})
+print_target_properties(waypp)
 
 if (ENABLE_EGL)
-    target_sources(waypp PRIVATE
-            window/egl.cc
-    )
+    target_sources(waypp PRIVATE window/egl.cc)
 endif ()
 
 if (ENABLE_XDG_CLIENT)
@@ -77,8 +64,6 @@ if (ENABLE_DRM_LEASE_CLIENT)
     target_sources(waypp PRIVATE window_manager/drm_lease_device_v1.cc)
 endif ()
 
-target_include_directories(waypp PUBLIC .)
-
 target_link_libraries(waypp PUBLIC
         wayland-gen
         PkgConfig::GLIB
@@ -92,3 +77,6 @@ if (ENABLE_EGL)
 endif ()
 
 add_sanitizers(waypp)
+
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/* DESTINATION include)
+install(TARGETS waypp DESTINATION lib)

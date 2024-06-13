@@ -33,9 +33,9 @@
 #include <unistd.h>
 #include <cerrno>
 #include <cstdlib>
+#include <waypp/waypp.h>
 
-#include "logging.h"
-#include "wayland-protocols.h"
+#include "logging/logging.h"
 
 #if !defined(HAVE_MKOSTEMP)
 
@@ -136,7 +136,7 @@ int AnonymousFile::create(off_t size) {
 
         std::filesystem::path tmp_path(xdg_runtime_dir);
         tmp_path /= "/waypp-shared-XXXXXX";
-        SPDLOG_DEBUG("Creating tmp file: {}", tmp_path.c_str());
+        DLOG_DEBUG("Creating tmp file: {}", tmp_path.c_str());
         std::string path(tmp_path);
         fd = create_tmpfile_cloexec(path.data());
         if (fd < 0)

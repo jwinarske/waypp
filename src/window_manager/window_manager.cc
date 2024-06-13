@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include "window_manager.h"
+#include "waypp/window_manager/window_manager.h"
 
 #include <poll.h>
 #include <wayland-client.h>
 
-#include "logging.h"
-#include "registrar.h"
+#include "logging/logging.h"
+#include "waypp/window_manager/registrar.h"
 
 class Registrar;
 
@@ -50,8 +50,8 @@ WindowManager::WindowManager(
           wl_display_(display),
           context_(context),
           outputs_(get_outputs()) {
-    SPDLOG_TRACE("++WindowManager::WindowManager()");
-    SPDLOG_TRACE("--WindowManager::WindowManager()");
+    DLOG_TRACE("++WindowManager::WindowManager()");
+    DLOG_TRACE("--WindowManager::WindowManager()");
 }
 
 /**
@@ -62,8 +62,8 @@ WindowManager::WindowManager(
  * frames.
  */
 WindowManager::~WindowManager() {
-    SPDLOG_TRACE("++WindowManager::~WindowManager()");
-    SPDLOG_TRACE("--WindowManager::~WindowManager()");
+    DLOG_TRACE("++WindowManager::~WindowManager()");
+    DLOG_TRACE("--WindowManager::~WindowManager()");
 }
 
 /**
@@ -143,20 +143,20 @@ struct wl_output *WindowManager::get_primary_output() {
     if (get_xdg_output_manager()) {
         for (auto &output: outputs) {
             if (output.second->get_xdg_output()->is_origin()) {
-                spdlog::debug("get_primary_output: (xdg_output) Origin: {}",
+                LOG_DEBUG("get_primary_output: (xdg_output) Origin: {}",
                               fmt::ptr(output.first));
                 return output.first;
             }
         }
     } else {
         for (auto &output: outputs) {
-            spdlog::debug("get_primary_output: (fist) Origin: {}",
+            LOG_DEBUG("get_primary_output: (fist) Origin: {}",
                           fmt::ptr(output.first));
             return output.first;
         }
     }
 
-    spdlog::debug("get_primary_output: (nullptr)");
+    LOG_DEBUG("get_primary_output: (nullptr)");
     return nullptr;
 }
 
@@ -167,13 +167,13 @@ struct wl_output *WindowManager::find_output_by_name(
     if (get_xdg_output_manager()) {
         for (auto &output: outputs) {
             if (output.second->get_name() == output_name) {
-                spdlog::debug("find_output_by_name: (xdg_output): {}", output_name);
+                LOG_DEBUG("find_output_by_name: (xdg_output): {}", output_name);
                 return output.first;
             }
         }
     } else {
         for (auto &output: outputs) {
-            spdlog::debug("find_output_by_name: (fist): {}", output_name);
+            LOG_DEBUG("find_output_by_name: (fist): {}", output_name);
             return output.first;
         }
     }

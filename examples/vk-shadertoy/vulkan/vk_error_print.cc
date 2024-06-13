@@ -153,7 +153,7 @@ void print_error(FILE *fout, struct vk_error_data *error_data, const char *prefi
             fprintf(fout, "%s (VkResult %d)\n", VkResult_string(error_data->vkresult), error_data->vkresult);
             break;
         case VK_ERROR_ERRNO:
-            fprintf(fout, "%s (errno %d)\n", strerror(error_data->err_no), error_data->err_no);
+            fprintf(fout, "%s (errno %d)\n", std::strerror(error_data->err_no), error_data->err_no);
             break;
         default:
             fprintf(fout, "<internal error>\n");

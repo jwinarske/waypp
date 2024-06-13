@@ -23,9 +23,9 @@
 
 #include <wayland-client.h>
 
-#include "egl.h"
-#include "window/window.h"
-#include "window_manager/xdg_window_manager.h"
+#include "waypp/window/egl.h"
+#include "window.h"
+#include "waypp/window_manager/xdg_window_manager.h"
 
 class Output;
 

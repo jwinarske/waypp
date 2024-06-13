@@ -28,7 +28,7 @@
 
 #include <cxxopts.hpp>
 
-#include "logging.h"
+#include "logging/logging.h"
 #include "window/xdg_toplevel.h"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
