@@ -23,7 +23,12 @@
  *
  * The Touch class represents a touch input device.
  */
-Touch::Touch(struct wl_touch *wl_touch, struct event_mask &event_mask) : touch_(wl_touch) {
+Touch::Touch(struct wl_touch *wl_touch, struct event_mask &event_mask) :
+        touch_(wl_touch),
+        event_mask_({
+                            .enabled = event_mask.enabled,
+                            .all = event_mask.all
+                    }) {
     SPDLOG_DEBUG("Touch");
     wl_touch_add_listener(wl_touch, &listener_, this);
 

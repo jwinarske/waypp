@@ -38,7 +38,11 @@
  */
 Keyboard::Keyboard(struct wl_keyboard *keyboard, struct event_mask &event_mask)
         : wl_keyboard_(keyboard),
-          xkb_context_(xkb_context_new(XKB_CONTEXT_NO_FLAGS)) {
+          xkb_context_(xkb_context_new(XKB_CONTEXT_NO_FLAGS)),
+          event_mask_({
+                              .enabled = event_mask.enabled,
+                              .all = event_mask.all
+                      }) {
     SPDLOG_DEBUG("Keyboard");
     wl_keyboard_add_listener(wl_keyboard_, &keyboard_listener_, this);
 }

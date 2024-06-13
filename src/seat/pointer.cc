@@ -40,7 +40,14 @@ Pointer::Pointer(wl_pointer *pointer,
         : wl_pointer_(pointer),
           wl_shm_(wl_shm),
           disable_cursor_(disable_cursor),
-          size_(size) {
+          size_(size),
+          event_mask_({
+                              .enabled = event_mask.enabled,
+                              .all = event_mask.all,
+                              .axis = event_mask.axis,
+                              .buttons = event_mask.buttons,
+                              .motion = event_mask.motion
+                      }) {
     SPDLOG_DEBUG("Pointer");
     wl_pointer_add_listener(pointer, &pointer_listener_, this);
     wl_surface_cursor_ = wl_compositor_create_surface(wl_compositor);
