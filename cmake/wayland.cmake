@@ -135,6 +135,12 @@ message(STATUS "Tearing Control ....... ${HAS_WAYLAND_PROTOCOL_TEARING_CONTROL_V
 #
 # Unstable
 #
+add_protocol(${WAYLAND_PROTOCOLS_BASE}/unstable/tablet/tablet-unstable-v1.xml)
+message(STATUS "Tablet v1 ............. ${HAS_WAYLAND_PROTOCOL_TABLET_UNSTABLE_V1}")
+
+add_protocol(${WAYLAND_PROTOCOLS_BASE}/unstable/tablet/tablet-unstable-v2.xml)
+message(STATUS "Tablet v2 ............. ${HAS_WAYLAND_PROTOCOL_TABLET_UNSTABLE_V2}")
+
 add_protocol(${WAYLAND_PROTOCOLS_BASE}/unstable/idle-inhibit/idle-inhibit-unstable-v1.xml)
 message(STATUS "Idle Inhibit .......... ${HAS_WAYLAND_PROTOCOL_IDLE_INHIBIT_UNSTABLE_V1}")
 

@@ -46,7 +46,7 @@ public:
     explicit App(const Configuration &config)
             : logging_(std::make_unique<Logging>()), weston_capture_v1_(nullptr) {
         display_ = wl_display_connect(nullptr);
-        if (display_ == nullptr) {
+        if (!display_) {
             spdlog::critical("Unable to connect to Wayland socket.");
             exit(EXIT_FAILURE);
         }
@@ -67,7 +67,7 @@ public:
 
         /// Weston Capture
         weston_capture_v1_ = agl_shell_->get_weston_capture_v1();
-        if (weston_capture_v1_ == nullptr) {
+        if (!weston_capture_v1_) {
             spdlog::critical("weston_capture_v1 interface not found.");
             exit(EXIT_FAILURE);
         }
@@ -168,11 +168,11 @@ public:
     }
 
 private:
-    struct wl_display *display_;
+    struct wl_display *display_{};
     std::unique_ptr<Logging> logging_;
     std::shared_ptr<AglShell> agl_shell_;
     std::list<std::unique_ptr<WestonCapture>> weston_capture_list_;
-    struct weston_capture_v1 *weston_capture_v1_;
+    struct weston_capture_v1 *weston_capture_v1_{};
 
     struct {
         uint32_t drm_format;
