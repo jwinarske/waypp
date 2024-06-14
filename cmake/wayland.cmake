@@ -185,4 +185,4 @@ endif ()
 
 add_sanitizers(wayland-gen)
 
-print_target_properties(wayland-gen)
+# print_target_properties(wayland-gen)
