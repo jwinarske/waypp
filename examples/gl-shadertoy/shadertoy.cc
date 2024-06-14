@@ -30,7 +30,7 @@
 
 #include "logging/logging.h"
 #include "shaders/glsl-ray-tracing-shaders.h"
-#include "window/xdg_toplevel.h"
+#include "waypp/window/xdg_toplevel.h"
 
 class App;
 
@@ -41,7 +41,7 @@ volatile bool scene_initialized = false;
 static constexpr int kResizeMargin = 12;
 
 /// EGL Context Attribute configuration
-std::array<EGLint, 7> kEglContextAttribs = {
+std::array<EGLint, 7> kEglContextAttribs1 = {
         {
                 // clang-format off
                 EGL_CONTEXT_MAJOR_VERSION, 3,
@@ -54,7 +54,7 @@ std::array<EGLint, 7> kEglContextAttribs = {
 };
 
 /// EGL Configuration Attributes
-std::array<EGLint, 21> kEglConfigAttribs = {
+std::array<EGLint, 21> kEglConfigAttribs1 = {
         {
                 // clang-format off
                 EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
@@ -382,7 +382,7 @@ int main(int argc, char **argv) {
 
     /// Control EGL_ALPHA_SIZE value
     if (config.opaque) {
-        kEglConfigAttribs[15] = 0;
+        kEglConfigAttribs1[15] = 0;
     }
 
     auto wm = std::make_shared<XdgWindowManager>(display);
@@ -393,10 +393,10 @@ int main(int argc, char **argv) {
     }
 
     Egl::config egl_config{};
-    egl_config.context_attribs_size = kEglContextAttribs.size();
-    egl_config.context_attribs = kEglContextAttribs.data();
-    egl_config.config_attribs_size = kEglConfigAttribs.size();
-    egl_config.config_attribs = kEglConfigAttribs.data();
+    egl_config.context_attribs_size = kEglContextAttribs1.size();
+    egl_config.context_attribs = kEglContextAttribs1.data();
+    egl_config.config_attribs_size = kEglConfigAttribs1.size();
+    egl_config.config_attribs = kEglConfigAttribs1.data();
     egl_config.buffer_bpp = 32;
     egl_config.swap_interval = config.interval;
     egl_config.type = Egl::OPENGL_API;

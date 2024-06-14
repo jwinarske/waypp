@@ -29,7 +29,7 @@
 #include <cxxopts.hpp>
 
 #include "logging/logging.h"
-#include "window/xdg_toplevel.h"
+#include "waypp/window/xdg_toplevel.h"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
 struct Configuration {

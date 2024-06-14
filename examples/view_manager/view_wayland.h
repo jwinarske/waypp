@@ -26,7 +26,7 @@
 
 #include "view.h"
 #include "view_manager_wayland.h"
-#include "window/xdg_toplevel.h"
+#include "waypp/window/xdg_toplevel.h"
 
 #include <random>
 

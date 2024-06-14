@@ -25,7 +25,7 @@
 #define EXAMPLES_VIEW_MANAGER_VIEW_MANAGER_WAYLAND_H_
 
 #include "view_manager.h"
-#include "window_manager/xdg_window_manager.h"
+#include "waypp/window_manager/xdg_window_manager.h"
 
 class ViewManager;
 

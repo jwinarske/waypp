@@ -23,7 +23,7 @@
 
 #include "logging/logging.h"
 #include "shader_toy.h"
-#include "window/xdg_toplevel.h"
+#include "waypp/window/xdg_toplevel.h"
 
 class App : public SeatObserver, public PointerObserver, public KeyboardObserver {
 public:
