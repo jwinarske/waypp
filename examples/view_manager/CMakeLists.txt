@@ -30,3 +30,5 @@ if (IPO_SUPPORT_RESULT)
 endif ()
 
 add_sanitizers(view-manager)
+
+install(TARGETS view-manager DESTINATION bin)

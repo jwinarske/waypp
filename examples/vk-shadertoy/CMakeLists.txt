@@ -49,3 +49,5 @@ if (IPO_SUPPORT_RESULT)
 endif ()
 
 add_sanitizers(vk-shadertoy)
+
+install(TARGETS vk-shadertoy DESTINATION bin)

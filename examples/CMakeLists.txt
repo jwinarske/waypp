@@ -35,6 +35,8 @@ if (ENABLE_EGL)
 
     add_sanitizers(simple-egl)
 
+    install(TARGETS simple-egl DESTINATION bin)
+
     #
     # OpenGL
     #
@@ -60,6 +62,8 @@ endif ()
 
 add_sanitizers(simple-shm)
 
+install(TARGETS simple-shm DESTINATION bin)
+
 #
 # presentation-shm
 #
@@ -73,6 +77,8 @@ if (FALSE)
     endif ()
 
     add_sanitizers(presentation-shm)
+
+    install(TARGETS presentation-shm DESTINATION bin)
 endif ()
 
 #
@@ -88,6 +94,8 @@ if (HAS_WAYLAND_PROTOCOL_XDG_OUTPUT_UNSTABLE_V1)
     endif ()
 
     add_sanitizers(simple-ext-protocol)
+
+    install(TARGETS simple-ext-protocol DESTINATION bin)
 endif ()
 
 #
@@ -108,6 +116,9 @@ if (ENABLE_AGL_SHELL_CLIENT)
 
     add_sanitizers(agl-simple-shm)
 
+    install(TARGETS agl-simple-shm DESTINATION bin)
+
+
     add_executable(agl-capture agl-capture.cc agl-capture.cc)
 
     target_link_libraries(agl-capture PRIVATE waypp wayland-gen cxxopts::cxxopts)
@@ -118,6 +129,7 @@ if (ENABLE_AGL_SHELL_CLIENT)
 
     add_sanitizers(agl-capture)
 
+    install(TARGETS agl-capture DESTINATION bin)
 endif ()
 
 #

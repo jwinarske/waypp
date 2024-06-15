@@ -78,5 +78,5 @@ endif ()
 
 add_sanitizers(waypp)
 
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/* DESTINATION include)
+install(DIRECTORY ../include/waypp DESTINATION include)
 install(TARGETS waypp DESTINATION lib)

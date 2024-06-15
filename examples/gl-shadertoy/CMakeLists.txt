@@ -27,3 +27,5 @@ if (IPO_SUPPORT_RESULT)
 endif ()
 
 add_sanitizers(gl-shadertoy)
+
+install(TARGETS gl-shadertoy DESTINATION bin)

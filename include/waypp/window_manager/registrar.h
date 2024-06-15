@@ -23,8 +23,8 @@
 #include <map>
 #include <mutex>
 #include <vector>
-#include <waypp/waypp.h>
 
+#include "waypp/waypp.h"
 #include "waypp/config.h"
 #include "output.h"
 #include "waypp/seat/seat.h"

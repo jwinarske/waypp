@@ -20,6 +20,8 @@
 #include <list>
 
 #include "logging/logging.h"
+#include "waypp/window_manager/registrar.h"
+
 
 /**
  * @class AglShell
