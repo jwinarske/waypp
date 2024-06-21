@@ -41,7 +41,7 @@ add_library(waypp
         command.cc
 )
 target_include_directories(waypp PUBLIC ${LOGGING_INCLUDE_DIRS})
-print_target_properties(waypp)
+# print_target_properties(waypp)
 
 if (ENABLE_EGL)
     target_sources(waypp PRIVATE window/egl.cc)
