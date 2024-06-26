@@ -27,50 +27,51 @@
 
 class XdgTopLevel;
 
-class XdgWindowManager : public std::enable_shared_from_this<XdgWindowManager>, public WindowManager {
-public:
-    explicit XdgWindowManager(
-            struct wl_display *display,
-            bool disable_cursor = false,
-            unsigned long ext_interface_count = 0,
-            const Registrar::RegistrarCallback *ext_interface_data = nullptr,
-            GMainContext *context = nullptr);
+class XdgWindowManager : public std::enable_shared_from_this<XdgWindowManager>,
+                         public WindowManager {
+ public:
+  explicit XdgWindowManager(
+      wl_display* display,
+      bool disable_cursor = false,
+      unsigned long ext_interface_count = 0,
+      const Registrar::RegistrarCallback* ext_interface_data = nullptr,
+      GMainContext* context = nullptr);
 
-    ~XdgWindowManager();
+  ~XdgWindowManager();
 
-    [[nodiscard]] uint32_t get_version() const {
-        return xdg_wm_base_get_version(xdg_wm_base_);
-    }
+  [[nodiscard]] uint32_t get_version() const {
+    return xdg_wm_base_get_version(xdg_wm_base_);
+  }
 
-    std::shared_ptr<XdgTopLevel> create_top_level(
-            const char *title,
-            const char *app_id,
-            int width,
-            int height,
-            int resize_margin,
-            int buffer_count,
-            uint32_t buffer_format,
-            bool fullscreen,
-            bool maximized,
-            bool fullscreen_ratio,
-            bool tearing,
-            const std::function<void(void *, const uint32_t)> &frame_callback,
-            Egl::config *egl_config = nullptr);
+  std::shared_ptr<XdgTopLevel> create_top_level(
+      const char* title,
+      const char* app_id,
+      int width,
+      int height,
+      int resize_margin,
+      int buffer_count,
+      uint32_t buffer_format,
+      bool fullscreen,
+      bool maximized,
+      bool fullscreen_ratio,
+      bool tearing,
+      const std::function<void(void*, uint32_t)>& frame_callback,
+      Egl::config* egl_config = nullptr);
 
-    // Disallow copy and assign.
-    XdgWindowManager(const XdgWindowManager &) = delete;
+  // Disallow copy and assign.
+  XdgWindowManager(const XdgWindowManager&) = delete;
 
-    XdgWindowManager &operator=(const XdgWindowManager &) = delete;
+  XdgWindowManager& operator=(const XdgWindowManager&) = delete;
 
-private:
-    struct xdg_wm_base *xdg_wm_base_;
-    std::shared_ptr<XdgTopLevel> xdg_top_level_;
+ private:
+  xdg_wm_base* xdg_wm_base_;
+  std::shared_ptr<XdgTopLevel> xdg_top_level_;
 
-    static void xdg_wm_base_ping(void *data,
-                                 struct xdg_wm_base *xdg_wm_base,
-                                 uint32_t serial);
+  static void xdg_wm_base_ping(void* data,
+                               struct xdg_wm_base* xdg_wm_base,
+                               uint32_t serial);
 
-    static constexpr struct xdg_wm_base_listener xdg_wm_base_listener_ = {
-            .ping = xdg_wm_base_ping,
-    };
+  static constexpr struct xdg_wm_base_listener xdg_wm_base_listener_ = {
+      .ping = xdg_wm_base_ping,
+  };
 };

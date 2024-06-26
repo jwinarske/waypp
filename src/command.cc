@@ -22,7 +22,7 @@
 #include "logging/logging.h"
 
 bool Command::Execute(const char *cmd, std::string &result) {
-    auto fp = popen(cmd, "r");
+    const auto fp = popen(cmd, "r");
     if (!fp) {
         LOG_ERROR("[ExecuteCommand] Failed to Execute Command: ({}) {}", errno,
                       std::strerror(errno));

@@ -2,3 +2,4 @@ include/waypp/waypp.h
 
 .idea
 cmake-build*
+build*

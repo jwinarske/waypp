@@ -23,7 +23,7 @@
  *
  * The Touch class represents a touch input device.
  */
-Touch::Touch(struct wl_touch *wl_touch, struct event_mask &event_mask) :
+Touch::Touch(wl_touch *wl_touch, event_mask &event_mask) :
         touch_(wl_touch),
         event_mask_({
                             .enabled = event_mask.enabled,
@@ -62,10 +62,10 @@ Touch::~Touch() {
  * @param y_w The Y coordinate of the touch point in wl_fixed_t format.
  */
 void Touch::handle_down(void *data,
-                        struct wl_touch *touch,
+                        wl_touch *touch,
                         uint32_t serial,
                         uint32_t time,
-                        struct wl_surface *surface,
+                        wl_surface *surface,
                         int32_t id,
                         wl_fixed_t x_w,
                         wl_fixed_t y_w) {
@@ -101,7 +101,7 @@ void Touch::handle_down(void *data,
  * @return None.
  */
 void Touch::handle_up(void *data,
-                      struct wl_touch *touch,
+                      wl_touch *touch,
                       uint32_t serial,
                       uint32_t time,
                       int32_t id) {
@@ -138,7 +138,7 @@ void Touch::handle_up(void *data,
  * @return None.
  */
 void Touch::handle_motion(void *data,
-                          struct wl_touch *touch,
+                          wl_touch *touch,
                           uint32_t time,
                           int32_t id,
                           wl_fixed_t x_w,
@@ -171,7 +171,7 @@ void Touch::handle_motion(void *data,
  *
  * @return void
  */
-void Touch::handle_cancel(void *data, struct wl_touch *touch) {
+void Touch::handle_cancel(void *data, wl_touch *touch) {
     const auto obj = static_cast<Touch *>(data);
     if (obj->touch_ != touch) {
         return;
@@ -195,7 +195,7 @@ void Touch::handle_cancel(void *data, struct wl_touch *touch) {
  * It handles touch events from a wl_touch object and provides callback
  * functions for various touch events.
  */
-void Touch::handle_frame(void *data, struct wl_touch *touch) {
+void Touch::handle_frame(void *data, wl_touch *touch) {
     const auto obj = static_cast<Touch *>(data);
     if (obj->touch_ != touch) {
         return;
@@ -212,7 +212,7 @@ void Touch::handle_frame(void *data, struct wl_touch *touch) {
     }
 }
 
-void Touch::set_event_mask(struct event_mask &event_mask) {
+void Touch::set_event_mask(event_mask &event_mask) {
     event_mask_.enabled = event_mask.enabled;
     event_mask_.all = event_mask.all;
 }

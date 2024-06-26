@@ -31,10 +31,10 @@
  * managing the cursor.
  */
 Pointer::Pointer(wl_pointer *pointer,
-                 struct wl_compositor *wl_compositor,
-                 struct wl_shm *wl_shm,
+                 wl_compositor *wl_compositor,
+                 wl_shm *wl_shm,
                  bool disable_cursor,
-                 struct event_mask &event_mask,
+                 event_mask &event_mask,
                  int size)
         : wl_pointer_(pointer),
           wl_shm_(wl_shm),
@@ -92,12 +92,12 @@ Pointer::~Pointer() {
  * and axis discrete events.
  */
 void Pointer::handle_enter(void *data,
-                           struct wl_pointer *pointer,
+                           wl_pointer *pointer,
                            uint32_t serial,
-                           struct wl_surface *surface,
+                           wl_surface *surface,
                            wl_fixed_t sx,
                            wl_fixed_t sy) {
-    auto obj = static_cast<Pointer *>(data);
+    const auto obj = static_cast<Pointer *>(data);
     if (obj->wl_pointer_ != pointer) {
         return;
     }
@@ -111,7 +111,7 @@ void Pointer::handle_enter(void *data,
     obj->sx_ = wl_fixed_to_double(sx);
     obj->sy_ = wl_fixed_to_double(sy);
 
-    for (auto observer: obj->observers_) {
+    for (const auto observer: obj->observers_) {
         observer->notify_pointer_enter(obj, pointer, serial, surface, obj->sx_, obj->sy_);
     }
 }
@@ -128,10 +128,10 @@ void Pointer::handle_enter(void *data,
  * @param surface The surface that the pointer left.
  */
 void Pointer::handle_leave(void *data,
-                           struct wl_pointer *pointer,
+                           wl_pointer *pointer,
                            uint32_t serial,
-                           struct wl_surface *surface) {
-    auto obj = static_cast<Pointer *>(data);
+                           wl_surface *surface) {
+    const auto obj = static_cast<Pointer *>(data);
     if (obj->wl_pointer_ != pointer) {
         return;
     }
@@ -142,7 +142,7 @@ void Pointer::handle_leave(void *data,
 
     DLOG_TRACE("Pointer::handle_leave");
 
-    for (auto observer: obj->observers_) {
+    for (const auto observer: obj->observers_) {
         observer->notify_pointer_leave(obj, pointer, serial, surface);
     }
 }
@@ -160,11 +160,11 @@ void Pointer::handle_leave(void *data,
  * @param sy The Y coordinate of the pointer's absolute position.
  */
 void Pointer::handle_motion(void *data,
-                            struct wl_pointer *pointer,
+                            wl_pointer *pointer,
                             uint32_t time,
                             wl_fixed_t sx,
                             wl_fixed_t sy) {
-    auto obj = static_cast<Pointer *>(data);
+    const auto obj = static_cast<Pointer *>(data);
     if (obj->wl_pointer_ != pointer) {
         return;
     }
@@ -178,7 +178,7 @@ void Pointer::handle_motion(void *data,
     obj->sx_ = wl_fixed_to_double(sx);
     obj->sy_ = wl_fixed_to_double(sy);
 
-    for (auto observer: obj->observers_) {
+    for (const auto observer: obj->observers_) {
         observer->notify_pointer_motion(obj, pointer, time, obj->sx_, obj->sy_);
     }
 }
@@ -193,12 +193,12 @@ void Pointer::handle_motion(void *data,
  * @param state The state of the button (pressed or released)
  */
 void Pointer::handle_button(void *data,
-                            struct wl_pointer *pointer,
+                            wl_pointer *pointer,
                             uint32_t serial,
                             uint32_t time,
                             uint32_t button,
                             uint32_t state) {
-    auto obj = static_cast<Pointer *>(data);
+    const auto obj = static_cast<Pointer *>(data);
     if (obj->wl_pointer_ != pointer) {
         return;
     }
@@ -209,7 +209,7 @@ void Pointer::handle_button(void *data,
 
     DLOG_TRACE("Pointer::handle_button");
 
-    for (auto observer: obj->observers_) {
+    for (const auto observer: obj->observers_) {
         observer->notify_pointer_button(obj, pointer, serial, time, button, state);
     }
 }
@@ -230,11 +230,11 @@ void Pointer::handle_button(void *data,
  * @details Prints "Pointer::handle_axis" to the standard error output.
  */
 void Pointer::handle_axis(void *data,
-                          struct wl_pointer *pointer,
+                          wl_pointer *pointer,
                           uint32_t time,
                           uint32_t axis,
                           wl_fixed_t value) {
-    auto obj = static_cast<Pointer *>(data);
+    const auto obj = static_cast<Pointer *>(data);
     if (obj->wl_pointer_ != pointer) {
         return;
     }
@@ -245,7 +245,7 @@ void Pointer::handle_axis(void *data,
 
     DLOG_TRACE("Pointer::handle_axis");
 
-    for (auto observer: obj->observers_) {
+    for (const auto observer: obj->observers_) {
         observer->notify_pointer_axis(obj, pointer, time, axis, wl_fixed_to_double(value));
     }
 }
@@ -258,8 +258,8 @@ void Pointer::handle_axis(void *data,
  * @param data The user data associated with the pointer.
  * @param wl_pointer The pointer object.
  */
-void Pointer::handle_frame(void *data, struct wl_pointer *pointer) {
-    auto obj = static_cast<Pointer *>(data);
+void Pointer::handle_frame(void *data, wl_pointer *pointer) {
+    const auto obj = static_cast<Pointer *>(data);
     if (obj->wl_pointer_ != pointer) {
         return;
     }
@@ -270,7 +270,7 @@ void Pointer::handle_frame(void *data, struct wl_pointer *pointer) {
 
     DLOG_TRACE("Pointer::handle_frame");
 
-    for (auto observer: obj->observers_) {
+    for (const auto observer: obj->observers_) {
         observer->notify_pointer_frame(obj, pointer);
     }
 }
@@ -286,7 +286,7 @@ void Pointer::handle_frame(void *data, struct wl_pointer *pointer) {
  * Pointer object. It prints a message to the standard error stream.
  */
 void Pointer::handle_axis_source(void *data,
-                                 struct wl_pointer *pointer,
+                                 wl_pointer *pointer,
                                  uint32_t axis_source) {
     auto obj = static_cast<Pointer *>(data);
     if (obj->wl_pointer_ != pointer) {
@@ -315,7 +315,7 @@ void Pointer::handle_axis_source(void *data,
  * @param axis      The axis that stopped.
  */
 void Pointer::handle_axis_stop(void *data,
-                               struct wl_pointer *pointer,
+                               wl_pointer *pointer,
                                uint32_t time,
                                uint32_t axis) {
     auto obj = static_cast<Pointer *>(data);
@@ -345,7 +345,7 @@ void Pointer::handle_axis_stop(void *data,
  * @param discrete The discrete value.
  */
 void Pointer::handle_axis_discrete(void *data,
-                                   struct wl_pointer *pointer,
+                                   wl_pointer *pointer,
                                    uint32_t axis,
                                    int32_t discrete) {
     auto obj = static_cast<Pointer *>(data);
@@ -445,7 +445,7 @@ std::vector<std::string> Pointer::get_available_cursors(
     return std::move(cursor_list);
 }
 
-void Pointer::set_event_mask(struct event_mask &event_mask) {
+void Pointer::set_event_mask(event_mask &event_mask) {
     event_mask_.enabled = event_mask.enabled;
     event_mask_.all = event_mask.all;
     event_mask_.axis = event_mask.axis;

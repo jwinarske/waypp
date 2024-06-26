@@ -81,9 +81,9 @@ void AglShell::handle_bound_ok(void *data, struct agl_shell *agl_shell) {
 void AglShell::activate_app(const std::string &app_id) {
     DLOG_DEBUG("[AGL] activate_app: {}", app_id);
 
-    struct wl_output *wl_output{};
+    wl_output *wl_output{};
 
-    auto it =
+    const auto it =
             std::find_if(std::begin(pending_app_list_), std::end(pending_app_list_),
                          [&](const std::pair<std::string, std::string> &p) {
                              return p.first == app_id;

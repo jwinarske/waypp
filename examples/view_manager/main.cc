@@ -40,13 +40,13 @@ static volatile bool gRunning = true;
  *
  * @return void
  */
-void handle_signal(int signal) {
+void handle_signal(const int signal) {
     if (signal == SIGINT) {
         gRunning = false;
     }
 }
 
-int main(int argc, char **argv) {
+int main(const int argc, char **argv) {
     std::signal(SIGINT, handle_signal);
 
     cxxopts::Options options("view-manager", "Example View Manager");
@@ -61,7 +61,7 @@ int main(int argc, char **argv) {
             ("t,tearing", "Enable tearing via the tearing_control protocol");
     // clang-format on
 
-    auto result = options.parse(argc, argv);
+    const auto result = options.parse(argc, argv);
 
     App app({
                     .width = result["width"].as<int>(),

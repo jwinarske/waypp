@@ -38,10 +38,10 @@ class Registrar;
  * @see XdgWm
  */
 WindowManager::WindowManager(
-        struct wl_display *display,
-        bool disable_cursor,
+        wl_display *display,
+        const bool disable_cursor,
         const unsigned long ext_interface_count,
-        const Registrar::RegistrarCallback *ext_interface_data,
+        const RegistrarCallback *ext_interface_data,
         GMainContext *context)
         : Registrar(display,
                     ext_interface_count,
@@ -78,7 +78,7 @@ WindowManager::~WindowManager() {
  * on failure.
  */
 [[maybe_unused]] int WindowManager::dispatch(int timeout) const {
-    struct pollfd fds[1];
+    pollfd fds[1];
     int dispatch_count = 0;
 
     while (g_main_context_iteration(nullptr, FALSE));
@@ -91,7 +91,7 @@ WindowManager::~WindowManager() {
         return -errno;
     }
 
-    fds[0] = (struct pollfd) {wl_display_get_fd(wl_display_), POLLIN};
+    fds[0] = (pollfd) {wl_display_get_fd(wl_display_), POLLIN};
 
     const int ret = poll(fds, std::size(fds), timeout);
     if (ret > 0) {
@@ -137,7 +137,7 @@ int WindowManager::display_dispatch() const {
     return wl_display_dispatch(wl_display_);
 }
 
-struct wl_output *WindowManager::get_primary_output() {
+wl_output *WindowManager::get_primary_output() {
     auto &outputs = get_outputs();
 
     if (get_xdg_output_manager()) {
@@ -160,7 +160,7 @@ struct wl_output *WindowManager::get_primary_output() {
     return nullptr;
 }
 
-struct wl_output *WindowManager::find_output_by_name(
+wl_output *WindowManager::find_output_by_name(
         const std::string &output_name) {
     auto &outputs = get_outputs();
 

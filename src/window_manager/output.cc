@@ -28,8 +28,8 @@
  * access to the output's properties such as geometry and mode. It also handles
  * the events emitted by the output.
  */
-Output::Output(struct wl_output *wl_output,
-               struct zxdg_output_manager_v1 *zxdg_output_manager_v1)
+Output::Output(wl_output *wl_output,
+               zxdg_output_manager_v1 *zxdg_output_manager_v1)
         : wl_output_(wl_output), zxdg_output_manager_v1_(zxdg_output_manager_v1) {
     DLOG_TRACE("++Output::Output()");
     wl_output_add_listener(wl_output_, &listener_, this);
@@ -47,7 +47,7 @@ Output::~Output() {
 }
 
 void Output::handle_geometry(void *data,
-                             struct wl_output *wl_output,
+                             wl_output *wl_output,
                              int x,
                              int y,
                              int physical_width,
@@ -57,7 +57,7 @@ void Output::handle_geometry(void *data,
                              const char *model,
                              int transform) {
     DLOG_TRACE("++Output::handle_geometry()");
-    auto obj = static_cast<Output *>(data);
+    const auto obj = static_cast<Output *>(data);
     if (obj->wl_output_ != wl_output) {
         return;
     }
@@ -69,7 +69,7 @@ void Output::handle_geometry(void *data,
             .subpixel = subpixel,
             .make = make,
             .model = model,
-            .transform = static_cast<enum wl_output_transform>(transform),
+            .transform = static_cast<wl_output_transform>(transform),
     };
     if (obj->zxdg_output_manager_v1_ && !obj->xdg_output_) {
         obj->xdg_output_ = std::make_unique<XdgOutput>(obj->zxdg_output_manager_v1_,
@@ -79,13 +79,13 @@ void Output::handle_geometry(void *data,
 }
 
 void Output::handle_mode(void *data,
-                         struct wl_output *wl_output,
+                         wl_output *wl_output,
                          uint32_t flags,
                          int width,
                          int height,
                          int refresh) {
     DLOG_TRACE("++Output::handle_mode()");
-    auto obj = static_cast<Output *>(data);
+    const auto obj = static_cast<Output *>(data);
     if (obj->wl_output_ != wl_output) {
         return;
     }
@@ -95,10 +95,10 @@ void Output::handle_mode(void *data,
 }
 
 void Output::handle_scale(void *data,
-                          struct wl_output *wl_output,
+                          wl_output *wl_output,
                           int32_t factor) {
     LOG_TRACE("++Output::handle_scale()");
-    auto obj = static_cast<Output *>(data);
+    const auto obj = static_cast<Output *>(data);
     if (obj->wl_output_ != wl_output) {
         return;
     }
@@ -106,9 +106,9 @@ void Output::handle_scale(void *data,
     LOG_TRACE("++Output::handle_scale()");
 }
 
-void Output::handle_done(void *data, struct wl_output *wl_output) {
+void Output::handle_done(void *data, wl_output *wl_output) {
     LOG_TRACE("++Output::handle_done()");
-    auto obj = static_cast<Output *>(data);
+    const auto obj = static_cast<Output *>(data);
     if (wl_output != obj->wl_output_) {
         return;
     }
@@ -120,7 +120,7 @@ void Output::handle_done(void *data, struct wl_output *wl_output) {
 }
 
 void Output::handle_name(void *data,
-                         struct wl_output *wl_output,
+                         wl_output *wl_output,
                          const char *name) {
     LOG_TRACE("++Output::handle_name()");
     auto obj = static_cast<Output *>(data);
@@ -132,10 +132,10 @@ void Output::handle_name(void *data,
 }
 
 void Output::handle_desc(void *data,
-                         struct wl_output *wl_output,
+                         wl_output *wl_output,
                          const char *desc) {
     LOG_TRACE("++Output::handle_desc()");
-    auto obj = static_cast<Output *>(data);
+    const auto obj = static_cast<Output *>(data);
     if (obj->wl_output_ != wl_output) {
         return;
     }
@@ -143,7 +143,7 @@ void Output::handle_desc(void *data,
     LOG_TRACE("--Output::handle_desc()");
 }
 
-std::string Output::transform_to_string(enum wl_output_transform transform) {
+std::string Output::transform_to_string(wl_output_transform transform) {
     switch (transform) {
         case WL_OUTPUT_TRANSFORM_NORMAL:
             return "WL_OUTPUT_TRANSFORM_NORMAL";

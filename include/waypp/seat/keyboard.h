@@ -18,7 +18,6 @@
 
 #include <cstdint>
 #include <list>
-#include <memory>
 #include <mutex>
 
 #include <glib-2.0/glib.h>
@@ -37,25 +36,25 @@ public:
     virtual ~KeyboardObserver() = default;
 
     virtual void notify_keyboard_enter(Keyboard *keyboard,
-                                       struct wl_keyboard *wl_keyboard,
+                                       wl_keyboard *wl_keyboard,
                                        uint32_t serial,
-                                       struct wl_surface *surface,
-                                       struct wl_array *keys) = 0;
+                                       wl_surface *surface,
+                                       wl_array *keys) = 0;
 
     virtual void notify_keyboard_leave(Keyboard *keyboard,
-                                       struct wl_keyboard *wl_keyboard,
+                                       wl_keyboard *wl_keyboard,
                                        uint32_t serial,
-                                       struct wl_surface *surface) = 0;
+                                       wl_surface *surface) = 0;
 
     virtual void notify_keyboard_keymap(Keyboard *keyboard,
-                                        struct wl_keyboard *wl_keyboard,
+                                        wl_keyboard *wl_keyboard,
                                         uint32_t format,
                                         int32_t fd,
                                         uint32_t size) = 0;
 
     virtual void notify_keyboard_xkb_v1_key(
             Keyboard *keyboard,
-            struct wl_keyboard *wl_keyboard,
+            wl_keyboard *wl_keyboard,
             uint32_t serial,
             uint32_t time,
             uint32_t xkb_scancode,
@@ -72,7 +71,7 @@ public:
         bool all;
     };
 
-    explicit Keyboard(struct wl_keyboard *keyboard, struct event_mask &event_mask);
+    explicit Keyboard(wl_keyboard *keyboard, event_mask &event_mask);
 
     ~Keyboard();
 
@@ -97,7 +96,7 @@ public:
 
     [[nodiscard]] int32_t get_repeat_rate() const { return repeat_.rate; }
 
-    void set_event_mask(struct event_mask &event_mask);
+    void set_event_mask(event_mask &event_mask);
 
     // Disallow copy and assign.
     Keyboard(const Keyboard &) = delete;
@@ -107,21 +106,21 @@ public:
 private:
     struct wl_keyboard *wl_keyboard_;
     struct wl_surface *wl_surface{};
-    struct xkb_context *xkb_context_;
-    struct xkb_keymap *xkb_keymap_{};
-    struct xkb_state *xkb_state_{};
-    enum wl_keyboard_keymap_format format_{};
+    xkb_context *xkb_context_;
+    xkb_keymap *xkb_keymap_{};
+    xkb_state *xkb_state_{};
+    wl_keyboard_keymap_format format_{};
     std::list<KeyboardObserver *> observers_{};
     void *user_data_{};
 
-    struct event_mask event_mask_{};
+    event_mask event_mask_{};
 
     struct {
         int32_t rate;
         int32_t delay;
         timer_t timer;
         uint32_t code;
-        struct sigevent sev;
+        sigevent sev;
         struct sigaction sa;
         struct {
             struct wl_keyboard *wl_keyboard;
@@ -156,7 +155,7 @@ private:
      * @param size keymap size, in bytes
      */
     static void handle_keymap(void *data,
-                              struct wl_keyboard *wl_keyboard,
+                              wl_keyboard *wl_keyboard,
                               uint32_t format,
                               int32_t fd,
                               uint32_t size);
@@ -174,10 +173,10 @@ private:
      * @param keys the currently pressed keys
      */
     static void handle_enter(void *data,
-                             struct wl_keyboard *wl_keyboard,
+                             wl_keyboard *wl_keyboard,
                              uint32_t serial,
                              struct wl_surface *surface,
-                             struct wl_array *keys);
+                             wl_array *keys);
 
     /**
      * leave event
@@ -195,7 +194,7 @@ private:
      * @param surface surface that lost keyboard focus
      */
     static void handle_leave(void *data,
-                             struct wl_keyboard *wl_keyboard,
+                             wl_keyboard *wl_keyboard,
                              uint32_t serial,
                              struct wl_surface *surface);
 
@@ -216,7 +215,7 @@ private:
      * @param state physical state of the key
      */
     static void handle_key(void *data,
-                           struct wl_keyboard *wl_keyboard,
+                           wl_keyboard *wl_keyboard,
                            uint32_t serial,
                            uint32_t time,
                            uint32_t key,
@@ -234,7 +233,7 @@ private:
      * @param group keyboard layout
      */
     static void handle_modifiers(void *data,
-                                 struct wl_keyboard *wl_keyboard,
+                                 wl_keyboard *wl_keyboard,
                                  uint32_t serial,
                                  uint32_t mods_depressed,
                                  uint32_t mods_latched,
@@ -262,7 +261,7 @@ private:
      * @since 4
      */
     static void handle_repeat_info(void *data,
-                                   struct wl_keyboard *wl_keyboard,
+                                   wl_keyboard *wl_keyboard,
                                    int32_t rate,
                                    int32_t delay);
 
@@ -270,5 +269,5 @@ private:
      * @ingroup iface_wl_keyboard
      * @struct wl_keyboard_listener
      */
-    static const struct wl_keyboard_listener keyboard_listener_;
+    static const wl_keyboard_listener keyboard_listener_;
 };

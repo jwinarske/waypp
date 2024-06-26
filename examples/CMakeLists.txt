@@ -135,8 +135,10 @@ endif ()
 #
 # Vulkan
 #
-find_package(Vulkan)
+if (ENABLE_VULKAN)
+    find_package(Vulkan)
 
-if (VULKAN_FOUND)
-    add_subdirectory(vk-shadertoy)
+    if (VULKAN_FOUND)
+        add_subdirectory(vk-shadertoy)
+    endif ()
 endif ()

@@ -88,7 +88,7 @@ static volatile bool running = true;
  *
  * @return void
  */
-void handle_signal(int signal) {
+void handle_signal(const int signal) {
     if (signal == SIGINT) {
         running = false;
     }
@@ -252,7 +252,7 @@ static void redraw_mode_feedback(void *data, uint32_t time) {
     create_feedback(window, time);
 }
 
-int main(int argc, char **argv) {
+int main(const int argc, char **argv) {
     std::signal(SIGINT, handle_signal);
 
     cxxopts::Options options("simple-presentation",

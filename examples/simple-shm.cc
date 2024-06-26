@@ -60,36 +60,33 @@ static std::vector<std::string> gCursors = Pointer::get_available_cursors();
  *
  * @return void
  */
-void handle_signal(int signal) {
+void handle_signal(const int signal) {
   if (signal == SIGINT) {
     gRunning = false;
   }
 }
 
 static void paint_pixels(void *image,
-                         int padding,
-                         int width,
-                         int height,
-                         uint32_t time) {
+                         const int padding,
+                         const int width,
+                         const int height,
+                         const uint32_t time) {
     auto pixel = static_cast<uint32_t *>(image);
-    int half_h = padding + (height - padding * 2) / 2;
-    int half_w = padding + (width - padding * 2) / 2;
-    int ir, or_;
-    int y;
+    const int half_h = padding + (height - padding * 2) / 2;
+    const int half_w = padding + (width - padding * 2) / 2;
 
     /// Squared radii thresholds
-    or_ = (half_w < half_h ? half_w : half_h) - 8;
-    ir = or_ - 32;
+    auto or_ = (half_w < half_h ? half_w : half_h) - 8;
+    auto ir = or_ - 32;
     or_ *= or_;
     ir *= ir;
 
     pixel += padding * width;
-    for (y = padding; y < height - padding; y++) {
-        int x;
+    for (auto y = padding; y < height - padding; y++) {
         int y2 = (y - half_h) * (y - half_h);
 
         pixel += padding;
-        for (x = padding; x < width - padding; x++) {
+        for (auto x = padding; x < width - padding; x++) {
             uint32_t v;
 
             /// Squared distance from center
@@ -115,9 +112,9 @@ static void paint_pixels(void *image,
 }
 
 void draw_frame(void *data, const uint32_t time) {
-    auto window = static_cast<Window *>(data);
+    const auto window = static_cast<Window *>(data);
 
-    auto buffer = window->next_buffer();
+    const auto buffer = window->next_buffer();
     if (!buffer) {
         spdlog::error("Failed to acquire a buffer");
         exit(EXIT_FAILURE);
@@ -133,7 +130,7 @@ void draw_frame(void *data, const uint32_t time) {
     buffer->set_busy();
 }
 
-class App : public PointerObserver,
+class App final: public PointerObserver,
             public KeyboardObserver,
             public SeatObserver {
 public:
@@ -146,9 +143,8 @@ public:
         }
 
         wm_ = std::make_unique<XdgWindowManager>(wl_display_, config.disable_cursor);
-        auto seat = wm_->get_seat();
-        if (seat.has_value()) {
-            seat_ = seat.value();
+        if (wm_->get_seat().has_value()) {
+            seat_ = wm_->get_seat().value();
             seat_->register_observer(this);
         }
 
@@ -176,7 +172,7 @@ public:
         }
     }
 
-    bool run() {
+    [[nodiscard]] bool run() const {
         /// display_dispatch is blocking
         return (toplevel_->is_valid() && wm_->display_dispatch() != -1);
     }
@@ -185,14 +181,12 @@ public:
                                   wl_seat * /* seat */,
                                   uint32_t /* caps */) override {
         if (seat) {
-            auto keyboard = seat->get_keyboard();
-            if (keyboard.has_value()) {
-                keyboard.value()->register_observer(this);
+            if (seat->get_keyboard().has_value()) {
+                seat->get_keyboard().value()->register_observer(this);
             }
 
-            auto pointer = seat->get_pointer();
-            if (pointer.has_value()) {
-                pointer.value()->register_observer(this);
+            if (seat->get_pointer().has_value()) {
+                seat->get_pointer().value()->register_observer(this);
             }
         }
     }
@@ -332,7 +326,7 @@ public:
     }
 
 private:
-    struct wl_display *wl_display_;
+    wl_display *wl_display_;
     std::unique_ptr<Logging> logging_;
     std::shared_ptr<XdgWindowManager> wm_;
     Seat *seat_{};
@@ -341,7 +335,7 @@ private:
     std::mt19937 gen_;
 };
 
-int main(int argc, char **argv) {
+int main(const int argc, char **argv) {
     std::signal(SIGINT, handle_signal);
 
     cxxopts::Options options("simple-shm", "Weston simple-shm example");
@@ -356,9 +350,9 @@ int main(int argc, char **argv) {
             ("t,tearing", "Enable tearing via the tearing_control protocol");
 
     // clang-format on
-    auto result = options.parse(argc, argv);
+    const auto result = options.parse(argc, argv);
 
-    App app({
+    const App app({
                     .width = result["width"].as<int>(),
                     .height = result["height"].as<int>(),
                     .disable_cursor = result["disable-cursor"].as<bool>(),

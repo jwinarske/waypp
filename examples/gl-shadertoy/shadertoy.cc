@@ -103,7 +103,7 @@ struct Context {
  *
  * @return void
  */
-void handle_signal(int signal) {
+void handle_signal(const int signal) {
     if (signal == SIGINT) {
         running = false;
     }

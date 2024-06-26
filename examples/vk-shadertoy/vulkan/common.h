@@ -27,10 +27,7 @@
 
 #define VULKAN_HPP_NO_EXCEPTIONS 1
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
-
 #include <vulkan/vulkan.hpp>
-#include <vulkan/vulkan_to_string.hpp>
-#include <vulkan/vulkan_static_assertions.hpp>
 
 #define S1(x) #x
 #define S2(x) S1(x)

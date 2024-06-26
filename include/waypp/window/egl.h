@@ -36,14 +36,14 @@ public:
         size_t context_attribs_size;
         const int32_t *config_attribs;
         size_t config_attribs_size;
-        enum Egl::api type;
+        api type;
     };
 
-    explicit Egl(struct wl_display *display,
+    explicit Egl(wl_display *display,
                  struct wl_surface *wl_surface,
                  int width,
                  int height,
-                 struct config *config);
+                 config *config);
 
     ~Egl();
 
@@ -53,15 +53,15 @@ public:
 
     void clear_current();
 
-    void swap_buffers();
+    void swap_buffers() const;
 
     [[nodiscard]] bool have_swap_buffers_with_damage() const {
         return pfSwapBufferWithDamage_ != nullptr;
     }
 
-    void swap_buffers_with_damage(const EGLint *rects, EGLint n_rects);
+    void swap_buffers_with_damage(EGLint *rects, EGLint n_rects) const;
 
-    void get_buffer_age(EGLint &age);
+    void get_buffer_age(EGLint &buffer_age) const;
 
     void resize(int width, int height, int dx, int dy);
 
@@ -71,6 +71,7 @@ public:
     Egl &operator=(const Egl &) = delete;
 
 private:
+    EGLDisplay dpy_;
     std::vector<EGLint> context_attribs_;
     std::vector<EGLint> config_attribs_;
     int buffer_bpp_;
@@ -79,11 +80,10 @@ private:
 
     EGLint major_{}, minor_{};
 
-    EGLDisplay dpy_;
     EGLConfig config_{};
 
-    struct wl_surface *wl_surface_;
-    struct wl_egl_window *wl_egl_window_{};
+    wl_surface *wl_surface_;
+    wl_egl_window *wl_egl_window_{};
     EGLSurface egl_surface_{};
 
     int width_;
