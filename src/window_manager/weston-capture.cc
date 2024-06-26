@@ -3,9 +3,9 @@
 
 #include "logging/logging.h"
 
-WestonCapture::WestonCapture(struct weston_capture_v1 *weston_capture_v1,
-                             struct wl_output *wl_output,
-                             enum weston_capture_v1_source source,
+WestonCapture::WestonCapture(weston_capture_v1 *weston_capture_v1,
+                             wl_output *wl_output,
+                             weston_capture_v1_source source,
                              WestonCaptureObserver *observer,
                              void *user_data)
         : weston_capture_v1_(weston_capture_v1),
@@ -26,7 +26,7 @@ WestonCapture::~WestonCapture() = default;
 
 void WestonCapture::handle_format(
         void *data,
-        struct weston_capture_source_v1 *weston_capture_source_v1,
+        weston_capture_source_v1 *weston_capture_source_v1,
         uint32_t drm_format) {
     auto obj = static_cast<WestonCapture *>(data);
     if (obj->weston_capture_source_v1_ != weston_capture_source_v1) {
@@ -43,7 +43,7 @@ void WestonCapture::handle_format(
 
 void WestonCapture::handle_size(
         void *data,
-        struct weston_capture_source_v1 *weston_capture_source_v1,
+        weston_capture_source_v1 *weston_capture_source_v1,
         int32_t width,
         int32_t height) {
     auto obj = static_cast<WestonCapture *>(data);
@@ -61,7 +61,7 @@ void WestonCapture::handle_size(
 
 void WestonCapture::handle_complete(
         void *data,
-        struct weston_capture_source_v1 *weston_capture_source_v1) {
+        weston_capture_source_v1 *weston_capture_source_v1) {
     auto obj = static_cast<WestonCapture *>(data);
     if (obj->weston_capture_source_v1_ != weston_capture_source_v1) {
         return;
@@ -77,7 +77,7 @@ void WestonCapture::handle_complete(
 
 void WestonCapture::handle_retry(
         void *data,
-        struct weston_capture_source_v1 *weston_capture_source_v1) {
+        weston_capture_source_v1 *weston_capture_source_v1) {
     auto obj = static_cast<WestonCapture *>(data);
     if (obj->weston_capture_source_v1_ != weston_capture_source_v1) {
         return;
@@ -93,7 +93,7 @@ void WestonCapture::handle_retry(
 
 void WestonCapture::handle_failed(
         void *data,
-        struct weston_capture_source_v1 *weston_capture_source_v1,
+        weston_capture_source_v1 *weston_capture_source_v1,
         const char *msg) {
     auto obj = static_cast<WestonCapture *>(data);
     if (obj->weston_capture_source_v1_ != weston_capture_source_v1) {

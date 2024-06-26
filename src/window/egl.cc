@@ -28,12 +28,12 @@
  * This class provides functionality for initializing EGL, choosing an EGL
  * configuration, creating an EGL context, and managing various EGL extensions.
  */
-Egl::Egl(struct wl_display *display,
-         struct wl_surface *wl_surface,
-         int width,
-         int height,
-         struct config *config)
-        : dpy_(eglGetDisplay(display)),
+Egl::Egl(wl_display *display,
+         wl_surface *wl_surface,
+         const int width,
+         const int height,
+         config *config)
+        : dpy_(eglGetDisplay(reinterpret_cast<EGLNativeDisplayType>(display))),
           context_attribs_(config->context_attribs,
                            config->context_attribs + config->context_attribs_size),
           config_attribs_(config->config_attribs,
@@ -181,13 +181,13 @@ void Egl::clear_current() {
  *
  * @return True if the swap was successful, false otherwise.
  */
-void Egl::swap_buffers() {
+void Egl::swap_buffers() const {
     DLOG_TRACE("++Egl::swap_buffers()");
     eglSwapBuffers(dpy_, egl_surface_);
     DLOG_TRACE("--Egl::swap_buffers()");
 }
 
-void Egl::get_buffer_age(EGLint &buffer_age) {
+void Egl::get_buffer_age(EGLint &buffer_age) const {
     if (pfSwapBufferWithDamage_) {
         eglQuerySurface(dpy_, egl_surface_, EGL_BUFFER_AGE_EXT, &buffer_age);
         return;
@@ -195,7 +195,7 @@ void Egl::get_buffer_age(EGLint &buffer_age) {
     buffer_age = 0;
 }
 
-void Egl::swap_buffers_with_damage(const EGLint *rects, EGLint n_rects) {
+void Egl::swap_buffers_with_damage(EGLint *rects, const EGLint n_rects) const {
     if (pfSwapBufferWithDamage_) {
         pfSwapBufferWithDamage_(dpy_, egl_surface_, rects, n_rects);
     }

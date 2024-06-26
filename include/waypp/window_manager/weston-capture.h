@@ -21,29 +21,29 @@ public:
 
     virtual void notify_weston_capture_size(
             void *data,
-            struct weston_capture_source_v1 *weston_capture_source_v1,
+            weston_capture_source_v1 *weston_capture_source_v1,
             int32_t width,
             int32_t height) = 0;
 
     virtual void notify_weston_capture_complete(
             void *data,
-            struct weston_capture_source_v1 *weston_capture_source_v1) = 0;
+            weston_capture_source_v1 *weston_capture_source_v1) = 0;
 
     virtual void notify_weston_capture_retry(
             void *data,
-            struct weston_capture_source_v1 *weston_capture_source_v1) = 0;
+            weston_capture_source_v1 *weston_capture_source_v1) = 0;
 
     virtual void notify_weston_capture_failed(
             void *data,
-            struct weston_capture_source_v1 *weston_capture_source_v1,
+            weston_capture_source_v1 *weston_capture_source_v1,
             const char *msg) = 0;
 };
 
 class WestonCapture {
 public:
-    WestonCapture(struct weston_capture_v1 *weston_capture_v1,
-                  struct wl_output *output,
-                  enum weston_capture_v1_source source,
+    WestonCapture(weston_capture_v1 *weston_capture_v1,
+                  wl_output *output,
+                  weston_capture_v1_source source,
                   WestonCaptureObserver *observer = nullptr,
                   void *user_data = nullptr);
 
@@ -62,12 +62,12 @@ public:
     void set_user_data(void *user_data) { user_data_ = user_data; }
 
 private:
-    struct weston_capture_v1 *weston_capture_v1_;
-    struct wl_output *wl_output_;
+    weston_capture_v1 *weston_capture_v1_;
+    wl_output *wl_output_;
     uint32_t source_;
     void *user_data_;
 
-    struct weston_capture_source_v1 *weston_capture_source_v1_;
+    weston_capture_source_v1 *weston_capture_source_v1_;
     std::list<WestonCaptureObserver *> observers_{};
 
     /**
@@ -85,7 +85,7 @@ private:
      */
     static void handle_format(
             void *data,
-            struct weston_capture_source_v1 *weston_capture_source_v1,
+            weston_capture_source_v1 *weston_capture_source_v1,
             uint32_t drm_format);
 
     /**
@@ -106,7 +106,7 @@ private:
      */
     static void handle_size(
             void *data,
-            struct weston_capture_source_v1 *weston_capture_source_v1,
+            weston_capture_source_v1 *weston_capture_source_v1,
             int32_t width,
             int32_t height);
 
@@ -122,7 +122,7 @@ private:
      */
     static void handle_complete(
             void *data,
-            struct weston_capture_source_v1 *weston_capture_source_v1);
+            weston_capture_source_v1 *weston_capture_source_v1);
 
     /**
      * retry image capture with a different buffer

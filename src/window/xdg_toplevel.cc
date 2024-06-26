@@ -108,7 +108,7 @@ XdgTopLevel::~XdgTopLevel() {
     }
 }
 
-void XdgTopLevel::resize(struct wl_seat *seat, uint32_t serial, uint32_t edges) {
+void XdgTopLevel::resize(wl_seat *seat, uint32_t serial, uint32_t edges) {
     xdg_toplevel_resize(xdg_toplevel_, seat, serial, edges);
 }
 
@@ -125,7 +125,7 @@ void XdgTopLevel::resize(struct wl_seat *seat, uint32_t serial, uint32_t edges) 
  * @param serial The serial number of the configure event.
  */
 void XdgTopLevel::handle_xdg_surface_configure(void *data,
-                                               struct xdg_surface *xdg_surface,
+                                               xdg_surface *xdg_surface,
                                                uint32_t serial) {
     auto *w = static_cast<XdgTopLevel *>(data);
     if (w->xdg_surface_ != xdg_surface) {
@@ -150,10 +150,10 @@ void XdgTopLevel::handle_xdg_surface_configure(void *data,
  * @param states An array of states associated with the surface.
  */
 void XdgTopLevel::handle_xdg_toplevel_configure(void *data,
-                                                struct xdg_toplevel *toplevel,
+                                                xdg_toplevel *toplevel,
                                                 int32_t width,
                                                 int32_t height,
-                                                struct wl_array *states) {
+                                                wl_array *states) {
     auto *tl = static_cast<XdgTopLevel *>(data);
     if (tl->xdg_toplevel_ != toplevel) {
         return;
@@ -270,7 +270,7 @@ void XdgTopLevel::handle_xdg_toplevel_configure(void *data,
  * @param xdg_toplevel The xdg_toplevel object that received the close request.
  */
 void XdgTopLevel::handle_xdg_toplevel_close(void *data,
-                                            struct xdg_toplevel *xdg_toplevel) {
+                                            xdg_toplevel *xdg_toplevel) {
     LOG_DEBUG("XdgWm::handle_toplevel_close");
 
     auto *w = static_cast<XdgTopLevel *>(data);
@@ -343,7 +343,7 @@ void XdgTopLevel::handle_xdg_toplevel_wm_capabilities(
 
 #endif
 
-enum xdg_toplevel_resize_edge XdgTopLevel::check_edge_resize(std::pair<double, double> xy) {
+xdg_toplevel_resize_edge XdgTopLevel::check_edge_resize(std::pair<double, double> xy) {
     bool top = xy.second < resize_margin_;
     bool bottom = xy.second > (get_height() - resize_margin_);
     bool left = xy.first < resize_margin_;

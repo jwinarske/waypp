@@ -25,72 +25,71 @@ class Registrar;
 class WindowManager;
 
 class WindowManagerObserver {
-public:
-    virtual ~WindowManagerObserver() = default;
+ public:
+  virtual ~WindowManagerObserver() = default;
 
-    virtual void notify_task() = 0;
+  virtual void notify_task() = 0;
 };
 
 class WindowManager : public Registrar {
-public:
-    explicit WindowManager(
-            struct wl_display *display,
-            bool disable_cursor = false,
-            unsigned long ext_interface_count = 0,
-            const Registrar::RegistrarCallback *ext_interface_data = nullptr,
-            GMainContext *context = nullptr);
+ public:
+  explicit WindowManager(
+      wl_display* display,
+      bool disable_cursor = false,
+      unsigned long ext_interface_count = 0,
+      const Registrar::RegistrarCallback* ext_interface_data = nullptr,
+      GMainContext* context = nullptr);
 
-    ~WindowManager();
+  ~WindowManager();
 
-    [[nodiscard]] struct wl_display *get_display() const { return wl_display_; }
+  [[nodiscard]] wl_display* get_display() const { return wl_display_; }
 
-    [[nodiscard]] int poll_events(int timeout) const;
+  [[nodiscard]] int poll_events(int timeout) const;
 
-    [[maybe_unused]] [[nodiscard]] int dispatch(int timeout) const;
+  [[maybe_unused]] [[nodiscard]] int dispatch(int timeout) const;
 
-    [[nodiscard]] int dispatch_pending() const {
-        return wl_display_dispatch_pending(wl_display_);
-    }
+  [[nodiscard]] int dispatch_pending() const {
+    return wl_display_dispatch_pending(wl_display_);
+  }
 
-    [[nodiscard]] int display_dispatch() const;
+  [[nodiscard]] int display_dispatch() const;
 
-    [[nodiscard]] bool has_subcompositor() const { return get_compositor(); }
+  [[nodiscard]] bool has_subcompositor() const { return get_compositor(); }
 
-    void register_task_observer(WindowManagerObserver *observer) {
-        observers_.push_back(observer);
-    }
+  void register_task_observer(WindowManagerObserver* observer) {
+    observers_.push_back(observer);
+  }
 
-    void unregister_task_observer(WindowManagerObserver *observer) {
-        observers_.remove(observer);
-    }
+  void unregister_task_observer(WindowManagerObserver* observer) {
+    observers_.remove(observer);
+  }
 
-    struct wl_output *get_primary_output();
+  wl_output* get_primary_output();
 
-    struct wl_output *find_output_by_name(const std::string &output_name);
+  wl_output* find_output_by_name(const std::string& output_name);
 
-    // Disallow copy and assign.
-    WindowManager(const WindowManager &) = delete;
+  // Disallow copy and assign.
+  WindowManager(const WindowManager&) = delete;
 
-    WindowManager &operator=(const WindowManager &) = delete;
+  WindowManager& operator=(const WindowManager&) = delete;
 
-private:
-    GMainContext *context_;
+ private:
+  wl_display* wl_display_;
+  GMainContext* context_;
 
-    std::list<WindowManagerObserver *> observers_{};
+  std::list<WindowManagerObserver*> observers_{};
 
-    struct {
-        int width;
-        int height;
-    } buffer_size_{};
+  struct {
+    int width;
+    int height;
+  } buffer_size_{};
 
-    const std::map<struct wl_output *, std::unique_ptr<Output>> &outputs_;
+  const std::map<wl_output*, std::unique_ptr<Output>>& outputs_;
 
-    struct wl_display *wl_display_;
+  wl_output_transform buffer_transform_{};
 
-    enum wl_output_transform buffer_transform_{};
+  int32_t buffer_scale_ = 1;
+  double fractional_buffer_scale_ = 1.0;
 
-    int32_t buffer_scale_ = 1;
-    double fractional_buffer_scale_ = 1.0;
-
-    struct wl_display *get_display(const char *name);
+  struct wl_display* get_display(const char* name);
 };

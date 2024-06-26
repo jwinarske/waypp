@@ -26,9 +26,9 @@
  * It is used to handle input events from devices such as keyboards, pointers,
  * and touchscreens.
  */
-Seat::Seat(struct wl_seat *seat,
-           struct wl_shm *wl_shm,
-           struct wl_compositor *wl_compositor,
+Seat::Seat(wl_seat *seat,
+           wl_shm *wl_shm,
+           wl_compositor *wl_compositor,
            bool disable_cursor,
            const char *ignore_events)
         : wl_seat_(seat),
@@ -59,7 +59,7 @@ Seat::~Seat() {
  * keyboard, and touch.
  */
 void Seat::handle_capabilities(void *data,
-                               struct wl_seat *seat,
+                               wl_seat *seat,
                                uint32_t caps) {
     const auto obj = static_cast<Seat *>(data);
     if (obj->wl_seat_ != seat) {
@@ -113,7 +113,7 @@ void Seat::handle_capabilities(void *data,
  * @param seat The wl_seat object for which the event occurred.
  * @param name The name of the seat.
  */
-void Seat::handle_name(void *data, struct wl_seat *seat, const char *name) {
+void Seat::handle_name(void *data, wl_seat *seat, const char *name) {
     const auto obj = static_cast<Seat *>(data);
     if (obj->wl_seat_ != seat) {
         return;

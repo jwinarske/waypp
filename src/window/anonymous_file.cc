@@ -128,7 +128,7 @@ int AnonymousFile::create(off_t size) {
     } else
 #endif
     {
-        auto xdg_runtime_dir = getenv("XDG_RUNTIME_DIR");
+        const auto xdg_runtime_dir = getenv("XDG_RUNTIME_DIR");
         if (!xdg_runtime_dir) {
             errno = ENOENT;
             return -1;

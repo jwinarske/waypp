@@ -24,99 +24,99 @@
 class Touch;
 
 class TouchObserver {
-public:
-    virtual ~TouchObserver() = default;
+ public:
+  virtual ~TouchObserver() = default;
 
-    virtual void notify_touch_down(Touch *touch,
-                                   struct wl_touch *wl_touch,
-                                   uint32_t serial,
+  virtual void notify_touch_down(Touch* touch,
+                                 wl_touch* wl_touch,
+                                 uint32_t serial,
+                                 uint32_t time,
+                                 wl_surface* surface,
+                                 int32_t id,
+                                 wl_fixed_t x_w,
+                                 wl_fixed_t y_w) = 0;
+
+  virtual void notify_touch_up(Touch* touch,
+                               wl_touch* wl_touch,
+                               uint32_t serial,
+                               uint32_t time,
+                               int32_t id) = 0;
+
+  virtual void notify_touch_motion(Touch* touch,
+                                   wl_touch* wl_touch,
                                    uint32_t time,
-                                   struct wl_surface *surface,
                                    int32_t id,
                                    wl_fixed_t x_w,
                                    wl_fixed_t y_w) = 0;
 
-    virtual void notify_touch_up(Touch *touch,
-                                 struct wl_touch *wl_touch,
-                                 uint32_t serial,
-                                 uint32_t time,
-                                 int32_t id) = 0;
+  virtual void notify_touch_cancel(Touch* touch, wl_touch* wl_touch) = 0;
 
-    virtual void notify_touch_motion(Touch *touch,
-                                     struct wl_touch *wl_touch,
-                                     uint32_t time,
-                                     int32_t id,
-                                     wl_fixed_t x_w,
-                                     wl_fixed_t y_w) = 0;
-
-    virtual void notify_touch_cancel(Touch *touch, struct wl_touch *wl_touch) = 0;
-
-    virtual void notify_touch_frame(Touch *touch, struct wl_touch *wl_touch) = 0;
+  virtual void notify_touch_frame(Touch* touch, wl_touch* wl_touch) = 0;
 };
 
 class Touch {
-public:
-    struct event_mask {
-        bool enabled;
-        bool all;
-    };
+ public:
+  struct event_mask {
+    bool enabled;
+    bool all;
+  };
 
-    explicit Touch(struct wl_touch *wl_touch, struct event_mask &event_mask);
+  explicit Touch(wl_touch* wl_touch, event_mask& event_mask);
 
-    ~Touch();
+  ~Touch();
 
-    void register_observer(TouchObserver *observer) {
-        observers_.push_back(observer);
-    }
+  void register_observer(TouchObserver* observer) {
+    observers_.push_back(observer);
+  }
 
-    void unregister_observer(TouchObserver *observer) {
-        observers_.remove(observer);
-    }
+  void unregister_observer(TouchObserver* observer) {
+    observers_.remove(observer);
+  }
 
-    void set_event_mask(struct event_mask &event_mask);
+  void set_event_mask(event_mask& event_mask);
 
-    // Disallow copy and assign.
-    Touch(const Touch &) = delete;
+  // Disallow copy and assign.
+  Touch(const Touch&) = delete;
 
-    Touch &operator=(const Touch &) = delete;
+  Touch& operator=(const Touch&) = delete;
 
-private:
-    struct wl_touch *touch_;
-    std::list<TouchObserver *> observers_{};
+ private:
+  struct wl_touch* touch_;
+  std::list<TouchObserver*> observers_{};
 
-    struct event_mask event_mask_{};
+  event_mask event_mask_{};
 
-    static void handle_down(void *data,
-                            struct wl_touch *wl_touch,
-                            uint32_t serial,
+  static void handle_down(void* data,
+                          wl_touch* wl_touch,
+                          uint32_t serial,
+                          uint32_t time,
+                          wl_surface* surface,
+                          int32_t id,
+                          wl_fixed_t x_w,
+                          wl_fixed_t y_w);
+
+  static void handle_up(void* data,
+                        wl_touch* wl_touch,
+                        uint32_t serial,
+                        uint32_t time,
+                        int32_t id);
+
+  static void handle_motion(void* data,
+                            wl_touch* wl_touch,
                             uint32_t time,
-                            struct wl_surface *surface,
                             int32_t id,
                             wl_fixed_t x_w,
                             wl_fixed_t y_w);
 
-    static void handle_up(void *data,
-                          struct wl_touch *wl_touch,
-                          uint32_t serial,
-                          uint32_t time,
-                          int32_t id);
+  static void handle_cancel(void* data, wl_touch* wl_touch);
 
-    static void handle_motion(void *data,
-                              struct wl_touch *wl_touch,
-                              uint32_t time,
-                              int32_t id,
-                              wl_fixed_t x_w,
-                              wl_fixed_t y_w);
+  static void handle_frame(void* data, wl_touch* wl_touch);
 
-    static void handle_cancel(void *data, struct wl_touch *wl_touch);
-
-    static void handle_frame(void *data, struct wl_touch *wl_touch);
-
-    static constexpr struct wl_touch_listener listener_ = {
-            .down = handle_down,
-            .up = handle_up,
-            .motion = handle_motion,
-            .frame = handle_frame,
-            .cancel = handle_cancel,
-    };
+  static constexpr wl_touch_listener listener_ = {
+      .down = handle_down,
+      .up = handle_up,
+      .motion = handle_motion,
+      .frame = handle_frame,
+      .cancel = handle_cancel,
+  };
 };

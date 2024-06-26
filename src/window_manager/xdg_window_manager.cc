@@ -29,10 +29,10 @@
  */
 
 XdgWindowManager::XdgWindowManager(
-        struct wl_display *display,
+        wl_display *display,
         bool disable_cursor,
         const unsigned long ext_interface_count,
-        const Registrar::RegistrarCallback *ext_interface_data,
+        const RegistrarCallback *ext_interface_data,
         GMainContext *context)
         : WindowManager(display,
                         disable_cursor,
@@ -72,7 +72,7 @@ XdgWindowManager::~XdgWindowManager() = default;
  * @param serial
  */
 void XdgWindowManager::xdg_wm_base_ping(void *data,
-                                        struct xdg_wm_base *xdg_wm_base,
+                                        xdg_wm_base *xdg_wm_base,
                                         uint32_t serial) {
     auto wm = static_cast<XdgWindowManager *>(data);
     if (wm->get_xdg_wm_base() != xdg_wm_base) {

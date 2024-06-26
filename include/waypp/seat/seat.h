@@ -39,11 +39,11 @@ public:
     virtual ~SeatObserver() = default;
 
     virtual void notify_seat_name(Seat *seat,
-                                  struct wl_seat *wl_seat,
+                                  wl_seat *wl_seat,
                                   const char *name) = 0;
 
     virtual void notify_seat_capabilities(Seat *seat,
-                                          struct wl_seat *wl_seat,
+                                          wl_seat *wl_seat,
                                           uint32_t caps) = 0;
 };
 
@@ -55,9 +55,9 @@ public:
         Touch::event_mask touch;
     };
 
-    explicit Seat(struct wl_seat *seat,
-                  struct wl_shm *wl_shm,
-                  struct wl_compositor *wl_compositor,
+    explicit Seat(wl_seat *seat,
+                  wl_shm *wl_shm,
+                  wl_compositor *wl_compositor,
                   bool disable_cursor,
                   const char *ignore_events = nullptr);
 
@@ -78,7 +78,7 @@ public:
 
     [[nodiscard]] void *get_user_data() const { return user_data_; }
 
-    [[nodiscard]] struct wl_seat *get_seat() const { return wl_seat_; }
+    [[nodiscard]] wl_seat *get_seat() const { return wl_seat_; }
 
     [[nodiscard]] uint32_t get_capabilities() const { return capabilities_; }
 
@@ -103,7 +103,7 @@ private:
     struct wl_compositor *wl_compositor_;
     bool disable_cursor_;
     void *user_data_{};
-    struct event_mask event_mask_{};
+    event_mask event_mask_{};
 
     std::list<SeatObserver *> observers_{};
 
@@ -112,14 +112,14 @@ private:
     std::unique_ptr<Touch> touch_;
 
     static void handle_capabilities(void *data,
-                                    struct wl_seat *wl_seat,
+                                    wl_seat *wl_seat,
                                     uint32_t caps);
 
     static void handle_name(void *data,
-                            struct wl_seat *wl_seat,
+                            wl_seat *wl_seat,
                             const char *name);
 
-    static constexpr struct wl_seat_listener listener_ = {
+    static constexpr wl_seat_listener listener_ = {
             .capabilities = handle_capabilities,
             .name = handle_name,
     };

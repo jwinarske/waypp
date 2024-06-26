@@ -17,6 +17,9 @@
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GLIB REQUIRED IMPORTED_TARGET glib-2.0)
 
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 if (ENABLE_EGL)
     find_package(OpenGL REQUIRED COMPONENTS EGL)
 endif ()
@@ -64,10 +67,19 @@ if (ENABLE_DRM_LEASE_CLIENT)
     target_sources(waypp PRIVATE window_manager/drm_lease_device_v1.cc)
 endif ()
 
+target_compile_definitions(waypp PUBLIC
+        MESA_EGL_NO_X11_HEADERS
+        WL_EGL_PLATFORM
+        EGL_NO_X11
+)
+
 target_link_libraries(waypp PUBLIC
         wayland-gen
         PkgConfig::GLIB
         spdlog
+        Threads::Threads
+        dl
+        rt
 )
 
 if (ENABLE_EGL)

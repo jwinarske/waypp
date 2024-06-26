@@ -1,7 +1,5 @@
 #pragma once
 
-#include <list>
-
 #include <waypp/waypp.h>
 
 class Feedback;
@@ -13,7 +11,7 @@ public:
     virtual void notify_feedback_sync_output(
             Feedback *feedback,
             struct wp_presentation_feedback *wp_presentation_feedback,
-            struct wl_output *output) = 0;
+            wl_output *output) = 0;
 
     virtual void notify_feedback_presented(
             Feedback *feedback,
@@ -25,8 +23,8 @@ public:
             uint32_t seq_hi,
             uint32_t seq_lo,
             uint32_t flags,
-            struct timespec committed,
-            struct timespec presented,
+            timespec committed,
+            timespec presented,
             uint32_t frame_stamp,
             unsigned frame_no) = 0;
 
@@ -37,9 +35,9 @@ public:
 
 class Feedback {
 public:
-    Feedback(struct wp_presentation *wp_presentation,
+    Feedback(wp_presentation *wp_presentation,
              clockid_t clock_id,
-             struct wl_surface *wl_surface,
+             wl_surface *wl_surface,
              uint32_t time,
              FeedbackObserver *observer = nullptr);
 
@@ -48,20 +46,20 @@ public:
 private:
     static unsigned sequence_;
 
-    struct wp_presentation *wp_presentation_;
+    wp_presentation *wp_presentation_;
     clockid_t clock_id_ = -1;
     struct wp_presentation_feedback *feedback_;
     FeedbackObserver *observer_;
 
-    struct timespec committed_{};
-    struct timespec presented_{};
+    timespec committed_{};
+    timespec presented_{};
     uint32_t frame_stamp_{};
     unsigned frame_no_{};
 
     static void handle_sync_output(
             void *data,
             struct wp_presentation_feedback *wp_presentation_feedback,
-            struct wl_output *output);
+            wl_output *output);
 
     static void handle_presented(
             void *data,
@@ -78,7 +76,7 @@ private:
             void *data,
             struct wp_presentation_feedback *wp_presentation_feedback);
 
-    static constexpr struct wp_presentation_feedback_listener listener_ = {
+    static constexpr wp_presentation_feedback_listener listener_ = {
             .sync_output = handle_sync_output,
             .presented = handle_presented,
             .discarded = handle_discarded,

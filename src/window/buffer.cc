@@ -27,7 +27,7 @@
 
 #include "logging/logging.h"
 
-Buffer::Buffer(struct wl_shm *wl_shm)
+Buffer::Buffer(wl_shm *wl_shm)
         : width_(0), height_(0), busy_(false), wl_shm_(wl_shm) {}
 
 Buffer::~Buffer() {
@@ -39,12 +39,12 @@ Buffer::~Buffer() {
     }
 }
 
-void Buffer::handle_release(void *data, struct wl_buffer * /* buffer */) {
-    auto obj = static_cast<Buffer *>(data);
+void Buffer::handle_release(void *data, wl_buffer * /* buffer */) {
+    const auto obj = static_cast<Buffer *>(data);
     obj->busy_ = false;
 }
 
-const struct wl_buffer_listener Buffer::listener_ = {.release = handle_release};
+const wl_buffer_listener Buffer::listener_ = {.release = handle_release};
 
 int Buffer::create_shm_buffer(int width, int height, uint32_t format) {
     if (buffer_) {
@@ -56,17 +56,17 @@ int Buffer::create_shm_buffer(int width, int height, uint32_t format) {
     height_ = height;
     format_ = format;
 
-    auto pitch = width * 4;
+    const auto pitch = width * 4;
     size_ = pitch * height;
 
-    auto fd = AnonymousFile::create(size_);
+    const auto fd = AnonymousFile::create(size_);
     if (fd < 0) {
         LOG_ERROR("creating a buffer file for {} B failed: {}", size_,
                   std::strerror(errno));
         return -1;
     }
 
-    auto data = mmap(nullptr, static_cast<size_t>(size_), PROT_READ | PROT_WRITE,
+    const auto data = mmap(nullptr, static_cast<size_t>(size_), PROT_READ | PROT_WRITE,
                      MAP_SHARED, fd, 0);
     if (data == MAP_FAILED) {
         LOG_ERROR("mmap failed: {}", std::strerror(errno));
@@ -74,7 +74,7 @@ int Buffer::create_shm_buffer(int width, int height, uint32_t format) {
         return -1;
     }
 
-    auto wl_shm_pool = wl_shm_create_pool(wl_shm_, fd, size_);
+    const auto wl_shm_pool = wl_shm_create_pool(wl_shm_, fd, size_);
     buffer_ =
             wl_shm_pool_create_buffer(wl_shm_pool, 0, width, height, pitch, format_);
     DLOG_TRACE("[Buffer] wl_shm_pool_destroy(wl_shm_pool)");

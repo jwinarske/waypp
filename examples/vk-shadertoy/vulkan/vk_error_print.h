@@ -51,7 +51,7 @@ enum vk_error_type {
 };
 
 typedef struct vk_error_data {
-    enum vk_error_type type;
+    vk_error_type type;
     union {
         VkResult vkresult;
         int err_no;

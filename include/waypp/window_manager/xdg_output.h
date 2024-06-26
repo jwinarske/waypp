@@ -22,8 +22,8 @@
 
 class XdgOutput {
 public:
-    XdgOutput(struct zxdg_output_manager_v1 *zxdg_output_manager_v1,
-              struct wl_output *wl_output);
+    XdgOutput(zxdg_output_manager_v1 *zxdg_output_manager_v1,
+              wl_output *wl_output);
 
     ~XdgOutput();
 
