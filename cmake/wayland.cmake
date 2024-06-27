@@ -185,9 +185,4 @@ endif ()
 
 add_sanitizers(wayland-gen)
 
-install(TARGETS wayland-gen DESTINATION lib)
-install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/protocols
-        DESTINATION include/${PROJECT_NAME}
-        FILES_MATCHING PATTERN "*.h")
-
 # print_target_properties(wayland-gen)
