@@ -21,7 +21,7 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 if (ENABLE_EGL)
-    find_package(OpenGL REQUIRED COMPONENTS EGL)
+    pkg_check_modules(EGL REQUIRED IMPORTED_TARGET glesv2 egl)
 endif ()
 
 add_library(waypp
@@ -83,9 +83,8 @@ target_link_libraries(waypp PUBLIC
 )
 
 if (ENABLE_EGL)
-    target_link_libraries(waypp PUBLIC
-            OpenGL::EGL
-    )
+    target_link_libraries(waypp PUBLIC PkgConfig::EGL)
+    target_compile_definitions(waypp PUBLIC EGL_NO_X11 MESA_EGL_NO_X11_HEADERS)
 endif ()
 
 add_sanitizers(waypp)
