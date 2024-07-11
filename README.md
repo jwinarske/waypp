@@ -2,6 +2,8 @@
 
 _Note: waypp is a work in progress and is not ABI stable_
 
+[![Documentation Status](https://readthedocs.org/projects/waypp/badge/?version=latest)](https://waypp.readthedocs.io/en/latest/?badge=latest)
+
 ## Introduction
 
 waypp is a modern and efficient C++ library for Wayland. This library aims to provide a smooth and easy-to-use interface
