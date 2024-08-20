@@ -16,35 +16,55 @@
 
 #include "command.h"
 
-#include <memory>
 #include <cstring>
+#include <memory>
 
 #include "logging/logging.h"
 
-bool Command::Execute(const char *cmd, std::string &result) {
-    const auto fp = popen(cmd, "r");
-    if (!fp) {
-        LOG_ERROR("[ExecuteCommand] Failed to Execute Command: ({}) {}", errno,
-                      std::strerror(errno));
-        LOG_ERROR("Failed to Execute Command: {}", cmd);
-        return false;
+int is_safe_char(const char c) {
+  // Only allow alphanumeric characters and a few safe symbols
+  return std::isalnum(static_cast<unsigned char>(c)) || c == '_' || c == '-' ||
+         c == '/' || c == '.';
+}
+
+std::string sanitize_cmd(const std::string& cmd) {
+  std::string safe_cmd;
+  for (const char c : cmd) {
+    if (is_safe_char(c)) {
+      safe_cmd += c;
     }
+  }
+  return safe_cmd;
+}
 
-    DLOG_TRACE("[Command] Execute: {}", cmd);
+bool Command::Execute(const std::string& cmd, std::string& result) {
+  if (cmd.empty()) {
+    spdlog::error("execute: cmd is empty");
+    return false;
+  }
+  const std::string safe_cmd = sanitize_cmd(cmd);
+  const auto fp = popen(safe_cmd.c_str(), "r");
+  if (!fp) {
+    spdlog::error("[ExecuteCommand] Failed to Execute Command: ({}) {}", errno,
+                  strerror(errno));
+    spdlog::error("Failed to Execute Command: {}", cmd);
+    return false;
+  }
 
-    auto buf = std::make_unique<char[]>(1024);
-    while (fgets(&buf[0], 1024, fp) != nullptr) {
-        result.append(&buf[0]);
-    }
-    buf.reset();
+  SPDLOG_TRACE("[Command] Execute: {}", cmd);
 
-    DLOG_TRACE("[Command] Execute Result: [{}] {}", result.size(), result);
+  auto buf = std::make_unique<char[]>(1024);
+  while (fgets(&buf[0], 1024, fp) != nullptr) {
+    result.append(&buf[0]);
+  }
+  buf.reset();
 
-    auto status = pclose(fp);
-    if (status == -1) {
-        LOG_ERROR("[ExecuteCommand] Failed to Close Pipe: ({}) {}", errno,
-                      std::strerror(errno));
-        return false;
-    }
-    return true;
+  SPDLOG_TRACE("[Command] Execute Result: [{}] {}", result.size(), result);
+
+  if (pclose(fp) == -1) {
+    spdlog::error("[ExecuteCommand] Failed to Close Pipe: ({}) {}", errno,
+                  strerror(errno));
+    return false;
+  }
+  return true;
 }
