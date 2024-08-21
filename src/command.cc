@@ -23,8 +23,8 @@
 
 int is_safe_char(const char c) {
   // Only allow alphanumeric characters and a few safe symbols
-  return std::isalnum(static_cast<unsigned char>(c)) || c == '_' || c == '-' ||
-         c == '/' || c == '.';
+  return std::isalnum(static_cast<unsigned char>(c)) || c == ' ' || c == '_' ||
+         c == '-' || c == '/' || c == '.';
 }
 
 std::string sanitize_cmd(const std::string& cmd) {
