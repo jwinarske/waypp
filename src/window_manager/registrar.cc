@@ -558,8 +558,9 @@ const char* Registrar::shm_format_to_text(wl_shm_format format) {
     case WL_SHM_FORMAT_ABGR16161616:
       return "ABGR16161616";
 #endif
+    default:;
+      return "UNKNOWN";
   }
-  return "UNKNOWN";
 }
 
 void Registrar::handle_interface_compositor(Registrar* r,

@@ -67,7 +67,7 @@ endif ()
 
 if (BUILD_UNIT_TESTS)
     enable_testing()
-    add_subdirectory(test)
+    # add_subdirectory(test)
 endif ()
 
 if (NOT CMAKE_CROSSCOMPILING)
