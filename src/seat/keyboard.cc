@@ -27,8 +27,8 @@
 
 // workaround for Wayland macro not compiling in C++
 #define WL_ARRAY_FOR_EACH(pos, array, type)                             \
-  for (pos = (type)(array)->data;                                       \
-       (const char*)pos < ((const char*)(array)->data + (array)->size); \
+  for ((pos) = (type)(array)->data;                                       \
+       (const char*)(pos) < ((const char*)(array)->data + (array)->size); \
        (pos)++)
 
 /**
@@ -58,7 +58,7 @@ Keyboard::Keyboard(wl_keyboard* keyboard, event_mask& event_mask)
  */
 Keyboard::~Keyboard() {
   if (repeat_.timer) {
-    itimerspec its {};
+    itimerspec its{};
     timer_settime(repeat_.timer, 0, &its, nullptr);
     timer_delete(repeat_.timer);
   }
@@ -192,7 +192,8 @@ void Keyboard::handle_key(void* data,
   if (obj->format_ == WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
     /// translate scancode to XKB scancode
     const auto xkb_scancode = key + 8;
-    const auto key_repeats = xkb_keymap_key_repeats(obj->xkb_keymap_, xkb_scancode);
+    const auto key_repeats =
+        xkb_keymap_key_repeats(obj->xkb_keymap_, xkb_scancode);
 
     const xkb_keysym_t* key_syms;
     const auto xdg_keysym_count =
@@ -201,7 +202,7 @@ void Keyboard::handle_key(void* data,
     if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
       if (key_repeats) {
         // start/restart timer
-        itimerspec in {};
+        itimerspec in{};
         in.it_value.tv_nsec = obj->repeat_.delay * 1000000;
         in.it_interval.tv_nsec = obj->repeat_.rate * 1000000;
         timer_settime(obj->repeat_.timer, 0, &in, nullptr);
@@ -220,7 +221,7 @@ void Keyboard::handle_key(void* data,
     } else if (state == WL_KEYBOARD_KEY_STATE_RELEASED) {
       if (obj->repeat_.notify.xkb_scancode == xkb_scancode) {
         // stop timer
-        itimerspec its {};
+        itimerspec its{};
         timer_settime(obj->repeat_.timer, 0, &its, nullptr);
       }
     }
@@ -308,7 +309,8 @@ const wl_keyboard_listener Keyboard::keyboard_listener_ = {
 void Keyboard::repeat_xkb_v1_key_callback(int /* sig */,
                                           siginfo_t* si,
                                           void* /* uc */) {
-  const auto obj = static_cast<Keyboard*>(si->_sifields._rt.si_sigval.sival_ptr);
+  const auto obj =
+      static_cast<Keyboard*>(si->_sifields._rt.si_sigval.sival_ptr);
 
   if (obj->event_mask_.enabled && obj->event_mask_.all) {
     return;

@@ -16,6 +16,7 @@
 
 #include "waypp/window_manager/registrar.h"
 
+#include "config.h"
 #include "logging/logging.h"
 #include "waypp/window_manager/output.h"
 
@@ -47,14 +48,6 @@ Registrar::Registrar(wl_display* wl_display,
 #if ENABLE_AGL_SHELL_CLIENT
       ,
       {agl_shell_interface.name, handle_interface_agl_shell}
-#endif
-#if ENABLE_IVI_SHELL_CLIENT
-      ,
-      {ivi_wm_interface.name, handle_interface_ivi_wm}
-#endif
-#if ENABLE_DRM_LEASE_CLIENT
-          .{wp_drm_lease_device_v1_interface.name,
-            handle_interface_drm_lease_device_v1}
 #endif
 #if HAS_WAYLAND_PROTOCOL_XDG_DECORATION_UNSTABLE_V1
       ,
@@ -265,14 +258,14 @@ Registrar::~Registrar() {
 
 void Registrar::registry_handle_global(void* data,
                                        wl_registry* registry,
-                                       uint32_t name,
+                                       const uint32_t name,
                                        const char* interface,
                                        uint32_t version) {
   LOG_TRACE("++Registrar::registry_handle_global()\t\n\t{}: {}", interface,
             version);
-  auto registrar = static_cast<Registrar*>(data);
-  auto found = (*registrar->registrar_global_).find(interface);
-  if (found != (*registrar->registrar_global_).end()) {
+  const auto registrar = static_cast<Registrar*>(data);
+  if (const auto found = registrar->registrar_global_->find(interface);
+      found != registrar->registrar_global_->end()) {
     // Execute the process function for the found interface.
     found->second(registrar, registry, name, interface, version);
   }
@@ -281,12 +274,12 @@ void Registrar::registry_handle_global(void* data,
 
 void Registrar::registry_handle_global_remove(void* data,
                                               wl_registry* reg,
-                                              uint32_t id) {
+                                              const uint32_t id) {
   LOG_TRACE("++Registrar::registry_handle_global_remove()");
-  auto registrar = static_cast<Registrar*>(data);
+  const auto registrar = static_cast<Registrar*>(data);
 
-  auto found = (*registrar->registrar_global_remove_).find(id);
-  if (found != (*registrar->registrar_global_remove_).end()) {
+  if (const auto found = registrar->registrar_global_remove_->find(id);
+      found != registrar->registrar_global_remove_->end()) {
     found->second(registrar, reg,
                   id);  // Execute the process function for the found interface.
   }
@@ -294,29 +287,31 @@ void Registrar::registry_handle_global_remove(void* data,
 }
 
 wl_output_transform Registrar::get_output_buffer_transform(
-    wl_output* wl_output) {
-  for (auto& output : outputs_) {
-    if (wl_output == output.first) {
-      return output.second->get_transform();
+    const wl_output* wl_output) const {
+  for (const auto& [fst, snd] : outputs_) {
+    if (wl_output == fst) {
+      return snd->get_transform();
     }
   }
   return WL_OUTPUT_TRANSFORM_NORMAL;
 }
 
-int32_t Registrar::get_output_buffer_scale(wl_output* wl_output) {
+int32_t Registrar::get_output_buffer_scale(const wl_output* wl_output) const {
   int32_t scale = 1;
-  for (auto& output : outputs_) {
-    if (wl_output == output.first) {
-      scale = output.second->get_scale_factor();
+  for (const auto& [fst, snd] : outputs_) {
+    if (wl_output == fst) {
+      scale = snd->get_scale_factor();
       break;
     }
   }
   return scale;
 }
 
-void Registrar::shm_format(void* data, wl_shm* wl_shm, uint32_t format) {
+void Registrar::shm_format(void* data,
+                           struct wl_shm* wl_shm,
+                           const uint32_t format) {
   LOG_TRACE("++Registrar::shm_format()");
-  auto obj = static_cast<Registrar*>(data);
+  const auto obj = static_cast<Registrar*>(data);
   if (obj->wl_shm_ != wl_shm) {
     return;
   }
@@ -324,7 +319,7 @@ void Registrar::shm_format(void* data, wl_shm* wl_shm, uint32_t format) {
   LOG_TRACE("--Registrar::shm_format()");
 }
 
-const char* Registrar::shm_format_to_text(wl_shm_format format) {
+const char* Registrar::shm_format_to_text(const wl_shm_format format) {
   switch (format) {
     case WL_SHM_FORMAT_ARGB8888:
       return "ARGB8888";
@@ -565,9 +560,9 @@ const char* Registrar::shm_format_to_text(wl_shm_format format) {
 
 void Registrar::handle_interface_compositor(Registrar* r,
                                             wl_registry* registry,
-                                            uint32_t name,
+                                            const uint32_t name,
                                             const char* interface,
-                                            uint32_t version) {
+                                            const uint32_t version) {
   r->wl_compositor_ = static_cast<wl_compositor*>(
       wl_registry_bind(registry, name, &wl_compositor_interface,
                        std::min(kWlCompositorMinVersion, version)));
@@ -576,9 +571,9 @@ void Registrar::handle_interface_compositor(Registrar* r,
 
 void Registrar::handle_interface_subcompositor(Registrar* r,
                                                wl_registry* registry,
-                                               uint32_t name,
+                                               const uint32_t name,
                                                const char* interface,
-                                               uint32_t version) {
+                                               const uint32_t version) {
   r->wl_subcompositor_ = static_cast<wl_subcompositor*>(
       wl_registry_bind(registry, name, &wl_subcompositor_interface,
                        std::min(kWlSubcompositorMinVersion, version)));
@@ -588,20 +583,20 @@ void Registrar::handle_interface_subcompositor(Registrar* r,
 
 void Registrar::handle_interface_shm(Registrar* r,
                                      wl_registry* registry,
-                                     uint32_t name,
+                                     const uint32_t name,
                                      const char* interface,
-                                     uint32_t version) {
-  r->wl_shm_ = static_cast<struct wl_shm*>(wl_registry_bind(
+                                     const uint32_t version) {
+  r->wl_shm_ = static_cast<wl_shm*>(wl_registry_bind(
       registry, name, &wl_shm_interface, std::min(kWlShmMinVersion, version)));
   wl_shm_add_listener(r->wl_shm_, &shm_listener_, r);
   LOG_DEBUG("{}: {}", interface, wl_shm_get_version(r->wl_shm_));
 }
 
 void Registrar::handle_interface_seat(Registrar* r,
-                                      struct wl_registry* registry,
-                                      uint32_t name,
+                                      wl_registry* registry,
+                                      const uint32_t name,
                                       const char* interface,
-                                      uint32_t version) {
+                                      const uint32_t version) {
   auto wl_seat = static_cast<struct wl_seat*>(
       wl_registry_bind(registry, name, &wl_seat_interface,
                        std::min(kWlSeatMinVersion, version)));
@@ -613,10 +608,10 @@ void Registrar::handle_interface_seat(Registrar* r,
 }
 
 void Registrar::handle_interface_output(Registrar* r,
-                                        struct wl_registry* registry,
-                                        uint32_t name,
+                                        wl_registry* registry,
+                                        const uint32_t name,
                                         const char* interface,
-                                        uint32_t version) {
+                                        const uint32_t version) {
   auto wl_output = static_cast<struct wl_output*>(
       wl_registry_bind(registry, name, &wl_output_interface,
                        std::min(kWlOutputMinVersion, version)));
@@ -630,11 +625,11 @@ void Registrar::handle_interface_output(Registrar* r,
 #if ENABLE_XDG_CLIENT
 
 void Registrar::handle_interface_xdg_wm_base(Registrar* r,
-                                             struct wl_registry* registry,
-                                             uint32_t name,
+                                             wl_registry* registry,
+                                             const uint32_t name,
                                              const char* interface,
-                                             uint32_t version) {
-  r->xdg_wm_base_ = static_cast<struct xdg_wm_base*>(
+                                             const uint32_t version) {
+  r->xdg_wm_base_ = static_cast<xdg_wm_base*>(
       wl_registry_bind(registry, name, &xdg_wm_base_interface,
                        std::min(kXdgWmBaseMinVersion, version)));
   LOG_DEBUG("{}: {}", interface, xdg_wm_base_get_version(r->xdg_wm_base_));
@@ -645,11 +640,11 @@ void Registrar::handle_interface_xdg_wm_base(Registrar* r,
 #if ENABLE_AGL_SHELL_CLIENT
 
 void Registrar::handle_interface_agl_shell(Registrar* r,
-                                           struct wl_registry* registry,
-                                           uint32_t name,
+                                           wl_registry* registry,
+                                           const uint32_t name,
                                            const char* interface,
-                                           uint32_t version) {
-  r->agl_shell_ = static_cast<struct agl_shell*>(
+                                           const uint32_t version) {
+  r->agl_shell_ = static_cast<agl_shell*>(
       wl_registry_bind(registry, name, &agl_shell_interface,
                        std::min(kAglShellMinVersion, version)));
   LOG_DEBUG("{}: {}", interface, agl_shell_get_version(r->agl_shell_));
@@ -657,29 +652,16 @@ void Registrar::handle_interface_agl_shell(Registrar* r,
 
 #endif
 
-#if ENABLE_IVI_SHELL_CLIENT
-void Registrar::handle_interface_ivi_wm(Registrar* r,
-                                        struct wl_registry* registry,
-                                        uint32_t name,
-                                        const char* interface,
-                                        uint32_t version) {
-  r->ivi_wm_.ivi_wm = static_cast<struct ivi_wm*>(wl_registry_bind(
-      registry, name, &ivi_wm_interface, std::min(kIviWmMinVersion, version)));
-  LOG_DEBUG("{}: {}", interface, ivi_wm_get_version(r->ivi_wm_.ivi_wm.value()));
-}
-#endif
-
 #if HAS_WAYLAND_PROTOCOL_XDG_DECORATION_UNSTABLE_V1
 
 void Registrar::handle_interface_zxdg_decoration(Registrar* r,
-                                                 struct wl_registry* registry,
-                                                 uint32_t name,
+                                                 wl_registry* registry,
+                                                 const uint32_t name,
                                                  const char* interface,
-                                                 uint32_t version) {
-  r->zxdg_decoration_manager_v1_ =
-      static_cast<struct zxdg_decoration_manager_v1*>(wl_registry_bind(
-          registry, name, &zxdg_decoration_manager_v1_interface,
-          std::min(kXdgDecorationManagerMinVersion, version)));
+                                                 const uint32_t version) {
+  r->zxdg_decoration_manager_v1_ = static_cast<zxdg_decoration_manager_v1*>(
+      wl_registry_bind(registry, name, &zxdg_decoration_manager_v1_interface,
+                       std::min(kXdgDecorationManagerMinVersion, version)));
   LOG_DEBUG(
       "{}: {}", interface,
       zxdg_decoration_manager_v1_get_version(r->zxdg_decoration_manager_v1_));
@@ -687,14 +669,13 @@ void Registrar::handle_interface_zxdg_decoration(Registrar* r,
 
 void Registrar::handle_interface_zxdg_toplevel_decoration(
     Registrar* r,
-    struct wl_registry* registry,
-    uint32_t name,
+    wl_registry* registry,
+    const uint32_t name,
     const char* interface,
-    uint32_t version) {
-  r->zxdg_toplevel_decoration_v1_ =
-      static_cast<struct zxdg_toplevel_decoration_v1*>(wl_registry_bind(
-          registry, name, &zxdg_toplevel_decoration_v1_interface,
-          std::min(kXdgDecorationManagerMinVersion, version)));
+    const uint32_t version) {
+  r->zxdg_toplevel_decoration_v1_ = static_cast<zxdg_toplevel_decoration_v1*>(
+      wl_registry_bind(registry, name, &zxdg_toplevel_decoration_v1_interface,
+                       std::min(kXdgDecorationManagerMinVersion, version)));
   LOG_DEBUG(
       "{}: {}", interface,
       zxdg_toplevel_decoration_v1_get_version(r->zxdg_toplevel_decoration_v1_));
@@ -706,11 +687,11 @@ void Registrar::handle_interface_zxdg_toplevel_decoration(
 
 void Registrar::handle_interface_xdg_output_unstable_v1(
     Registrar* r,
-    struct wl_registry* registry,
-    uint32_t name,
+    wl_registry* registry,
+    const uint32_t name,
     const char* interface,
-    uint32_t version) {
-  r->zxdg_output_manager_v1_ = static_cast<struct zxdg_output_manager_v1*>(
+    const uint32_t version) {
+  r->zxdg_output_manager_v1_ = static_cast<zxdg_output_manager_v1*>(
       wl_registry_bind(registry, name, &zxdg_output_manager_v1_interface,
                        std::min(kXdgOutputManagerMinVersion, version)));
   LOG_DEBUG("{}: {}", interface,
@@ -720,11 +701,11 @@ void Registrar::handle_interface_xdg_output_unstable_v1(
 #endif
 
 void Registrar::handle_interface_weston_capture_v1(Registrar* r,
-                                                   struct wl_registry* registry,
-                                                   uint32_t name,
+                                                   wl_registry* registry,
+                                                   const uint32_t name,
                                                    const char* interface,
-                                                   uint32_t version) {
-  r->weston_capture_v1_ = static_cast<struct weston_capture_v1*>(
+                                                   const uint32_t version) {
+  r->weston_capture_v1_ = static_cast<weston_capture_v1*>(
       wl_registry_bind(registry, name, &weston_capture_v1_interface,
                        std::min(kWestonCaptureV1MinVersion, version)));
   LOG_DEBUG("{}: {}", interface,
@@ -735,14 +716,13 @@ void Registrar::handle_interface_weston_capture_v1(Registrar* r,
 
 void Registrar::handle_interface_zwp_idle_inhibit_manager_v1(
     Registrar* r,
-    struct wl_registry* registry,
-    uint32_t name,
+    wl_registry* registry,
+    const uint32_t name,
     const char* interface,
-    uint32_t version) {
-  r->zwp_idle_inhibit_manager_v1_ =
-      static_cast<struct zwp_idle_inhibit_manager_v1*>(wl_registry_bind(
-          registry, name, &zwp_idle_inhibit_manager_v1_interface,
-          std::min(kIdleInhibitManagerV1MinVersion, version)));
+    const uint32_t version) {
+  r->zwp_idle_inhibit_manager_v1_ = static_cast<zwp_idle_inhibit_manager_v1*>(
+      wl_registry_bind(registry, name, &zwp_idle_inhibit_manager_v1_interface,
+                       std::min(kIdleInhibitManagerV1MinVersion, version)));
   LOG_DEBUG(
       "{}: {}", interface,
       zwp_idle_inhibit_manager_v1_get_version(r->zwp_idle_inhibit_manager_v1_));
@@ -766,11 +746,10 @@ void Registrar::handle_interface_xdg_activation_v1(Registrar* r,
 
 #endif
 
-void Registrar::handle_presentation_clock_id(
-    void* data,
-    struct wp_presentation* wp_presentation,
-    uint32_t clk_id) {
-  auto r = static_cast<Registrar*>(data);
+void Registrar::handle_presentation_clock_id(void* data,
+                                             wp_presentation* wp_presentation,
+                                             const uint32_t clk_id) {
+  const auto r = static_cast<Registrar*>(data);
   if (r->presentation_time_.wp_presentation != wp_presentation) {
     return;
   }
@@ -778,11 +757,11 @@ void Registrar::handle_presentation_clock_id(
 }
 
 void Registrar::handle_interface_presentation(Registrar* r,
-                                              struct wl_registry* registry,
-                                              uint32_t name,
+                                              wl_registry* registry,
+                                              const uint32_t name,
                                               const char* interface,
-                                              uint32_t version) {
-  r->presentation_time_.wp_presentation = static_cast<struct wp_presentation*>(
+                                              const uint32_t version) {
+  r->presentation_time_.wp_presentation = static_cast<wp_presentation*>(
       wl_registry_bind(registry, name, &wp_presentation_interface,
                        std::min(kPresentationTimeMinVersion, version)));
   wp_presentation_add_listener(r->presentation_time_.wp_presentation,
@@ -793,14 +772,13 @@ void Registrar::handle_interface_presentation(Registrar* r,
 
 std::optional<Seat*> Registrar::get_seat(wl_seat* seat) const {
   if (seat) {
-    auto it = seats_.find(seat);
-    if (it != seats_.end()) {
+    if (const auto it = seats_.find(seat); it != seats_.end()) {
       return it->second.get();
     }
   } else {
     /// If seat is nullptr, return first available
-    for (auto const& it : seats_) {
-      return it.second.get();
+    for (const auto& [fst, snd] : seats_) {
+      return snd.get();
     }
   }
   return {};
@@ -828,11 +806,11 @@ void Registrar::handle_interface_tearing_control_manager(
 #if HAS_WAYLAND_PROTOCOL_VIEWPORTER
 
 void Registrar::handle_interface_viewporter(Registrar* r,
-                                            struct wl_registry* registry,
-                                            uint32_t name,
+                                            wl_registry* registry,
+                                            const uint32_t name,
                                             const char* interface,
-                                            uint32_t version) {
-  r->wp_viewporter_ = static_cast<struct wp_viewporter*>(
+                                            const uint32_t version) {
+  r->wp_viewporter_ = static_cast<wp_viewporter*>(
       wl_registry_bind(registry, name, &wp_viewporter_interface,
                        std::min(kViewporterMinVersion, version)));
   LOG_DEBUG("{}: {}", interface, wp_viewporter_get_version(r->wp_viewporter_));
@@ -859,32 +837,15 @@ void Registrar::handle_interface_fractional_scale_manager(
 
 #endif
 
-#if ENABLE_DRM_LEASE_CLIENT
-void Registrar::handle_interface_drm_lease_device_v1(
-    Registrar* r,
-    struct wl_registry* registry,
-    uint32_t name,
-    const char* interface,
-    uint32_t version) {
-  auto wp_drm_lease_device_v1 = static_cast<struct wp_drm_lease_device_v1*>(
-      wl_registry_bind(registry, name, &wp_drm_lease_device_v1_interface,
-                       std::min(kDrmLeaseDeviceV1MinVersion, version)));
-  r->drm_lease_device_v1_ =
-      std::make_unique<DrmLeaseDevice_v1>(wp_drm_lease_device_v1);
-  LOG_DEBUG("{}: {}", interface,
-            wp_drm_lease_device_v1_get_version(wp_drm_lease_device_v1));
-}
-#endif
-
 #if HAS_WAYLAND_PROTOCOL_POINTER_GESTURES_UNSTABLE_V1
 
 void Registrar::handle_interface_zwp_pointer_gestures_v1(
     Registrar* r,
-    struct wl_registry* registry,
-    uint32_t name,
+    wl_registry* registry,
+    const uint32_t name,
     const char* interface,
-    uint32_t version) {
-  r->zwp_pointer_gestures_v1_ = static_cast<struct zwp_pointer_gestures_v1*>(
+    const uint32_t version) {
+  r->zwp_pointer_gestures_v1_ = static_cast<zwp_pointer_gestures_v1*>(
       wl_registry_bind(registry, name, &zwp_pointer_gestures_v1_interface,
                        std::min(kPointerGesturesV1MinVersion, version)));
   LOG_DEBUG("{}: {}", interface,
@@ -897,14 +858,13 @@ void Registrar::handle_interface_zwp_pointer_gestures_v1(
 
 void Registrar::handle_interface_zwp_pointer_constraints_v1(
     Registrar* r,
-    struct wl_registry* registry,
-    uint32_t name,
+    wl_registry* registry,
+    const uint32_t name,
     const char* interface,
-    uint32_t version) {
-  r->zwp_pointer_constraints_v1_ =
-      static_cast<struct zwp_pointer_constraints_v1*>(wl_registry_bind(
-          registry, name, &zwp_pointer_constraints_v1_interface,
-          std::min(kPointerConstraintsV1MinVersion, version)));
+    const uint32_t version) {
+  r->zwp_pointer_constraints_v1_ = static_cast<zwp_pointer_constraints_v1*>(
+      wl_registry_bind(registry, name, &zwp_pointer_constraints_v1_interface,
+                       std::min(kPointerConstraintsV1MinVersion, version)));
   LOG_DEBUG(
       "{}: {}", interface,
       zwp_pointer_constraints_v1_get_version(r->zwp_pointer_constraints_v1_));
@@ -916,12 +876,12 @@ void Registrar::handle_interface_zwp_pointer_constraints_v1(
 
 void Registrar::handle_interface_zwp_relative_pointer_manager_v1(
     Registrar* r,
-    struct wl_registry* registry,
-    uint32_t name,
+    wl_registry* registry,
+    const uint32_t name,
     const char* interface,
-    uint32_t version) {
+    const uint32_t version) {
   r->zwp_relative_pointer_manager_v1_ =
-      static_cast<struct zwp_relative_pointer_manager_v1*>(wl_registry_bind(
+      static_cast<zwp_relative_pointer_manager_v1*>(wl_registry_bind(
           registry, name, &zwp_relative_pointer_manager_v1_interface,
           std::min(kRelativePointerManagerV1MinVersion, version)));
   LOG_DEBUG("{}: {}", interface,
@@ -935,16 +895,14 @@ void Registrar::handle_interface_zwp_relative_pointer_manager_v1(
 
 void Registrar::handle_interface_zwp_primary_selection_device_manager_v1(
     Registrar* r,
-    struct wl_registry* registry,
-    uint32_t name,
+    wl_registry* registry,
+    const uint32_t name,
     const char* interface,
-    uint32_t version) {
+    const uint32_t version) {
   r->zwp_primary_selection_device_manager_v1_ =
-      static_cast<struct zwp_primary_selection_device_manager_v1*>(
-          wl_registry_bind(
-              registry, name,
-              &zwp_primary_selection_device_manager_v1_interface,
-              std::min(kPrimarySelectionDeviceManagerV1MinVersion, version)));
+      static_cast<zwp_primary_selection_device_manager_v1*>(wl_registry_bind(
+          registry, name, &zwp_primary_selection_device_manager_v1_interface,
+          std::min(kPrimarySelectionDeviceManagerV1MinVersion, version)));
   LOG_DEBUG("{}: {}", interface,
             zwp_primary_selection_device_manager_v1_get_version(
                 r->zwp_primary_selection_device_manager_v1_));

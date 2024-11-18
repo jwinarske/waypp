@@ -17,17 +17,15 @@
 #include "command.h"
 
 #include <cstring>
-#include <memory>
 
 #include "logging/logging.h"
 
-int is_safe_char(const char c) {
-  // Only allow alphanumeric characters and a few safe symbols
+int Command::is_safe_char(const char c) {
   return std::isalnum(static_cast<unsigned char>(c)) || c == ' ' || c == '_' ||
          c == '-' || c == '/' || c == '.';
 }
 
-std::string sanitize_cmd(const std::string& cmd) {
+std::string Command::sanitize_cmd(const std::string& cmd) {
   std::string safe_cmd;
   for (const char c : cmd) {
     if (is_safe_char(c)) {
@@ -43,7 +41,7 @@ bool Command::Execute(const std::string& cmd, std::string& result) {
     return false;
   }
   const std::string safe_cmd = sanitize_cmd(cmd);
-  const auto fp = popen(safe_cmd.c_str(), "r");
+  FILE* fp = popen(safe_cmd.c_str(), "r");
   if (!fp) {
     spdlog::error("[ExecuteCommand] Failed to Execute Command: ({}) {}", errno,
                   strerror(errno));
@@ -53,9 +51,10 @@ bool Command::Execute(const std::string& cmd, std::string& result) {
 
   SPDLOG_TRACE("[Command] Execute: {}", cmd);
 
+  result.clear();
   auto buf = std::make_unique<char[]>(1024);
-  while (fgets(&buf[0], 1024, fp) != nullptr) {
-    result.append(&buf[0]);
+  while (fgets(buf.get(), 1024, fp) != nullptr) {
+    result.append(buf.get());
   }
   buf.reset();
 

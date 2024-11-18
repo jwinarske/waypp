@@ -31,44 +31,44 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog-inl.h>
 
-#define DLOG_DEBUG    SPDLOG_DEBUG
-#define DLOG_TRACE    SPDLOG_TRACE
+#define DLOG_DEBUG SPDLOG_DEBUG
+#define DLOG_TRACE SPDLOG_TRACE
 #define DLOG_CRITICAL SPDLOG_CRITICAL
 
-#define LOG_INFO      spdlog::info
-#define LOG_DEBUG     spdlog::debug
-#define LOG_ERROR     spdlog::error
-#define LOG_TRACE     spdlog::trace
-#define LOG_WARN      spdlog::warn
-#define LOG_CRITICAL  spdlog::critical
+#define LOG_INFO spdlog::info
+#define LOG_DEBUG spdlog::debug
+#define LOG_ERROR spdlog::error
+#define LOG_TRACE spdlog::trace
+#define LOG_WARN spdlog::warn
+#define LOG_CRITICAL spdlog::critical
 
 class Logging {
-public:
-    static constexpr int32_t kLogFlushInterval = INT32_C(5);
+ public:
+  static constexpr int32_t kLogFlushInterval = INT32_C(5);
 
-    Logging() {
-        console_sink_ = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-        logger_ = std::make_shared<spdlog::logger>("waypp", console_sink_);
-        spdlog::set_default_logger(logger_);
-        spdlog::set_pattern("[%H:%M:%S.%f] [%L] %v");
+  Logging() {
+    console_sink_ = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    logger_ = std::make_shared<spdlog::logger>("waypp", console_sink_);
+    spdlog::set_default_logger(logger_);
+    spdlog::set_pattern("[%H:%M:%S.%f] [%L] %v");
 
-        spdlog::flush_on(spdlog::level::err);
-        spdlog::flush_every(std::chrono::seconds(kLogFlushInterval));
-        spdlog::cfg::load_env_levels();
-    }
+    spdlog::flush_on(spdlog::level::err);
+    spdlog::flush_every(std::chrono::seconds(kLogFlushInterval));
+    spdlog::cfg::load_env_levels();
+  }
 
-    ~Logging() = default;
+  ~Logging() = default;
 
-    // Disallow copy and assign.
-    Logging(const Logging &) = delete;
+  // Disallow copy and assign.
+  Logging(const Logging&) = delete;
 
-    Logging &operator=(const Logging &) = delete;
+  Logging& operator=(const Logging&) = delete;
 
-private:
-    std::shared_ptr<spdlog::logger> logger_{};
-    std::shared_ptr<
-            spdlog::sinks::ansicolor_stdout_sink<spdlog::details::console_mutex>>
-            console_sink_;
+ private:
+  std::shared_ptr<spdlog::logger> logger_{};
+  std::shared_ptr<
+      spdlog::sinks::ansicolor_stdout_sink<spdlog::details::console_mutex>>
+      console_sink_;
 };
 
 #endif

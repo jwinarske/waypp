@@ -1,0 +1,56 @@
+name: clang-format
+
+on:
+  pull_request:
+    types: [ opened, synchronize, reopened, closed ]
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install packages
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install ninja-build libglib2.0-dev \
+          libwayland-dev wayland-protocols libxkbcommon-dev \
+          mesa-common-dev libegl1-mesa-dev libgles2-mesa-dev mesa-utils
+          \
+          wget http://security.ubuntu.com/ubuntu/pool/universe/n/ncurses/libtinfo5_6.3-2ubuntu0.1_amd64.deb
+          sudo apt install ./libtinfo5_6.3-2ubuntu0.1_amd64.deb
+          \
+          mkdir clang18 && cd clang18
+          curl -L -O https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.8/clang+llvm-18.1.8-x86_64-linux-gnu-ubuntu-18.04.tar.xz
+          tar -xJf clang+llvm-18.1.8-x86_64-linux-gnu-ubuntu-18.04.tar.xz --strip-components=1
+          bin/clang-format --version
+
+      - name: Configure CMake
+        run: |
+          cmake -G Ninja -B ${{github.workspace}}/build \
+          -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} \
+          -DENABLE_AGL_SHELL_CLIENT=ON \
+          -D CMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Run clang-format
+        working-directory: ${{github.workspace}}
+        run: |
+          export FILE_LIST=$(find . -type d \( -name clang18 -o -name docs -o -name third_party \) -prune -false -o -name '*.cc' -o -name '*.hpp' -o -name '*.h')
+          echo $FILE_LIST
+          clang18/bin/clang-format -n --Werror $FILE_LIST 2> clang-format-results.txt
+
+      - name: Show results
+        if: always()
+        run: |
+          cat clang-format-results.txt
+
+      - name: Publish Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clang-format-results
+          path: clang-format-*

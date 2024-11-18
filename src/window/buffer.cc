@@ -20,69 +20,69 @@
 #include <cstring>
 
 #include <sys/mman.h>
-#include <wayland-client.h>
 #include <unistd.h>
+#include <wayland-client.h>
 
 #include "anonymous_file.h"
 
 #include "logging/logging.h"
 
-Buffer::Buffer(wl_shm *wl_shm)
-        : width_(0), height_(0), busy_(false), wl_shm_(wl_shm) {}
+Buffer::Buffer(wl_shm* wl_shm)
+    : width_(0), height_(0), busy_(false), wl_shm_(wl_shm) {}
 
 Buffer::~Buffer() {
-    munmap(shm_data_, static_cast<size_t>(size_));
+  munmap(shm_data_, static_cast<size_t>(size_));
 
-    if (buffer_) {
-        DLOG_TRACE("[Buffer] wl_buffer_destroy(buffer_)");
-        wl_buffer_destroy(buffer_);
-    }
+  if (buffer_) {
+    DLOG_TRACE("[Buffer] wl_buffer_destroy(buffer_)");
+    wl_buffer_destroy(buffer_);
+  }
 }
 
-void Buffer::handle_release(void *data, wl_buffer * /* buffer */) {
-    const auto obj = static_cast<Buffer *>(data);
-    obj->busy_ = false;
+void Buffer::handle_release(void* data, wl_buffer* /* buffer */) {
+  const auto obj = static_cast<Buffer*>(data);
+  obj->busy_ = false;
 }
 
 const wl_buffer_listener Buffer::listener_ = {.release = handle_release};
 
 int Buffer::create_shm_buffer(int width, int height, uint32_t format) {
-    if (buffer_) {
-        LOG_ERROR("shm_buffer already exists");
-        return -1;
-    }
+  if (buffer_) {
+    LOG_ERROR("shm_buffer already exists");
+    return -1;
+  }
 
-    width_ = width;
-    height_ = height;
-    format_ = format;
+  width_ = width;
+  height_ = height;
+  format_ = format;
 
-    const auto pitch = width * 4;
-    size_ = pitch * height;
+  const auto pitch = width * 4;
+  size_ = pitch * height;
 
-    const auto fd = AnonymousFile::create(size_);
-    if (fd < 0) {
-        LOG_ERROR("creating a buffer file for {} B failed: {}", size_,
-                  std::strerror(errno));
-        return -1;
-    }
+  const auto fd = AnonymousFile::create(size_);
+  if (fd < 0) {
+    LOG_ERROR("creating a buffer file for {} B failed: {}", size_,
+              std::strerror(errno));
+    return -1;
+  }
 
-    const auto data = mmap(nullptr, static_cast<size_t>(size_), PROT_READ | PROT_WRITE,
-                     MAP_SHARED, fd, 0);
-    if (data == MAP_FAILED) {
-        LOG_ERROR("mmap failed: {}", std::strerror(errno));
-        close(fd);
-        return -1;
-    }
-
-    const auto wl_shm_pool = wl_shm_create_pool(wl_shm_, fd, size_);
-    buffer_ =
-            wl_shm_pool_create_buffer(wl_shm_pool, 0, width, height, pitch, format_);
-    DLOG_TRACE("[Buffer] wl_shm_pool_destroy(wl_shm_pool)");
-    wl_shm_pool_destroy(wl_shm_pool);
+  const auto data = mmap(nullptr, static_cast<size_t>(size_),
+                         PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  if (data == MAP_FAILED) {
+    LOG_ERROR("mmap failed: {}", std::strerror(errno));
     close(fd);
+    return -1;
+  }
 
-    wl_buffer_add_listener(buffer_, &listener_, this);
+  const auto wl_shm_pool = wl_shm_create_pool(wl_shm_, fd, size_);
+  buffer_ =
+      wl_shm_pool_create_buffer(wl_shm_pool, 0, width, height, pitch, format_);
+  DLOG_TRACE("[Buffer] wl_shm_pool_destroy(wl_shm_pool)");
+  wl_shm_pool_destroy(wl_shm_pool);
+  close(fd);
 
-    shm_data_ = data;
-    return 0;
+  wl_buffer_add_listener(buffer_, &listener_, this);
+
+  shm_data_ = data;
+  return 0;
 }

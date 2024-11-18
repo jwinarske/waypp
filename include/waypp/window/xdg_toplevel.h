@@ -17,11 +17,7 @@
 #pragma once
 
 #include <cstdint>
-#include <map>
 #include <memory>
-#include <optional>
-
-#include <wayland-client.h>
 
 #include "waypp/window/egl.h"
 #include "waypp/window_manager/xdg_window_manager.h"
@@ -35,7 +31,7 @@ class XdgWindowManager;
 
 class XdgTopLevel : public Window {
  public:
-  XdgTopLevel(std::shared_ptr<WindowManager> wm,
+  XdgTopLevel(const std::shared_ptr<WindowManager>& wm,
               const char* title,
               const char* app_id,
               int width,
@@ -82,7 +78,7 @@ class XdgTopLevel : public Window {
     xdg_toplevel_set_max_size(xdg_toplevel_, width, height);
   }
 
-  void resize(wl_seat* seat, uint32_t serial, uint32_t edges);
+  void resize(wl_seat* seat, uint32_t serial, uint32_t edges) const;
 
   void set_surface_damage(const int x,
                           const int y,
@@ -91,7 +87,8 @@ class XdgTopLevel : public Window {
     wl_surface_damage(get_surface(), x, y, width, height);
   }
 
-  xdg_toplevel_resize_edge check_edge_resize(std::pair<double, double> xy);
+  xdg_toplevel_resize_edge check_edge_resize(
+      const std::pair<double, double>& xy) const;
 
   [[nodiscard]] bool is_resizing() const { return get_resizing(); }
 

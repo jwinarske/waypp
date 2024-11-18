@@ -30,31 +30,29 @@
  * The Pointer class is responsible for handling Wayland pointer events and
  * managing the cursor.
  */
-Pointer::Pointer(wl_pointer *pointer,
-                 wl_compositor *wl_compositor,
-                 wl_shm *wl_shm,
+Pointer::Pointer(wl_pointer* pointer,
+                 wl_compositor* wl_compositor,
+                 wl_shm* wl_shm,
                  bool disable_cursor,
-                 event_mask &event_mask,
+                 event_mask& event_mask,
                  int size)
-        : wl_pointer_(pointer),
-          wl_shm_(wl_shm),
-          disable_cursor_(disable_cursor),
-          size_(size),
-          event_mask_({
-                              .enabled = event_mask.enabled,
-                              .all = event_mask.all,
-                              .axis = event_mask.axis,
-                              .buttons = event_mask.buttons,
-                              .motion = event_mask.motion
-                      }) {
-    LOG_DEBUG("Pointer");
-    wl_pointer_add_listener(pointer, &pointer_listener_, this);
-    wl_surface_cursor_ = wl_compositor_create_surface(wl_compositor);
+    : wl_pointer_(pointer),
+      wl_shm_(wl_shm),
+      disable_cursor_(disable_cursor),
+      size_(size),
+      event_mask_({.enabled = event_mask.enabled,
+                   .all = event_mask.all,
+                   .axis = event_mask.axis,
+                   .buttons = event_mask.buttons,
+                   .motion = event_mask.motion}) {
+  LOG_DEBUG("Pointer");
+  wl_pointer_add_listener(pointer, &pointer_listener_, this);
+  wl_surface_cursor_ = wl_compositor_create_surface(wl_compositor);
 
-    event_mask_.enabled = event_mask.enabled;
-    event_mask_.axis = event_mask.axis;
-    event_mask_.buttons = event_mask.buttons;
-    event_mask_.motion = event_mask.motion;
+  event_mask_.enabled = event_mask.enabled;
+  event_mask_.axis = event_mask.axis;
+  event_mask_.buttons = event_mask.buttons;
+  event_mask_.motion = event_mask.motion;
 }
 
 /**
@@ -69,18 +67,18 @@ Pointer::Pointer(wl_pointer *pointer,
  * @param enable_cursor A boolean flag indicating whether to enable cursor.
  */
 Pointer::~Pointer() {
-    if (theme_) {
-        DLOG_TRACE("[Pointer] wl_cursor_theme_destroy(theme_)");
-        wl_cursor_theme_destroy(theme_);
-    }
-    if (wl_surface_cursor_) {
-        DLOG_TRACE("[Pointer] wl_surface_destroy(wl_surface_cursor_)");
-        wl_surface_destroy(wl_surface_cursor_);
-    }
-    if (wl_pointer_) {
-        DLOG_TRACE("[Pointer] wl_pointer_release(wl_pointer_)");
-        wl_pointer_release(wl_pointer_);
-    }
+  if (theme_) {
+    DLOG_TRACE("[Pointer] wl_cursor_theme_destroy(theme_)");
+    wl_cursor_theme_destroy(theme_);
+  }
+  if (wl_surface_cursor_) {
+    DLOG_TRACE("[Pointer] wl_surface_destroy(wl_surface_cursor_)");
+    wl_surface_destroy(wl_surface_cursor_);
+  }
+  if (wl_pointer_) {
+    DLOG_TRACE("[Pointer] wl_pointer_release(wl_pointer_)");
+    wl_pointer_release(wl_pointer_);
+  }
 }
 
 /**
@@ -91,29 +89,30 @@ Pointer::~Pointer() {
  * such as enter, leave, motion, button, axis, frame, axis source, axis stop,
  * and axis discrete events.
  */
-void Pointer::handle_enter(void *data,
-                           wl_pointer *pointer,
+void Pointer::handle_enter(void* data,
+                           wl_pointer* pointer,
                            uint32_t serial,
-                           wl_surface *surface,
+                           wl_surface* surface,
                            wl_fixed_t sx,
                            wl_fixed_t sy) {
-    const auto obj = static_cast<Pointer *>(data);
-    if (obj->wl_pointer_ != pointer) {
-        return;
-    }
+  const auto obj = static_cast<Pointer*>(data);
+  if (obj->wl_pointer_ != pointer) {
+    return;
+  }
 
-    if (obj->event_mask_.enabled && obj->event_mask_.all) {
-        return;
-    }
+  if (obj->event_mask_.enabled && obj->event_mask_.all) {
+    return;
+  }
 
-    DLOG_TRACE("Pointer::handle_enter");
+  DLOG_TRACE("Pointer::handle_enter");
 
-    obj->sx_ = wl_fixed_to_double(sx);
-    obj->sy_ = wl_fixed_to_double(sy);
+  obj->sx_ = wl_fixed_to_double(sx);
+  obj->sy_ = wl_fixed_to_double(sy);
 
-    for (const auto observer: obj->observers_) {
-        observer->notify_pointer_enter(obj, pointer, serial, surface, obj->sx_, obj->sy_);
-    }
+  for (const auto observer : obj->observers_) {
+    observer->notify_pointer_enter(obj, pointer, serial, surface, obj->sx_,
+                                   obj->sy_);
+  }
 }
 
 /**
@@ -127,24 +126,24 @@ void Pointer::handle_enter(void *data,
  * @param serial The serial number of the event.
  * @param surface The surface that the pointer left.
  */
-void Pointer::handle_leave(void *data,
-                           wl_pointer *pointer,
+void Pointer::handle_leave(void* data,
+                           wl_pointer* pointer,
                            uint32_t serial,
-                           wl_surface *surface) {
-    const auto obj = static_cast<Pointer *>(data);
-    if (obj->wl_pointer_ != pointer) {
-        return;
-    }
+                           wl_surface* surface) {
+  const auto obj = static_cast<Pointer*>(data);
+  if (obj->wl_pointer_ != pointer) {
+    return;
+  }
 
-    if (obj->event_mask_.enabled && obj->event_mask_.all) {
-        return;
-    }
+  if (obj->event_mask_.enabled && obj->event_mask_.all) {
+    return;
+  }
 
-    DLOG_TRACE("Pointer::handle_leave");
+  DLOG_TRACE("Pointer::handle_leave");
 
-    for (const auto observer: obj->observers_) {
-        observer->notify_pointer_leave(obj, pointer, serial, surface);
-    }
+  for (const auto observer : obj->observers_) {
+    observer->notify_pointer_leave(obj, pointer, serial, surface);
+  }
 }
 
 /**
@@ -159,28 +158,29 @@ void Pointer::handle_leave(void *data,
  * @param sx The X coordinate of the pointer's absolute position.
  * @param sy The Y coordinate of the pointer's absolute position.
  */
-void Pointer::handle_motion(void *data,
-                            wl_pointer *pointer,
+void Pointer::handle_motion(void* data,
+                            wl_pointer* pointer,
                             uint32_t time,
                             wl_fixed_t sx,
                             wl_fixed_t sy) {
-    const auto obj = static_cast<Pointer *>(data);
-    if (obj->wl_pointer_ != pointer) {
-        return;
-    }
+  const auto obj = static_cast<Pointer*>(data);
+  if (obj->wl_pointer_ != pointer) {
+    return;
+  }
 
-    if (obj->event_mask_.enabled && (obj->event_mask_.all || obj->event_mask_.motion)) {
-        return;
-    }
+  if (obj->event_mask_.enabled &&
+      (obj->event_mask_.all || obj->event_mask_.motion)) {
+    return;
+  }
 
-    DLOG_TRACE("Pointer::handle_motion");
+  DLOG_TRACE("Pointer::handle_motion");
 
-    obj->sx_ = wl_fixed_to_double(sx);
-    obj->sy_ = wl_fixed_to_double(sy);
+  obj->sx_ = wl_fixed_to_double(sx);
+  obj->sy_ = wl_fixed_to_double(sy);
 
-    for (const auto observer: obj->observers_) {
-        observer->notify_pointer_motion(obj, pointer, time, obj->sx_, obj->sy_);
-    }
+  for (const auto observer : obj->observers_) {
+    observer->notify_pointer_motion(obj, pointer, time, obj->sx_, obj->sy_);
+  }
 }
 
 /**
@@ -192,26 +192,27 @@ void Pointer::handle_motion(void *data,
  * @param button The button that triggered the event
  * @param state The state of the button (pressed or released)
  */
-void Pointer::handle_button(void *data,
-                            wl_pointer *pointer,
+void Pointer::handle_button(void* data,
+                            wl_pointer* pointer,
                             uint32_t serial,
                             uint32_t time,
                             uint32_t button,
                             uint32_t state) {
-    const auto obj = static_cast<Pointer *>(data);
-    if (obj->wl_pointer_ != pointer) {
-        return;
-    }
+  const auto obj = static_cast<Pointer*>(data);
+  if (obj->wl_pointer_ != pointer) {
+    return;
+  }
 
-    if (obj->event_mask_.enabled && (obj->event_mask_.all || obj->event_mask_.buttons)) {
-        return;
-    }
+  if (obj->event_mask_.enabled &&
+      (obj->event_mask_.all || obj->event_mask_.buttons)) {
+    return;
+  }
 
-    DLOG_TRACE("Pointer::handle_button");
+  DLOG_TRACE("Pointer::handle_button");
 
-    for (const auto observer: obj->observers_) {
-        observer->notify_pointer_button(obj, pointer, serial, time, button, state);
-    }
+  for (const auto observer : obj->observers_) {
+    observer->notify_pointer_button(obj, pointer, serial, time, button, state);
+  }
 }
 
 /**
@@ -229,25 +230,27 @@ void Pointer::handle_button(void *data,
  *
  * @details Prints "Pointer::handle_axis" to the standard error output.
  */
-void Pointer::handle_axis(void *data,
-                          wl_pointer *pointer,
+void Pointer::handle_axis(void* data,
+                          wl_pointer* pointer,
                           uint32_t time,
                           uint32_t axis,
                           wl_fixed_t value) {
-    const auto obj = static_cast<Pointer *>(data);
-    if (obj->wl_pointer_ != pointer) {
-        return;
-    }
+  const auto obj = static_cast<Pointer*>(data);
+  if (obj->wl_pointer_ != pointer) {
+    return;
+  }
 
-    if (obj->event_mask_.enabled && (obj->event_mask_.all || obj->event_mask_.axis)) {
-        return;
-    }
+  if (obj->event_mask_.enabled &&
+      (obj->event_mask_.all || obj->event_mask_.axis)) {
+    return;
+  }
 
-    DLOG_TRACE("Pointer::handle_axis");
+  DLOG_TRACE("Pointer::handle_axis");
 
-    for (const auto observer: obj->observers_) {
-        observer->notify_pointer_axis(obj, pointer, time, axis, wl_fixed_to_double(value));
-    }
+  for (const auto observer : obj->observers_) {
+    observer->notify_pointer_axis(obj, pointer, time, axis,
+                                  wl_fixed_to_double(value));
+  }
 }
 
 /**
@@ -258,21 +261,21 @@ void Pointer::handle_axis(void *data,
  * @param data The user data associated with the pointer.
  * @param wl_pointer The pointer object.
  */
-void Pointer::handle_frame(void *data, wl_pointer *pointer) {
-    const auto obj = static_cast<Pointer *>(data);
-    if (obj->wl_pointer_ != pointer) {
-        return;
-    }
+void Pointer::handle_frame(void* data, wl_pointer* pointer) {
+  const auto obj = static_cast<Pointer*>(data);
+  if (obj->wl_pointer_ != pointer) {
+    return;
+  }
 
-    if (obj->event_mask_.enabled && obj->event_mask_.all) {
-        return;
-    }
+  if (obj->event_mask_.enabled && obj->event_mask_.all) {
+    return;
+  }
 
-    DLOG_TRACE("Pointer::handle_frame");
+  DLOG_TRACE("Pointer::handle_frame");
 
-    for (const auto observer: obj->observers_) {
-        observer->notify_pointer_frame(obj, pointer);
-    }
+  for (const auto observer : obj->observers_) {
+    observer->notify_pointer_frame(obj, pointer);
+  }
 }
 
 /**
@@ -285,23 +288,24 @@ void Pointer::handle_frame(void *data, wl_pointer *pointer) {
  * This function is called when the axis source event is received for the
  * Pointer object. It prints a message to the standard error stream.
  */
-void Pointer::handle_axis_source(void *data,
-                                 wl_pointer *pointer,
+void Pointer::handle_axis_source(void* data,
+                                 wl_pointer* pointer,
                                  uint32_t axis_source) {
-    auto obj = static_cast<Pointer *>(data);
-    if (obj->wl_pointer_ != pointer) {
-        return;
-    }
+  auto obj = static_cast<Pointer*>(data);
+  if (obj->wl_pointer_ != pointer) {
+    return;
+  }
 
-    if (obj->event_mask_.enabled && (obj->event_mask_.all || obj->event_mask_.axis)) {
-        return;
-    }
+  if (obj->event_mask_.enabled &&
+      (obj->event_mask_.all || obj->event_mask_.axis)) {
+    return;
+  }
 
-    DLOG_TRACE("Pointer::handle_axis_source");
+  DLOG_TRACE("Pointer::handle_axis_source");
 
-    for (auto observer: obj->observers_) {
-        observer->notify_pointer_axis_source(obj, pointer, axis_source);
-    }
+  for (auto observer : obj->observers_) {
+    observer->notify_pointer_axis_source(obj, pointer, axis_source);
+  }
 }
 
 /**
@@ -314,24 +318,24 @@ void Pointer::handle_axis_source(void *data,
  * @param time      The timestamp of the event.
  * @param axis      The axis that stopped.
  */
-void Pointer::handle_axis_stop(void *data,
-                               wl_pointer *pointer,
+void Pointer::handle_axis_stop(void* data,
+                               wl_pointer* pointer,
                                uint32_t time,
                                uint32_t axis) {
-    auto obj = static_cast<Pointer *>(data);
-    if (obj->wl_pointer_ != pointer) {
-        return;
-    }
+  auto obj = static_cast<Pointer*>(data);
+  if (obj->wl_pointer_ != pointer) {
+    return;
+  }
 
-    if (obj->event_mask_.enabled && obj->event_mask_.all) {
-        return;
-    }
+  if (obj->event_mask_.enabled && obj->event_mask_.all) {
+    return;
+  }
 
-    DLOG_TRACE("Pointer::handle_axis_stop");
+  DLOG_TRACE("Pointer::handle_axis_stop");
 
-    for (auto observer: obj->observers_) {
-        observer->notify_pointer_axis_stop(obj, pointer, time, axis);
-    }
+  for (auto observer : obj->observers_) {
+    observer->notify_pointer_axis_stop(obj, pointer, time, axis);
+  }
 }
 
 /**
@@ -344,111 +348,112 @@ void Pointer::handle_axis_stop(void *data,
  * @param axis The axis value.
  * @param discrete The discrete value.
  */
-void Pointer::handle_axis_discrete(void *data,
-                                   wl_pointer *pointer,
+void Pointer::handle_axis_discrete(void* data,
+                                   wl_pointer* pointer,
                                    uint32_t axis,
                                    int32_t discrete) {
-    auto obj = static_cast<Pointer *>(data);
-    if (obj->wl_pointer_ != pointer) {
-        return;
-    }
+  auto obj = static_cast<Pointer*>(data);
+  if (obj->wl_pointer_ != pointer) {
+    return;
+  }
 
-    if (obj->event_mask_.enabled && obj->event_mask_.all) {
-        return;
-    }
+  if (obj->event_mask_.enabled && obj->event_mask_.all) {
+    return;
+  }
 
-    LOG_TRACE("Pointer::handle_axis_discrete");
+  LOG_TRACE("Pointer::handle_axis_discrete");
 
-    for (auto observer: obj->observers_) {
-        observer->notify_pointer_axis_discrete(obj, pointer, axis, discrete);
-    }
+  for (auto observer : obj->observers_) {
+    observer->notify_pointer_axis_discrete(obj, pointer, axis, discrete);
+  }
 }
 
 void Pointer::set_cursor(uint32_t serial,
-                         const char *cursor_name,
-                         const char *theme_name) {
-    if (disable_cursor_) {
-        wl_pointer_set_cursor(wl_pointer_, serial, wl_surface_cursor_, 0, 0);
-        wl_surface_damage(wl_surface_cursor_, 0, 0, 0, 0);
-        wl_surface_commit(wl_surface_cursor_);
-        return;
-    }
-
-    if (!wl_shm_) {
-        return;
-    }
-
-    if (!theme_) {
-        theme_ = wl_cursor_theme_load(theme_name, size_, wl_shm_);
-        if (!theme_) {
-            LOG_ERROR("[Pointer] unable to load {} theme",
-                          theme_name == nullptr ? "default" : theme_name);
-            return;
-        }
-    }
-
-    auto cursor = wl_cursor_theme_get_cursor(theme_, cursor_name);
-    if (!cursor) {
-        LOG_ERROR("[Pointer] unable to load {}", cursor_name);
-        return;
-    }
-    auto image = cursor->images[0];
-    auto buffer = wl_cursor_image_get_buffer(image);
-    if (!buffer) {
-        return;
-    }
-    wl_pointer_set_cursor(wl_pointer_, serial, wl_surface_cursor_,
-                          static_cast<int32_t>(image->hotspot_x),
-                          static_cast<int32_t>(image->hotspot_y));
-    wl_surface_attach(wl_surface_cursor_, buffer, 0, 0);
-    wl_surface_damage(wl_surface_cursor_, 0, 0,
-                      static_cast<int32_t>(image->width),
-                      static_cast<int32_t>(image->height));
+                         const char* cursor_name,
+                         const char* theme_name) {
+  if (disable_cursor_) {
+    wl_pointer_set_cursor(wl_pointer_, serial, wl_surface_cursor_, 0, 0);
+    wl_surface_damage(wl_surface_cursor_, 0, 0, 0, 0);
     wl_surface_commit(wl_surface_cursor_);
+    return;
+  }
+
+  if (!wl_shm_) {
+    return;
+  }
+
+  if (!theme_) {
+    theme_ = wl_cursor_theme_load(theme_name, size_, wl_shm_);
+    if (!theme_) {
+      LOG_ERROR("[Pointer] unable to load {} theme",
+                theme_name == nullptr ? "default" : theme_name);
+      return;
+    }
+  }
+
+  auto cursor = wl_cursor_theme_get_cursor(theme_, cursor_name);
+  if (!cursor) {
+    LOG_ERROR("[Pointer] unable to load {}", cursor_name);
+    return;
+  }
+  auto image = cursor->images[0];
+  auto buffer = wl_cursor_image_get_buffer(image);
+  if (!buffer) {
+    return;
+  }
+  wl_pointer_set_cursor(wl_pointer_, serial, wl_surface_cursor_,
+                        static_cast<int32_t>(image->hotspot_x),
+                        static_cast<int32_t>(image->hotspot_y));
+  wl_surface_attach(wl_surface_cursor_, buffer, 0, 0);
+  wl_surface_damage(wl_surface_cursor_, 0, 0,
+                    static_cast<int32_t>(image->width),
+                    static_cast<int32_t>(image->height));
+  wl_surface_commit(wl_surface_cursor_);
 }
 
 std::string Pointer::get_cursor_theme() {
-    std::string res;
-    Command::Execute("gsettings get org.gnome.desktop.interface cursor-theme", res);
-    if (!res.empty()) {
-        // clean up string
-        std::string tmp = "\'\n";
-        for_each(tmp.begin(), tmp.end(), [&res](char n) {
-            res.erase(std::remove(res.begin(), res.end(), n), res.end());
-        });
-    }
+  std::string res;
+  Command::Execute("gsettings get org.gnome.desktop.interface cursor-theme",
+                   res);
+  if (!res.empty()) {
+    // clean up string
+    std::string tmp = "\'\n";
+    for_each(tmp.begin(), tmp.end(), [&res](char n) {
+      res.erase(std::remove(res.begin(), res.end(), n), res.end());
+    });
+  }
 
-    return std::move(res);
+  return std::move(res);
 }
 
 std::vector<std::string> Pointer::get_available_cursors(
-        const char *theme_name) {
-    std::string theme = theme_name == nullptr ? get_cursor_theme() : theme_name;
+    const char* theme_name) {
+  std::string theme = theme_name == nullptr ? get_cursor_theme() : theme_name;
 
-    std::ostringstream ss;
-    ss << "ls -1 /usr/share/icons/" << theme << "/cursors";
+  std::ostringstream ss;
+  ss << "ls -1 /usr/share/icons/" << theme << "/cursors";
 
-    std::string res;
-    Command::Execute(ss.str().c_str(), res);
+  std::string res;
+  Command::Execute(ss.str(), res);
 
-    std::vector<std::string> cursor_list;
+  std::vector<std::string> cursor_list;
 
-    std::string line;
-    std::istringstream orig_stream(res);
-    while (std::getline(orig_stream, line)) {
-        if (!line.empty())
-            cursor_list.push_back(line);
-    }
+  std::string line;
+  std::istringstream orig_stream(res);
+  while (std::getline(orig_stream, line)) {
+    if (!line.empty())
+      cursor_list.push_back(line);
+  }
 
-    std::sort(cursor_list.begin(), cursor_list.end());
+  std::sort(cursor_list.begin(), cursor_list.end());
 
-    return std::move(cursor_list);
+  return std::move(cursor_list);
 }
 
-void Pointer::set_event_mask(event_mask &event_mask) {
-    event_mask_.enabled = event_mask.enabled;
-    event_mask_.all = event_mask.all;
-    event_mask_.axis = event_mask.axis;
-    event_mask_.buttons = event_mask.buttons;
-    event_mask_.motion = event_mask.motion;
+void Pointer::set_event_mask(event_mask& event_mask) {
+  event_mask_.enabled = event_mask.enabled;
+  event_mask_.all = event_mask.all;
+  event_mask_.axis = event_mask.axis;
+  event_mask_.buttons = event_mask.buttons;
+  event_mask_.motion = event_mask.motion;
 }

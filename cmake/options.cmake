@@ -19,8 +19,6 @@
 #
 option(ENABLE_XDG_CLIENT "Enable XDG Client" ON)
 option(ENABLE_AGL_SHELL_CLIENT "Enable AGL Shell" OFF)
-option(ENABLE_IVI_SHELL_CLIENT "Enable IVI Shell Client" OFF)
-option(ENABLE_DRM_LEASE_CLIENT "Enable DRM Lease Client" OFF)
 
 option(ENABLE_EGL "Enable EGL dependency" ON)
 

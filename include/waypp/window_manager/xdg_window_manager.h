@@ -16,11 +16,9 @@
 
 #pragma once
 
+#include <waypp/waypp.h>
 #include <cstdint>
 #include <functional>
-#include <string>
-
-#include <waypp/waypp.h>
 
 #include "waypp/window/egl.h"
 #include "window_manager.h"
@@ -34,7 +32,7 @@ class XdgWindowManager : public std::enable_shared_from_this<XdgWindowManager>,
       wl_display* display,
       bool disable_cursor = false,
       unsigned long ext_interface_count = 0,
-      const Registrar::RegistrarCallback* ext_interface_data = nullptr,
+      const RegistrarCallback* ext_interface_data = nullptr,
       GMainContext* context = nullptr);
 
   ~XdgWindowManager();

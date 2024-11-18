@@ -27,22 +27,22 @@
 
 class ViewManagerWayland;
 
-App::App(const ViewManager::Configuration &config) {
-    logging_ = std::make_unique<Logging>();
+App::App(const ViewManager::Configuration& config) {
+  logging_ = std::make_unique<Logging>();
 
-    view_manager_wayland_ = std::make_unique<ViewManagerWayland>(config);
+  view_manager_wayland_ = std::make_unique<ViewManagerWayland>(config);
 
-    view_manager_wayland_->create_view(kAppTitle, kAppId, config.width, config.height, config.fullscreen,
-                                       config.maximized, config.fullscreen_ratio, config.tearing);
+  view_manager_wayland_->create_view(
+      kAppTitle, kAppId, config.width, config.height, config.fullscreen,
+      config.maximized, config.fullscreen_ratio, config.tearing);
 }
 
-App::~App() {
+App::~App() = default;
+
+bool App::run() const {
+  return view_manager_wayland_->poll_events();
 }
 
-bool App::run() {
-    return view_manager_wayland_->poll_events();
-}
-
-void App::toggle_fullscreen() {
-    view_manager_wayland_->toggle_fullscreen();
+void App::toggle_fullscreen() const {
+  view_manager_wayland_->toggle_fullscreen();
 }
