@@ -41,17 +41,17 @@ static volatile bool gRunning = true;
  * @return void
  */
 void handle_signal(const int signal) {
-    if (signal == SIGINT) {
-        gRunning = false;
-    }
+  if (signal == SIGINT) {
+    gRunning = false;
+  }
 }
 
-int main(const int argc, char **argv) {
-    std::signal(SIGINT, handle_signal);
+int main(const int argc, char** argv) {
+  std::signal(SIGINT, handle_signal);
 
-    cxxopts::Options options("view-manager", "Example View Manager");
-    options.add_options()
-            // clang-format off
+  cxxopts::Options options("view-manager", "Example View Manager");
+  options.add_options()
+      // clang-format off
             ("w,width", "Set width", cxxopts::value<int>()->default_value("512"))
             ("h,height", "Set height", cxxopts::value<int>()->default_value("512"))
             ("c,disable-cursor", "Disable Cursor")
@@ -59,21 +59,22 @@ int main(const int argc, char **argv) {
             ("m,maximized", "Run in maximized mode")
             ("r,fullscreen-ratio", "Fullscreen Ratio")
             ("t,tearing", "Enable tearing via the tearing_control protocol");
-    // clang-format on
+  // clang-format on
 
-    const auto result = options.parse(argc, argv);
+  const auto result = options.parse(argc, argv);
 
-    App app({
-                    .width = result["width"].as<int>(),
-                    .height = result["height"].as<int>(),
-                    .disable_cursor = result["disable-cursor"].as<bool>(),
-                    .fullscreen = result["fullscreen"].as<bool>(),
-                    .maximized = result["maximized"].as<bool>(),
-                    .fullscreen_ratio = result["fullscreen-ratio"].as<bool>(),
-                    .tearing = result["tearing"].as<bool>(),
-            });
+  App app({
+      .width = result["width"].as<int>(),
+      .height = result["height"].as<int>(),
+      .disable_cursor = result["disable-cursor"].as<bool>(),
+      .fullscreen = result["fullscreen"].as<bool>(),
+      .maximized = result["maximized"].as<bool>(),
+      .fullscreen_ratio = result["fullscreen-ratio"].as<bool>(),
+      .tearing = result["tearing"].as<bool>(),
+  });
 
-    while (gRunning && app.run()) {}
+  while (gRunning && app.run()) {
+  }
 
-    return EXIT_SUCCESS;
+  return EXIT_SUCCESS;
 }

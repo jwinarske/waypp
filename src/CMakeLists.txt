@@ -60,12 +60,6 @@ endif ()
 if (ENABLE_AGL_SHELL_CLIENT)
     target_sources(waypp PRIVATE window_manager/agl_shell.cc)
 endif ()
-if (ENABLE_IVI_SHELL_CLIENT)
-    target_sources(waypp PRIVATE window_manager/ivi_window_manager.cc)
-endif ()
-if (ENABLE_DRM_LEASE_CLIENT)
-    target_sources(waypp PRIVATE window_manager/drm_lease_device_v1.cc)
-endif ()
 
 target_compile_definitions(waypp PUBLIC
         MESA_EGL_NO_X11_HEADERS

@@ -29,27 +29,29 @@
 #include "view_manager.h"
 
 class View {
-public:
-    View() = default;
+ public:
+  View() = default;
 
-    virtual ~View() = default;
+  virtual ~View() = default;
 
-    virtual void close() = 0;
+  virtual void close() = 0;
 
-    virtual bool is_valid() = 0;
+  virtual bool is_valid() = 0;
 
-    virtual void toggle_fullscreen() = 0;
+  virtual void toggle_fullscreen() = 0;
 
-    virtual uint32_t check_edge_resize(std::pair<double, double> xy) = 0;
+  virtual uint32_t check_edge_resize(std::pair<double, double> xy) = 0;
 
-    virtual void resize(struct wl_seat *seat, uint32_t serial, uint32_t edges) = 0;
+  virtual void resize(struct wl_seat* seat,
+                      uint32_t serial,
+                      uint32_t edges) = 0;
 
-    // Disallow copy and assign.
-    View(const View &) = delete;
+  // Disallow copy and assign.
+  View(const View&) = delete;
 
-    View &operator=(const View &) = delete;
+  View& operator=(const View&) = delete;
 
-private:
+ private:
 };
 
-#endif //EXAMPLES_VIEW_MANAGER_VIEW_H_
+#endif  // EXAMPLES_VIEW_MANAGER_VIEW_H_

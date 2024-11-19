@@ -25,46 +25,51 @@
 #define EXAMPLES_VIEW_MANAGER_VIEW_MANAGER_H_
 
 #include <list>
-#include <vector>
 #include <memory>
+#include <vector>
 
 #include "view.h"
 
 class View;
 
 class ViewManager {
-public:
-    struct Configuration {
-        int width;
-        int height;
-        bool disable_cursor;
-        bool fullscreen;
-        bool maximized;
-        bool fullscreen_ratio;
-        bool tearing;
-    };
+ public:
+  struct Configuration {
+    int width;
+    int height;
+    bool disable_cursor;
+    bool fullscreen;
+    bool maximized;
+    bool fullscreen_ratio;
+    bool tearing;
+  };
 
-    ViewManager() = default;
+  ViewManager() = default;
 
-    ~ViewManager() = default;
+  ~ViewManager() = default;
 
-    virtual bool poll_events() = 0;
+  virtual bool poll_events() = 0;
 
-    virtual uint32_t
-    create_view(const char *app_title, const char *app_id, int width, int height, bool fullscreen, bool maximized,
-                bool fullscreen_ratio, bool tearing) = 0;
+  virtual uint32_t create_view(const char* app_title,
+                               const char* app_id,
+                               int width,
+                               int height,
+                               bool fullscreen,
+                               bool maximized,
+                               bool fullscreen_ratio,
+                               bool tearing) = 0;
 
-    virtual void quit() = 0;
+  virtual void quit() = 0;
 
-    virtual void toggle_fullscreen() = 0;
+  virtual void toggle_fullscreen() = 0;
 
-    // Disallow copy and assign.
-    ViewManager(const ViewManager &) = delete;
+  // Disallow copy and assign.
+  ViewManager(const ViewManager&) = delete;
 
-    ViewManager &operator=(const ViewManager &) = delete;
+  ViewManager& operator=(const ViewManager&) = delete;
 
-private:
-    std::list<std::unique_ptr<View>> views_;
+ private:
+  std::list<std::unique_ptr<View>> views_;
 };
 
-#endif //EXAMPLES_VIEW_MANAGER_VIEW_MANAGER_H_
+#endif  // EXAMPLES_VIEW_MANAGER_VIEW_MANAGER_H_

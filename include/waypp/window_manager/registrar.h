@@ -21,17 +21,11 @@
 #include <algorithm>
 #include <cstdint>
 #include <map>
-#include <mutex>
 #include <vector>
 
 #include "output.h"
-#include "waypp/config.h"
 #include "waypp/seat/seat.h"
 #include "waypp/waypp.h"
-
-#if ENABLE_DRM_LEASE_CLIENT
-#include "drm_lease_device_v1.h"
-#endif
 
 class Registrar {
  public:
@@ -74,25 +68,21 @@ class Registrar {
 
   [[nodiscard]] wl_registry* get_registry() const { return wl_registry_; }
 
-  [[nodiscard]] struct wl_compositor* get_compositor() const {
-    return wl_compositor_;
-  }
+  [[nodiscard]] wl_compositor* get_compositor() const { return wl_compositor_; }
 
-  [[nodiscard]] struct wl_subcompositor* get_subcompositor() const {
+  [[nodiscard]] wl_subcompositor* get_subcompositor() const {
     return wl_subcompositor_;
   }
 
-  [[nodiscard]] struct wl_shm* get_shm() const { return wl_shm_; }
+  [[nodiscard]] wl_shm* get_shm() const { return wl_shm_; }
 
 #if ENABLE_XDG_CLIENT
 
-  [[nodiscard]] struct xdg_wm_base* get_xdg_wm_base() const {
-    return xdg_wm_base_;
-  }
+  [[nodiscard]] xdg_wm_base* get_xdg_wm_base() const { return xdg_wm_base_; }
 
 #if HAS_WAYLAND_PROTOCOL_XDG_OUTPUT_UNSTABLE_V1
 
-  [[nodiscard]] struct zxdg_output_manager_v1* get_xdg_output_manager() const {
+  [[nodiscard]] zxdg_output_manager_v1* get_xdg_output_manager() const {
     return zxdg_output_manager_v1_;
   }
 
@@ -109,11 +99,7 @@ class Registrar {
 #endif
 
 #if ENABLE_AGL_SHELL_CLIENT
-  [[nodiscard]] struct agl_shell* get_agl_shell() const { return agl_shell_; }
-#endif
-
-#if ENABLE_IVI_SHELL_CLIENT
-  [[nodiscard]] struct ivi_wm* get_ivi_wm() const { return ivi_wm_; }
+  [[nodiscard]] agl_shell* get_agl_shell() const { return agl_shell_; }
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_PRESENTATION_TIME
@@ -168,16 +154,16 @@ class Registrar {
     return outputs_;
   }
 
-  wl_output_transform get_output_buffer_transform(wl_output* wl_output);
+  wl_output_transform get_output_buffer_transform(
+      const wl_output* wl_output) const;
 
-  int32_t get_output_buffer_scale(wl_output* wl_output);
+  int32_t get_output_buffer_scale(const wl_output* wl_output) const;
 
   std::optional<Seat*> get_seat(wl_seat* seat = nullptr) const;
 
 #if HAS_WAYLAND_PROTOCOL_IDLE_INHIBIT_UNSTABLE_V1
 
-  [[nodiscard]] zwp_idle_inhibit_manager_v1* get_idle_inhibit_manager()
-      const {
+  [[nodiscard]] zwp_idle_inhibit_manager_v1* get_idle_inhibit_manager() const {
     return zwp_idle_inhibit_manager_v1_;
   }
 
@@ -185,8 +171,7 @@ class Registrar {
 
 #if HAS_WAYLAND_PROTOCOL_POINTER_GESTURES_UNSTABLE_V1
 
-  [[nodiscard]] zwp_pointer_gestures_v1* get_zwp_pointer_gestures_v1()
-      const {
+  [[nodiscard]] zwp_pointer_gestures_v1* get_zwp_pointer_gestures_v1() const {
     return zwp_pointer_gestures_v1_;
   }
 
@@ -194,8 +179,8 @@ class Registrar {
 
 #if HAS_WAYLAND_PROTOCOL_POINTER_CONSTRAINTS_UNSTABLE_V1
 
-  [[nodiscard]] zwp_pointer_constraints_v1*
-  get_zwp_pointer_constraints_v1() const {
+  [[nodiscard]] zwp_pointer_constraints_v1* get_zwp_pointer_constraints_v1()
+      const {
     return zwp_pointer_constraints_v1_;
   }
 
@@ -260,12 +245,6 @@ class Registrar {
 
 #if ENABLE_AGL_SHELL_CLIENT
   agl_shell* agl_shell_{};
-#endif
-#if ENABLE_IVI_SHELL_CLIENT
-  struct ivi_wm* ivi_wm_{};
-#endif
-#if ENABLE_DRM_LEASE_CLIENT
-  std::unique_ptr<DrmLeaseDevice_v1> drm_lease_device_v1_;
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_PRESENTATION_TIME
@@ -396,24 +375,6 @@ class Registrar {
                                          uint32_t name,
                                          const char* interface,
                                          uint32_t version);
-
-#endif
-
-#if ENABLE_IVI_SHELL_CLIENT
-  static void handle_interface_ivi_wm(Registrar* r,
-                                      struct wl_registry* registry,
-                                      uint32_t name,
-                                      const char* interface,
-                                      uint32_t version);
-#endif
-
-#if ENABLE_DRM_LEASE_CLIENT
-
-  static void handle_interface_drm_lease_device_v1(Registrar* r,
-                                                   struct wl_registry* registry,
-                                                   uint32_t name,
-                                                   const char* interface,
-                                                   uint32_t version);
 
 #endif
 

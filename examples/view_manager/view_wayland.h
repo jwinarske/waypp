@@ -30,42 +30,51 @@
 
 #include <random>
 
-class ViewWayland : public View {
-public:
+class ViewWayland final : public View {
+ public:
+  ViewWayland(std::shared_ptr<XdgWindowManager> xdg_window_manager,
+              const char* app_title,
+              const char* app_id,
+              int width,
+              int height,
+              bool fullscreen,
+              bool maximized,
+              bool fullscreen_ratio,
+              bool tearing,
+              bool toplevel = true);
 
-    ViewWayland(std::shared_ptr<XdgWindowManager> xdg_window_manager, const char *app_title, const char *app_id,
-                int width, int height, bool fullscreen, bool maximized, bool fullscreen_ratio, bool tearing,
-                bool toplevel = true);
+  ~ViewWayland() override;
 
-    ~ViewWayland() override;
+  void close() override;
 
-    void close() override;
+  bool is_valid() override;
 
-    bool is_valid() override;
+  void toggle_fullscreen() override;
 
-    void toggle_fullscreen() override;
+  uint32_t check_edge_resize(std::pair<double, double> xy) override;
 
-    uint32_t check_edge_resize(std::pair<double, double> xy) override;
+  void resize(struct wl_seat* seat, uint32_t serial, uint32_t edges) override;
 
-    void resize(struct wl_seat *seat, uint32_t serial, uint32_t edges) override;
+  // Disallow copy and assign.
+  ViewWayland(const ViewWayland&) = delete;
 
-    // Disallow copy and assign.
-    ViewWayland(const ViewWayland &) = delete;
+  ViewWayland& operator=(const ViewWayland&) = delete;
 
-    ViewWayland &operator=(const ViewWayland &) = delete;
+ private:
+  static constexpr int kResizeMargin = 12;
+  std::shared_ptr<XdgTopLevel> toplevel_{};
+  std::shared_ptr<XdgWindowManager> xdg_wm_;
 
-private:
-    static constexpr int kResizeMargin = 12;
-    std::shared_ptr<XdgTopLevel> toplevel_{};
-    std::shared_ptr<XdgWindowManager> xdg_wm_;
+  std::random_device rd_;
+  std::mt19937 gen_;
+  std::uniform_int_distribution<uint32_t> distribution_;
 
-    std::random_device rd_;
-    std::mt19937 gen_;
-    std::uniform_int_distribution<uint32_t> distribution_;
+  void create_random_color_grid(uint32_t width,
+                                uint32_t height,
+                                uint32_t grid_size,
+                                uint32_t* buffer);
 
-    void create_random_color_grid(uint32_t width, uint32_t height, uint32_t gridSize, uint32_t *buffer);
-
-    static void draw_frame(void *data, std::uint32_t time);
+  static void draw_frame(void* data, std::uint32_t time);
 };
 
-#endif //EXAMPLES_VIEW_MANAGER_VIEW_WAYLAND_H_
+#endif  // EXAMPLES_VIEW_MANAGER_VIEW_WAYLAND_H_

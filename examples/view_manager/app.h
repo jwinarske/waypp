@@ -32,21 +32,21 @@
 class ViewManagerWayland;
 
 class App {
-public:
-    static constexpr char kAppTitle[] = "view-manager";
-    static constexpr char kAppId[] = "org.waypp.view-manager";
+ public:
+  static constexpr char kAppTitle[] = "view-manager";
+  static constexpr char kAppId[] = "org.waypp.view-manager";
 
-    explicit App(const ViewManager::Configuration &config);
+  explicit App(const ViewManager::Configuration& config);
 
-    ~App();
+  ~App();
 
-    bool run();
+  bool run() const;
 
-    void toggle_fullscreen();
+  void toggle_fullscreen() const;
 
-private:
-    std::unique_ptr<Logging> logging_;
-    std::unique_ptr<ViewManagerWayland> view_manager_wayland_;
+ private:
+  std::unique_ptr<Logging> logging_;
+  std::unique_ptr<ViewManagerWayland> view_manager_wayland_;
 };
 
 #endif

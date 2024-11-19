@@ -23,16 +23,13 @@
  *
  * The Touch class represents a touch input device.
  */
-Touch::Touch(wl_touch *wl_touch, event_mask &event_mask) :
-        touch_(wl_touch),
-        event_mask_({
-                            .enabled = event_mask.enabled,
-                            .all = event_mask.all
-                    }) {
-    DLOG_DEBUG("Touch");
-    wl_touch_add_listener(wl_touch, &listener_, this);
+Touch::Touch(wl_touch* wl_touch, event_mask& event_mask)
+    : touch_(wl_touch),
+      event_mask_({.enabled = event_mask.enabled, .all = event_mask.all}) {
+  DLOG_DEBUG("Touch");
+  wl_touch_add_listener(wl_touch, &listener_, this);
 
-    event_mask_.enabled = event_mask.enabled;
+  event_mask_.enabled = event_mask.enabled;
 }
 
 /**
@@ -42,7 +39,7 @@ Touch::Touch(wl_touch *wl_touch, event_mask &event_mask) :
  * the Touch instance.
  */
 Touch::~Touch() {
-    wl_touch_release(touch_);
+  wl_touch_release(touch_);
 }
 
 /**
@@ -61,29 +58,29 @@ Touch::~Touch() {
  * @param x_w The X coordinate of the touch point in wl_fixed_t format.
  * @param y_w The Y coordinate of the touch point in wl_fixed_t format.
  */
-void Touch::handle_down(void *data,
-                        wl_touch *touch,
+void Touch::handle_down(void* data,
+                        wl_touch* touch,
                         uint32_t serial,
                         uint32_t time,
-                        wl_surface *surface,
+                        wl_surface* surface,
                         int32_t id,
                         wl_fixed_t x_w,
                         wl_fixed_t y_w) {
-    const auto obj = static_cast<Touch *>(data);
-    if (obj->touch_ != touch) {
-        return;
-    }
+  const auto obj = static_cast<Touch*>(data);
+  if (obj->touch_ != touch) {
+    return;
+  }
 
-    if (obj->event_mask_.enabled && obj->event_mask_.all) {
-        return;
-    }
+  if (obj->event_mask_.enabled && obj->event_mask_.all) {
+    return;
+  }
 
-    DLOG_TRACE("Touch::handle_down");
+  DLOG_TRACE("Touch::handle_down");
 
-    for (auto observer: obj->observers_) {
-        observer->notify_touch_down(obj, touch, serial, time, surface, id, x_w,
-                                    y_w);
-    }
+  for (auto observer : obj->observers_) {
+    observer->notify_touch_down(obj, touch, serial, time, surface, id, x_w,
+                                y_w);
+  }
 }
 
 /**
@@ -100,25 +97,25 @@ void Touch::handle_down(void *data,
  *
  * @return None.
  */
-void Touch::handle_up(void *data,
-                      wl_touch *touch,
+void Touch::handle_up(void* data,
+                      wl_touch* touch,
                       uint32_t serial,
                       uint32_t time,
                       int32_t id) {
-    const auto obj = static_cast<Touch *>(data);
-    if (obj->touch_ != touch) {
-        return;
-    }
+  const auto obj = static_cast<Touch*>(data);
+  if (obj->touch_ != touch) {
+    return;
+  }
 
-    if (obj->event_mask_.enabled && obj->event_mask_.all) {
-        return;
-    }
+  if (obj->event_mask_.enabled && obj->event_mask_.all) {
+    return;
+  }
 
-    DLOG_TRACE("Touch::handle_up");
+  DLOG_TRACE("Touch::handle_up");
 
-    for (auto observer: obj->observers_) {
-        observer->notify_touch_up(obj, touch, serial, time, id);
-    }
+  for (auto observer : obj->observers_) {
+    observer->notify_touch_up(obj, touch, serial, time, id);
+  }
 }
 
 /**
@@ -137,26 +134,26 @@ void Touch::handle_up(void *data,
  *
  * @return None.
  */
-void Touch::handle_motion(void *data,
-                          wl_touch *touch,
+void Touch::handle_motion(void* data,
+                          wl_touch* touch,
                           uint32_t time,
                           int32_t id,
                           wl_fixed_t x_w,
                           wl_fixed_t y_w) {
-    const auto obj = static_cast<Touch *>(data);
-    if (obj->touch_ != touch) {
-        return;
-    }
+  const auto obj = static_cast<Touch*>(data);
+  if (obj->touch_ != touch) {
+    return;
+  }
 
-    if (obj->event_mask_.enabled && obj->event_mask_.all) {
-        return;
-    }
+  if (obj->event_mask_.enabled && obj->event_mask_.all) {
+    return;
+  }
 
-    DLOG_TRACE("Touch::handle_motion");
+  DLOG_TRACE("Touch::handle_motion");
 
-    for (auto observer: obj->observers_) {
-        observer->notify_touch_motion(obj, touch, time, id, x_w, y_w);
-    }
+  for (auto observer : obj->observers_) {
+    observer->notify_touch_motion(obj, touch, time, id, x_w, y_w);
+  }
 }
 
 /**
@@ -171,21 +168,21 @@ void Touch::handle_motion(void *data,
  *
  * @return void
  */
-void Touch::handle_cancel(void *data, wl_touch *touch) {
-    const auto obj = static_cast<Touch *>(data);
-    if (obj->touch_ != touch) {
-        return;
-    }
+void Touch::handle_cancel(void* data, wl_touch* touch) {
+  const auto obj = static_cast<Touch*>(data);
+  if (obj->touch_ != touch) {
+    return;
+  }
 
-    if (obj->event_mask_.enabled && obj->event_mask_.all) {
-        return;
-    }
+  if (obj->event_mask_.enabled && obj->event_mask_.all) {
+    return;
+  }
 
-    DLOG_TRACE("Touch::handle_cancel");
+  DLOG_TRACE("Touch::handle_cancel");
 
-    for (auto observer: obj->observers_) {
-        observer->notify_touch_cancel(obj, touch);
-    }
+  for (auto observer : obj->observers_) {
+    observer->notify_touch_cancel(obj, touch);
+  }
 }
 
 /**
@@ -195,24 +192,24 @@ void Touch::handle_cancel(void *data, wl_touch *touch) {
  * It handles touch events from a wl_touch object and provides callback
  * functions for various touch events.
  */
-void Touch::handle_frame(void *data, wl_touch *touch) {
-    const auto obj = static_cast<Touch *>(data);
-    if (obj->touch_ != touch) {
-        return;
-    }
+void Touch::handle_frame(void* data, wl_touch* touch) {
+  const auto obj = static_cast<Touch*>(data);
+  if (obj->touch_ != touch) {
+    return;
+  }
 
-    if (obj->event_mask_.enabled && obj->event_mask_.all) {
-        return;
-    }
+  if (obj->event_mask_.enabled && obj->event_mask_.all) {
+    return;
+  }
 
-    DLOG_TRACE("Touch::handle_frame");
+  DLOG_TRACE("Touch::handle_frame");
 
-    for (auto observer: obj->observers_) {
-        observer->notify_touch_frame(obj, touch);
-    }
+  for (auto observer : obj->observers_) {
+    observer->notify_touch_frame(obj, touch);
+  }
 }
 
-void Touch::set_event_mask(event_mask &event_mask) {
-    event_mask_.enabled = event_mask.enabled;
-    event_mask_.all = event_mask.all;
+void Touch::set_event_mask(event_mask& event_mask) {
+  event_mask_.enabled = event_mask.enabled;
+  event_mask_.all = event_mask.all;
 }

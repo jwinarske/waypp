@@ -33,7 +33,7 @@ Window::Window(std::shared_ptr<WindowManager> wm,
                bool tearing,
                Egl::config* egl_config)
     : wm_(std::move(wm)),
-      outputs_(wm->get_outputs()),
+      outputs_(wm_->get_outputs()),
       buffer_transform_(WL_OUTPUT_TRANSFORM_NORMAL),
       runtime_mode_(WINDOW_RUNTIME_MODE_FEEDBACK),
       name_(name),
@@ -52,11 +52,11 @@ Window::Window(std::shared_ptr<WindowManager> wm,
           .logical = {.width = width, .height = height},
       }),
       needs_buffer_geometry_update_(false) {
-  wl_surface_ = wl_compositor_create_surface(wm->get_compositor());
+  wl_surface_ = wl_compositor_create_surface(wm_->get_compositor());
   wl_surface_add_listener(wl_surface_, &surface_listener_, this);
 
   if (buffer_count) {
-    if (!wm->shm_has_format(static_cast<wl_shm_format>(buffer_format))) {
+    if (!wm_->shm_has_format(static_cast<wl_shm_format>(buffer_format))) {
       LOG_CRITICAL("{} is not supported.",
                    WindowManager::shm_format_to_text(
                        static_cast<wl_shm_format>(buffer_format)));
@@ -79,31 +79,31 @@ Window::Window(std::shared_ptr<WindowManager> wm,
 #if ENABLE_EGL
   if (egl_config && egl_config->context_attribs_size &&
       egl_config->config_attribs_size) {
-    egl_ = std::make_unique<Egl>(wm->get_display(), wl_surface_, width, height,
+    egl_ = std::make_unique<Egl>(wm_->get_display(), wl_surface_, width, height,
                                  egl_config);
     egl_->set_swap_interval(egl_config->swap_interval);
   }
 #endif
 
-  if (wm->get_viewporter()) {
+  if (wm_->get_viewporter()) {
 #if HAS_WAYLAND_PROTOCOL_VIEWPORTER
-    viewport_ = wp_viewporter_get_viewport(wm->get_viewporter(), wl_surface_);
+    viewport_ = wp_viewporter_get_viewport(wm_->get_viewporter(), wl_surface_);
 #endif
   }
 
 #if HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1
-  if (wm->get_fractional_scale_manager()) {
+  if (wm_->get_fractional_scale_manager()) {
     fractional_scale_ = wp_fractional_scale_manager_v1_get_fractional_scale(
-        wm->get_fractional_scale_manager(), wl_surface_);
+        wm_->get_fractional_scale_manager(), wl_surface_);
     wp_fractional_scale_v1_add_listener(fractional_scale_,
                                         &fractional_scale_listener_, this);
   }
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_TEARING_CONTROL_V1
-  if (wm->get_tearing_control_manager()) {
+  if (wm_->get_tearing_control_manager()) {
     tearing_control_ = wp_tearing_control_manager_v1_get_tearing_control(
-        wm->get_tearing_control_manager(), wl_surface_);
+        wm_->get_tearing_control_manager(), wl_surface_);
     if (tearing) {
       DLOG_DEBUG("[Surface] Set Presentation Hint: ASYNC");
       wp_tearing_control_v1_set_presentation_hint(
@@ -199,10 +199,9 @@ void Window::update_buffer_geometry() {
     new_buffer_size.height = static_cast<int>(
         ceil(new_buffer_size.height * fractional_buffer_scale_));
   } else {
-    int32_t new_buffer_scale;
-
-    new_buffer_scale = wm_->get_output_buffer_scale(wl_output_);
-    if (buffer_scale_ != new_buffer_scale) {
+    if (const int32_t new_buffer_scale =
+            wm_->get_output_buffer_scale(wl_output_);
+        buffer_scale_ != new_buffer_scale) {
       buffer_scale_ = new_buffer_scale;
       wl_surface_set_buffer_scale(wl_surface_, buffer_scale_);
     }
@@ -212,15 +211,12 @@ void Window::update_buffer_geometry() {
   }
 
   if (fullscreen_ && fullscreen_ratio_) {
-    int new_buffer_size_min;
-    int new_viewport_dest_size_min;
-
-    new_buffer_size_min =
+    const int new_buffer_size_min =
         std::min(new_buffer_size.width, new_buffer_size.height);
     new_buffer_size.width = new_buffer_size_min;
     new_buffer_size.height = new_buffer_size_min;
 
-    new_viewport_dest_size_min =
+    const int new_viewport_dest_size_min =
         std::min(extents_.logical.width, extents_.logical.height);
     new_viewport_dest_size.width = new_viewport_dest_size_min;
     new_viewport_dest_size.height = new_viewport_dest_size_min;
@@ -255,7 +251,7 @@ void Window::update_buffer_geometry() {
 void Window::handle_preferred_scale(
     void* data,
     wp_fractional_scale_v1* wp_fractional_scale_v1,
-    uint32_t scale) {
+    const uint32_t scale) {
   LOG_TRACE("[Window] handle_preferred_scale()");
   auto* w = static_cast<Window*>(data);
   if (w->fractional_scale_ != wp_fractional_scale_v1) {
@@ -268,7 +264,7 @@ void Window::handle_preferred_scale(
 void Window::handle_surface_enter(void* data,
                                   wl_surface* wl_surface,
                                   wl_output* wl_output) {
-  auto obj = static_cast<Window*>(data);
+  const auto obj = static_cast<Window*>(data);
   if (obj->wl_surface_ != wl_surface) {
     return;
   }
@@ -279,7 +275,7 @@ void Window::handle_surface_enter(void* data,
 void Window::handle_surface_leave(void* data,
                                   wl_surface* wl_surface,
                                   wl_output* output) {
-  auto obj = static_cast<Window*>(data);
+  const auto obj = static_cast<Window*>(data);
   if (obj->wl_surface_ != wl_surface) {
     return;
   }
@@ -369,10 +365,10 @@ void Window::handle_frame_callback(void* data,
 }
 
 void Window::handle_preferred_buffer_scale(void* data,
-                                           struct wl_surface* wl_surface,
+                                           wl_surface* wl_surface,
                                            const int32_t factor) {
   LOG_DEBUG("[Window] handle_preferred_buffer_scale()");
-  auto w = static_cast<Window*>(data);
+  const auto w = static_cast<Window*>(data);
   if (w->wl_surface_ != wl_surface) {
     return;
   }
@@ -381,10 +377,10 @@ void Window::handle_preferred_buffer_scale(void* data,
 }
 
 void Window::handle_preferred_buffer_transform(void* data,
-                                               struct wl_surface* wl_surface,
+                                               wl_surface* wl_surface,
                                                uint32_t transform) {
   LOG_DEBUG("[Window] handle_preferred_buffer_transform()");
-  auto w = static_cast<Window*>(data);
+  const auto w = static_cast<Window*>(data);
   if (w->wl_surface_ != wl_surface) {
     return;
   }
@@ -450,7 +446,7 @@ void Window::swap_buffers_with_damage(EGLint* rects, EGLint n_rects) const {
 #endif
 }
 
-Buffer* Window::pick_free_buffer() {
+Buffer* Window::pick_free_buffer() const {
   Buffer* res = nullptr;
   for (auto& b : buffers_) {
     if (!b->is_busy()) {
@@ -461,14 +457,14 @@ Buffer* Window::pick_free_buffer() {
   return res;
 }
 
-Buffer* Window::next_buffer() {
-  auto buffer = pick_free_buffer();
+Buffer* Window::next_buffer() const {
+  const auto buffer = pick_free_buffer();
 
   if (!buffer)
     return nullptr;
 
   if (!buffer->get_wl_buffer()) {
-    auto ret = buffer->create_shm_buffer(
+    const auto ret = buffer->create_shm_buffer(
         extents_.window.width, extents_.window.height, buffer_format_);
 
     if (ret < 0)
@@ -483,18 +479,18 @@ Buffer* Window::next_buffer() {
   return buffer;
 }
 
-void Window::opaque_region_add(int32_t x,
-                               int32_t y,
-                               int32_t width,
-                               int32_t height) {
-  auto region = wl_compositor_create_region(wm_->get_compositor());
+void Window::opaque_region_add(const int32_t x,
+                               const int32_t y,
+                               const int32_t width,
+                               const int32_t height) {
+  const auto region = wl_compositor_create_region(wm_->get_compositor());
   wl_region_add(region, x, y, width, height);
   wl_surface_set_opaque_region(wl_surface_, region);
   LOG_TRACE("[Window] wl_region_destroy(region)");
   wl_region_destroy(region);
 }
 
-void Window::opaque_region_clear() {
+void Window::opaque_region_clear() const {
   wl_surface_set_opaque_region(wl_surface_, nullptr);
 }
 

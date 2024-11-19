@@ -155,7 +155,7 @@ class Window {
 
   void swap_buffers_with_damage(EGLint* rects, EGLint n_rects) const;
 
-  Buffer* pick_free_buffer();
+  Buffer* pick_free_buffer() const;
 
   [[nodiscard]] size_t get_num_buffers() const { return buffers_.size(); }
 
@@ -164,13 +164,13 @@ class Window {
     return buffers_;
   }
 
-  Buffer* next_buffer();
+  [[nodiscard]] Buffer* next_buffer() const;
 
   void opaque_region_add(int32_t x, int32_t y, int32_t width, int32_t height);
 
-  void opaque_region_clear();
+  void opaque_region_clear() const;
 
-  void presentation_feedback_add_callbacks();
+  static void presentation_feedback_add_callbacks();
 
   // Disallow copy and assign.
   Window(const Window&) = delete;
