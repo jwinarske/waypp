@@ -218,8 +218,6 @@ class Window {
   bool resizing_{};
   bool activated_{};
 
-  int delay_ = 0;
-
   int32_t buffer_scale_ = 1;
   int32_t preferred_buffer_scale_ = 1;
   wl_output_transform preferred_buffer_transform_ = WL_OUTPUT_TRANSFORM_NORMAL;

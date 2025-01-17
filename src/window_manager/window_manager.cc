@@ -92,7 +92,7 @@ WindowManager::~WindowManager() {
   }
 
   fds[0] = {
-      wl_display_get_fd(wl_display_),
+      .fd = wl_display_get_fd(wl_display_),
       .events = POLLIN,
       .revents = 0,
   };
