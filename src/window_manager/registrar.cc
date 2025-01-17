@@ -16,7 +16,7 @@
 
 #include "waypp/window_manager/registrar.h"
 
-#include "config.h"
+#include "waypp/config.h"
 #include "logging/logging.h"
 #include "waypp/window_manager/output.h"
 
