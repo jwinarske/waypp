@@ -118,7 +118,11 @@ class Touch {
       .motion = handle_motion,
       .frame = handle_frame,
       .cancel = handle_cancel,
+#if defined(WL_TOUCH_SHAPE_SINCE_VERSION)
       .shape = nullptr,
+#endif
+#if defined(WL_TOUCH_ORIENTATION_SINCE_VERSION)
       .orientation = nullptr,
+#endif
   };
 };

@@ -192,7 +192,7 @@ struct vk_offscreen_buffers {
 struct app_data_struct {
   int iResolution[2];  // resolution
   double iMouse[2];    // mouse in window, it always updated (not like iMouse on
-                     // shadertoy)
+                       // shadertoy)
   int iMouse_lclick[2];  // mouse left click pos (its -[last pos] when left
                          // mosue not clicked)
   int iMouse_rclick[2];  // mouse right click pos (its -[last pos] when right

@@ -211,7 +211,11 @@ class Pointer {
       .axis_source = handle_axis_source,
       .axis_stop = handle_axis_stop,
       .axis_discrete = handle_axis_discrete,
+#if defined(WL_POINTER_AXIS_VALUE120_SINCE_VERSION)
       .axis_value120 = nullptr,
+#endif
+#if defined(WL_POINTER_AXIS_RELATIVE_DIRECTION_SINCE_VERSION)
       .axis_relative_direction = nullptr,
+#endif
   };
 };
