@@ -291,7 +291,7 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
     }
 #endif
   }
-  struct VkExtent2D init_size {};
+  struct VkExtent2D init_size{};
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
   init_size.width = resize_size_[0];
   init_size.height = resize_size_[1];
@@ -458,7 +458,7 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
           .pSetLayouts = &render_data->buf_layout[i].set_layout,
       };
       auto res = d.vkAllocateDescriptorSets(dev->device, &set_info,
-                                       &render_data->buf_desc_set[i]);
+                                            &render_data->buf_desc_set[i]);
       retval = VK_ERROR_NONE;
       vk_error_set_vkresult(&retval, res);
       if (res) {
@@ -556,7 +556,7 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
         .pSetLayouts = &render_data->main_layout.set_layout,
     };
     auto res = d.vkAllocateDescriptorSets(dev->device, &set_info,
-                                     &render_data->main_desc_set);
+                                          &render_data->main_desc_set);
     retval = VK_ERROR_NONE;
     vk_error_set_vkresult(&retval, res);
     if (res) {

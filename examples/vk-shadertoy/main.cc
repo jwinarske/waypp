@@ -41,17 +41,17 @@ static volatile bool gRunning = true;
  * @return void
  */
 void handle_signal(const int signal) {
-    if (signal == SIGINT) {
-        gRunning = false;
-    }
+  if (signal == SIGINT) {
+    gRunning = false;
+  }
 }
 
-int main(const int argc, char **argv) {
-    std::signal(SIGINT, handle_signal);
+int main(const int argc, char** argv) {
+  std::signal(SIGINT, handle_signal);
 
-    cxxopts::Options options("vk-shadertoy", "Vulkan Shadertoy Launcher");
-    options.add_options()
-            // clang-format off
+  cxxopts::Options options("vk-shadertoy", "Vulkan Shadertoy Launcher");
+  options.add_options()
+      // clang-format off
             ("g,gpu", "GPU index", cxxopts::value<uint32_t>()->default_value("255"))
             ("p,present", "Present Mode", cxxopts::value<int>()->default_value("2"))
             ("r,reload_shaders", "Reload shaders on re-size")
@@ -63,25 +63,25 @@ int main(const int argc, char **argv) {
             ("m,maximized", "Run in maximized mode")
             ("t,tearing", "Enable tearing via the tearing_control protocol");
 
-    // clang-format on
-    const auto result = options.parse(argc, argv);
+  // clang-format on
+  const auto result = options.parse(argc, argv);
 
-    App app({
-                    .dev_index = result["gpu"].as<uint32_t>(),
-                    .use_gpu_idx = result["gpu"].as<uint32_t>() < 255,
-                    .present_mode = result["present"].as<int>(),
-                    .debug = result["debug"].as<bool>(),
-                    .reload_shaders = result["reload_shaders"].as<bool>(),
-                    .width = result["width"].as<int>(),
-                    .height = result["height"].as<int>(),
-                    .disable_cursor = result["disable-cursor"].as<bool>(),
-                    .fullscreen = result["fullscreen"].as<bool>(),
-                    .maximized = result["maximized"].as<bool>(),
-                    .tearing = result["tearing"].as<bool>(),
-            });
+  App app({
+      .dev_index = result["gpu"].as<uint32_t>(),
+      .use_gpu_idx = result["gpu"].as<uint32_t>() < 255,
+      .present_mode = result["present"].as<int>(),
+      .debug = result["debug"].as<bool>(),
+      .reload_shaders = result["reload_shaders"].as<bool>(),
+      .width = result["width"].as<int>(),
+      .height = result["height"].as<int>(),
+      .disable_cursor = result["disable-cursor"].as<bool>(),
+      .fullscreen = result["fullscreen"].as<bool>(),
+      .maximized = result["maximized"].as<bool>(),
+      .tearing = result["tearing"].as<bool>(),
+  });
 
-    while (gRunning && app.run()) {
-    }
+  while (gRunning && app.run()) {
+  }
 
-    return EXIT_SUCCESS;
+  return EXIT_SUCCESS;
 }

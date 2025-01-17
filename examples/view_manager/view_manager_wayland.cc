@@ -197,17 +197,17 @@ void ViewManagerWayland::notify_pointer_axis(Pointer* /* pointer */,
                                              double /* value */) {}
 
 void ViewManagerWayland::notify_pointer_frame(Pointer* /* pointer */,
-                                              wl_pointer* /* pointer */){};
+                                              wl_pointer* /* pointer */) {};
 
 void ViewManagerWayland::notify_pointer_axis_source(
     Pointer* /* pointer */,
     wl_pointer* /* pointer */,
-    uint32_t /* axis_source */){};
+    uint32_t /* axis_source */) {};
 
 void ViewManagerWayland::notify_pointer_axis_stop(Pointer* /* pointer */,
                                                   wl_pointer* /* pointer */,
                                                   uint32_t /* time */,
-                                                  uint32_t /* axis */){};
+                                                  uint32_t /* axis */) {};
 
 void ViewManagerWayland::notify_pointer_axis_discrete(Pointer* /* pointer */,
                                                       wl_pointer* /*pointer */,

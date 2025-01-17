@@ -24,7 +24,6 @@
 #ifndef EXAMPLES_VK_SHADERTOY_VULKAN_COMMON_H_
 #define EXAMPLES_VK_SHADERTOY_VULKAN_COMMON_H_
 
-
 #define VULKAN_HPP_NO_EXCEPTIONS 1
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #include <vulkan/vulkan.hpp>
@@ -38,8 +37,7 @@
     vk::resultCheck(static_cast<vk::Result>(x), LOCATION); \
   } while (0)
 
-#include "vulkan/vk_struct.h"
 #include "vulkan/vk_error_print.h"
+#include "vulkan/vk_struct.h"
 
-
-#endif // EXAMPLES_VK_SHADERTOY_VULKAN_COMMON_H_
+#endif  // EXAMPLES_VK_SHADERTOY_VULKAN_COMMON_H_

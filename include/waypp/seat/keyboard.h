@@ -96,7 +96,7 @@ class Keyboard {
 
   [[nodiscard]] int32_t get_repeat_rate() const { return repeat_.rate; }
 
-  void set_event_mask(event_mask& event_mask);
+  void set_event_mask(const event_mask& event_mask);
 
   // Disallow copy and assign.
   Keyboard(const Keyboard&) = delete;

@@ -64,9 +64,10 @@ class WindowManager : public Registrar {
     observers_.remove(observer);
   }
 
-  wl_output* get_primary_output();
+  [[nodiscard]] wl_output* get_primary_output() const;
 
-  wl_output* find_output_by_name(const std::string& output_name);
+  [[nodiscard]] wl_output* find_output_by_name(
+      const std::string& output_name) const;
 
   // Disallow copy and assign.
   WindowManager(const WindowManager&) = delete;

@@ -155,7 +155,7 @@ class Window {
 
   void swap_buffers_with_damage(EGLint* rects, EGLint n_rects) const;
 
-  Buffer* pick_free_buffer() const;
+  [[nodiscard]] Buffer* pick_free_buffer() const;
 
   [[nodiscard]] size_t get_num_buffers() const { return buffers_.size(); }
 

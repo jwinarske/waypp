@@ -54,17 +54,19 @@ class XdgTopLevel : public Window {
 
   [[nodiscard]] const std::string& get_app_id() const { return app_id_; }
 
-  void set_app_id(const char* app_id) {
+  void set_app_id(const char* app_id) const {
     xdg_toplevel_set_app_id(xdg_toplevel_, app_id);
   }
 
   [[nodiscard]] const std::string& get_title() const { return title_; }
 
-  void set_title(const char* title) {
+  void set_title(const char* title) const {
     xdg_toplevel_set_title(xdg_toplevel_, title);
   }
 
-  void set_fullscreen() { xdg_toplevel_set_fullscreen(xdg_toplevel_, nullptr); }
+  void set_fullscreen() const {
+    xdg_toplevel_set_fullscreen(xdg_toplevel_, nullptr);
+  }
 
   void set_maximize() const { xdg_toplevel_set_maximized(xdg_toplevel_); }
 
@@ -87,7 +89,7 @@ class XdgTopLevel : public Window {
     wl_surface_damage(get_surface(), x, y, width, height);
   }
 
-  xdg_toplevel_resize_edge check_edge_resize(
+  [[nodiscard]] xdg_toplevel_resize_edge check_edge_resize(
       const std::pair<double, double>& xy) const;
 
   [[nodiscard]] bool is_resizing() const { return get_resizing(); }

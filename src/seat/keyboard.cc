@@ -26,7 +26,7 @@
 #include "logging/logging.h"
 
 // workaround for Wayland macro not compiling in C++
-#define WL_ARRAY_FOR_EACH(pos, array, type)                             \
+#define WL_ARRAY_FOR_EACH(pos, array, type)                               \
   for ((pos) = (type)(array)->data;                                       \
        (const char*)(pos) < ((const char*)(array)->data + (array)->size); \
        (pos)++)
@@ -209,6 +209,7 @@ void Keyboard::handle_key(void* data,
 
         // update notify values
         obj->repeat_.notify = {
+            .wl_keyboard = wl_keyboard,
             .serial = serial,
             .time = time,
             .xkb_scancode = xkb_scancode,
@@ -230,7 +231,7 @@ void Keyboard::handle_key(void* data,
       return;
     }
 
-    for (auto observer : obj->observers_) {
+    for (const auto observer : obj->observers_) {
       observer->notify_keyboard_xkb_v1_key(obj, wl_keyboard, serial, time,
                                            xkb_scancode, key_repeats, state,
                                            xdg_keysym_count, key_syms);
@@ -278,7 +279,7 @@ void Keyboard::handle_repeat_info(void* data,
       obj->repeat_.sev.sigev_notify = SIGEV_SIGNAL;
       obj->repeat_.sev.sigev_signo = SIGRTMIN;
       obj->repeat_.sev.sigev_value.sival_ptr = data;
-      auto res =
+      const auto res =
           timer_create(CLOCK_REALTIME, &obj->repeat_.sev, &obj->repeat_.timer);
       if (res != 0) {
         LOG_CRITICAL("Error timer_create: {}", std::strerror(errno));
@@ -316,7 +317,7 @@ void Keyboard::repeat_xkb_v1_key_callback(int /* sig */,
     return;
   }
 
-  for (auto observer : obj->observers_) {
+  for (const auto observer : obj->observers_) {
     observer->notify_keyboard_xkb_v1_key(
         obj, obj->repeat_.notify.wl_keyboard, obj->repeat_.notify.serial,
         obj->repeat_.notify.time, obj->repeat_.notify.xkb_scancode,
@@ -325,7 +326,7 @@ void Keyboard::repeat_xkb_v1_key_callback(int /* sig */,
   }
 }
 
-void Keyboard::set_event_mask(event_mask& event_mask) {
+void Keyboard::set_event_mask(const event_mask& event_mask) {
   event_mask_.enabled = event_mask.enabled;
   event_mask_.all = event_mask.all;
 }

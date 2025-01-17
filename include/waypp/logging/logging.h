@@ -29,7 +29,6 @@
 
 #include <spdlog/cfg/env.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
-#include <spdlog/spdlog-inl.h>
 
 #define DLOG_DEBUG SPDLOG_DEBUG
 #define DLOG_TRACE SPDLOG_TRACE
@@ -49,7 +48,7 @@ class Logging {
   Logging() {
     console_sink_ = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     logger_ = std::make_shared<spdlog::logger>("waypp", console_sink_);
-    spdlog::set_default_logger(logger_);
+    set_default_logger(logger_);
     spdlog::set_pattern("[%H:%M:%S.%f] [%L] %v");
 
     spdlog::flush_on(spdlog::level::err);

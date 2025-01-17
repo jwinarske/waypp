@@ -72,7 +72,7 @@ int VulkanRender::get_essentials(vk_render_essentials* essentials,
   };
 
   auto res = d.vkCreateSemaphore(dev->device, &sem_info, nullptr,
-                            &essentials->sem_post_acquire);
+                                 &essentials->sem_post_acquire);
   vk_error_set_vkresult(&retval, res);
   if (res) {
     vk_error_printf(&retval, "Failed to create post-acquire semaphore\n");
@@ -132,12 +132,10 @@ VkResult VulkanRender::start(vk_render_essentials* essentials,
 
   if (res == VK_SUBOPTIMAL_KHR) {
     spdlog::warn("presentation is suboptimal.");
-  }
-  else if (res == VK_ERROR_OUT_OF_DATE_KHR) {
+  } else if (res == VK_ERROR_OUT_OF_DATE_KHR) {
     // this is not error, this is resize event for AMD hardware
     return res;
-  }
-  else if (res < 0) {
+  } else if (res < 0) {
     vk_error_printf(&retval, "Couldn't acquire image\n");
     return res;
   }

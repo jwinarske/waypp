@@ -31,7 +31,7 @@ MESSAGE(STATUS "Link Time Optimizaiton.. ${ENABLE_LTO}")
 #
 # Examples
 #
-option(BUILD_EXAMPLES "Build Examples" ON)
+option(BUILD_EXAMPLES "Build Examples" OFF)
 MESSAGE(STATUS "Build Examples ......... ${BUILD_EXAMPLES}")
 
 #

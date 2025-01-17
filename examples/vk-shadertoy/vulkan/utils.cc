@@ -1223,8 +1223,8 @@ vk_error VulkanUtils::make_graphics_layouts(vk_device* dev,
     set_layout_info.bindingCount = binding_count;
     set_layout_info.pBindings = set_layout_bindings;
 
-    auto res = d.vkCreateDescriptorSetLayout(dev->device, &set_layout_info, nullptr,
-                                        &layout->set_layout);
+    auto res = d.vkCreateDescriptorSetLayout(dev->device, &set_layout_info,
+                                             nullptr, &layout->set_layout);
     vk_error_sub_set_vkresult(&retval, res);
     if (res) {
       free(set_layout_bindings);

@@ -17,7 +17,6 @@
 #pragma once
 
 #include <list>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -94,7 +93,7 @@ class Pointer {
                    wl_compositor* wl_compositor,
                    wl_shm* wl_shm,
                    bool disable_cursor,
-                   event_mask& event_mask,
+                   const event_mask& event_mask,
                    int size = 24);
 
   ~Pointer();
@@ -126,7 +125,7 @@ class Pointer {
 
   [[nodiscard]] bool is_cursor_enabled() const { return !disable_cursor_; }
 
-  void set_event_mask(event_mask& event_mask);
+  void set_event_mask(const event_mask& event_mask);
 
   [[nodiscard]] std::pair<double, double> get_xy() const { return {sx_, sy_}; }
 
@@ -212,5 +211,7 @@ class Pointer {
       .axis_source = handle_axis_source,
       .axis_stop = handle_axis_stop,
       .axis_discrete = handle_axis_discrete,
+      .axis_value120 = nullptr,
+      .axis_relative_direction = nullptr,
   };
 };

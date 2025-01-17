@@ -33,9 +33,9 @@
 Pointer::Pointer(wl_pointer* pointer,
                  wl_compositor* wl_compositor,
                  wl_shm* wl_shm,
-                 bool disable_cursor,
-                 event_mask& event_mask,
-                 int size)
+                 const bool disable_cursor,
+                 const event_mask& event_mask,
+                 const int size)
     : wl_pointer_(pointer),
       wl_shm_(wl_shm),
       disable_cursor_(disable_cursor),
@@ -187,7 +187,7 @@ void Pointer::handle_motion(void* data,
  * @brief Function to handle button events from the pointer
  *
  * @param data A pointer to user-defined data
- * @param wl_pointer The Wayland pointer object
+ * @param pointer The Wayland pointer object
  * @param serial The serial number of the event
  * @param button The button that triggered the event
  * @param state The state of the button (pressed or released)
@@ -222,7 +222,7 @@ void Pointer::handle_button(void* data,
  * scroll event.
  *
  * @param data      A pointer to user-defined data.
- * @param wl_pointer    A pointer to the wl_pointer object that triggered the
+ * @param pointer    A pointer to the wl_pointer object that triggered the
  * event.
  * @param time      The timestamp of the event.
  * @param axis      The axis identifier.
@@ -259,7 +259,7 @@ void Pointer::handle_axis(void* data,
  * This function is called when a frame event is received for the pointer.
  *
  * @param data The user data associated with the pointer.
- * @param wl_pointer The pointer object.
+ * @param pointer The pointer object.
  */
 void Pointer::handle_frame(void* data, wl_pointer* pointer) {
   const auto obj = static_cast<Pointer*>(data);
@@ -282,7 +282,7 @@ void Pointer::handle_frame(void* data, wl_pointer* pointer) {
  * @brief Handles the axis source event for the Pointer object.
  *
  * @param data Unused parameter.
- * @param wl_pointer The wl_pointer object associated with the event.
+ * @param pointer The wl_pointer object associated with the event.
  * @param axis_source The axis source.
  *
  * This function is called when the axis source event is received for the
@@ -314,7 +314,7 @@ void Pointer::handle_axis_source(void* data,
  * This function is called when an axis stop event is received for the pointer.
  *
  * @param data      A pointer to user-defined data.
- * @param wl_pointer The pointer object that triggered the event.
+ * @param pointer The pointer object that triggered the event.
  * @param time      The timestamp of the event.
  * @param axis      The axis that stopped.
  */
@@ -344,7 +344,7 @@ void Pointer::handle_axis_stop(void* data,
  * This function is called when a discrete axis event is received.
  *
  * @param data The user data associated with the Pointer.
- * @param wl_pointer The pointer object.
+ * @param pointer The pointer object.
  * @param axis The axis value.
  * @param discrete The discrete value.
  */
@@ -423,7 +423,7 @@ std::string Pointer::get_cursor_theme() {
     });
   }
 
-  return std::move(res);
+  return res;
 }
 
 std::vector<std::string> Pointer::get_available_cursors(
@@ -447,10 +447,10 @@ std::vector<std::string> Pointer::get_available_cursors(
 
   std::sort(cursor_list.begin(), cursor_list.end());
 
-  return std::move(cursor_list);
+  return cursor_list;
 }
 
-void Pointer::set_event_mask(event_mask& event_mask) {
+void Pointer::set_event_mask(const event_mask& event_mask) {
   event_mask_.enabled = event_mask.enabled;
   event_mask_.all = event_mask.all;
   event_mask_.axis = event_mask.axis;

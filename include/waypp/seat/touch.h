@@ -118,5 +118,7 @@ class Touch {
       .motion = handle_motion,
       .frame = handle_frame,
       .cancel = handle_cancel,
+      .shape = nullptr,
+      .orientation = nullptr,
   };
 };
