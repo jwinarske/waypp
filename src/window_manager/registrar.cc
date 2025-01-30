@@ -16,8 +16,8 @@
 
 #include "waypp/window_manager/registrar.h"
 
-#include "waypp/config.h"
 #include "logging/logging.h"
+#include "waypp/config.h"
 #include "waypp/window_manager/output.h"
 
 Registrar::Registrar(wl_display* wl_display,

@@ -60,8 +60,11 @@ endif ()
 # libc++
 #
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    if (NOT LLVM_CONFIG)
+        set(LLVM_CONFIG llvm-config)
+    endif ()
     execute_process(
-            COMMAND llvm-config --version
+            COMMAND ${LLVM_CONFIG} --version
             OUTPUT_VARIABLE LLVM_VERSION
             OUTPUT_STRIP_TRAILING_WHITESPACE
     )
@@ -71,25 +74,31 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
     if (NOT LLVM_ROOT)
         execute_process(
-                COMMAND llvm-config --prefix
+                COMMAND ${LLVM_CONFIG} --prefix
                 OUTPUT_VARIABLE LLVM_ROOT
                 OUTPUT_STRIP_TRAILING_WHITESPACE
         )
     endif ()
 
     if (NOT LLVM_ROOT)
-        message(WARNING "LLVM_ROOT not detected, using default")
+        message(WARNING "LLVM_ROOT not detected, using system default")
         set(LLVM_ROOT "/usr")
     endif ()
 
     message(STATUS "LLVM Root .............. ${LLVM_ROOT}")
     message(STATUS "C++ header path ........ ${LLVM_ROOT}/include/c++/v1/")
 
-    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-stdlib=libc++> $<$<COMPILE_LANGUAGE:CXX>:-isystem${LLVM_ROOT}/include/c++/v1/>)
-    set(CONTEXT_COMPILE_OPTIONS $<$<COMPILE_LANGUAGE:CXX>:-stdlib=libc++> $<$<COMPILE_LANGUAGE:CXX>:-isystem${LLVM_ROOT}/include/c++/v1/>)
+    string(APPEND CMAKE_CXX_FLAGS " -stdlib=libc++ -isystem${LLVM_ROOT}/include/c++/v1/")
+
+    if (ENABLE_CLANG_STATIC_LINK)
+        string(APPEND CMAKE_EXE_LINKER_FLAGS " -stdlib=libc++ -fuse-ld=lld -l:libc++.a -l:libc++abi.a -static-libgcc -lc -v")
+    else ()
+        string(APPEND CMAKE_EXE_LINKER_FLAGS " -stdlib=libc++ -fuse-ld=lld -lc++ -lc++abi -lgcc -lc -v")
+    endif ()
+
 
     execute_process(
-            COMMAND llvm-config --cmakedir
+            COMMAND ${LLVM_CONFIG} --cmakedir
             OUTPUT_VARIABLE LLVM_CMAKE_DIR
             OUTPUT_STRIP_TRAILING_WHITESPACE
     )
@@ -99,6 +108,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     endif ()
 
 endif ()
+
 
 #
 # Toolchain IPO/LTO support

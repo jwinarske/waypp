@@ -33,7 +33,8 @@ jobs:
         run: |
           cmake -G Ninja -B ${{github.workspace}}/build \
           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} \
-          -DENABLE_AGL_SHELL_CLIENT=ON
+          -DENABLE_AGL_SHELL_CLIENT=ON \
+          -DBUILD_EXAMPLES=ON
 
       - name: Build
         run: ninja -C ${{github.workspace}}/build
