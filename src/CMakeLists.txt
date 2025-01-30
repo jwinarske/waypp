@@ -81,6 +81,11 @@ if (ENABLE_EGL)
     target_compile_definitions(waypp PUBLIC EGL_NO_X11 MESA_EGL_NO_X11_HEADERS)
 endif ()
 
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_compile_options(waypp PRIVATE ${LLVM_COMPILE_OPTIONS})
+    target_link_options(waypp PRIVATE ${LLVM_LINK_OPTIONS})
+endif ()
+
 add_sanitizers(waypp)
 
 install(DIRECTORY ../include/waypp DESTINATION include)

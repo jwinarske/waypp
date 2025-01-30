@@ -291,7 +291,7 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
     }
 #endif
   }
-  struct VkExtent2D init_size{};
+  struct VkExtent2D init_size {};
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
   init_size.width = resize_size_[0];
   init_size.height = resize_size_[1];
