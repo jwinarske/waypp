@@ -179,10 +179,6 @@ target_include_directories(wayland-gen PUBLIC
 )
 target_include_directories(wayland-gen PUBLIC ${LOGGING_INCLUDE_DIRS})
 
-if (IPO_SUPPORT_RESULT)
-    set_property(TARGET wayland-gen PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-endif ()
-
 add_sanitizers(wayland-gen)
 
 # print_target_properties(wayland-gen)

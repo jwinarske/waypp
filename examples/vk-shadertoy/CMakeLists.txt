@@ -42,11 +42,7 @@ target_compile_definitions(vk-shadertoy PUBLIC -DVK_USE_PLATFORM_WAYLAND_KHR)
 
 target_include_directories(vk-shadertoy PRIVATE .)
 
-target_link_libraries(vk-shadertoy PRIVATE waypp wayland-gen cxxopts::cxxopts)
-
-if (IPO_SUPPORT_RESULT)
-    set_property(TARGET vk-shadertoy PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-endif ()
+target_link_libraries(vk-shadertoy PRIVATE waypp wayland-gen cxxopts::cxxopts toolchain::toolchain)
 
 add_sanitizers(vk-shadertoy)
 

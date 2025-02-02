@@ -192,8 +192,7 @@ void AglShell::handle_app_on_output(void* data,
   //
   // finally if the outputs are identical probably that's a user-error -
   // but the compositor won't activate it again, so we don't handle that.
-  obj->pending_app_list_.emplace_back(
-      std::move(std::pair(app_id, output_name)));
+  obj->pending_app_list_.emplace_back(std::pair(app_id, output_name));
 
   auto iter = obj->apps_stack_.begin();
   while (iter != obj->apps_stack_.end()) {
@@ -202,7 +201,7 @@ void AglShell::handle_app_on_output(void* data,
       obj->activate_app(app_id);
       break;
     }
-    iter++;
+    ++iter;
   }
 }
 

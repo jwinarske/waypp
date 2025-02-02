@@ -8,9 +8,9 @@
 unsigned Feedback::sequence_ = 0;
 
 Feedback::Feedback(wp_presentation* wp_presentation,
-                   clockid_t clock_id,
+                   const clockid_t clock_id,
                    wl_surface* wl_surface,
-                   uint32_t time,
+                   const uint32_t time,
                    FeedbackObserver* observer)
     : wp_presentation_(wp_presentation),
       clock_id_(clock_id),
@@ -21,6 +21,8 @@ Feedback::Feedback(wp_presentation* wp_presentation,
 
   feedback_ = wp_presentation_feedback(wp_presentation, wl_surface);
   wp_presentation_feedback_add_listener(feedback_, &listener_, this);
+
+  (void)wp_presentation_;  // suppress unused warning
 }
 
 Feedback::~Feedback() {

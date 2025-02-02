@@ -46,7 +46,7 @@ class Feedback {
  private:
   static unsigned sequence_;
 
-  [[maybe_unused]] wp_presentation* wp_presentation_;
+  wp_presentation* wp_presentation_;
   clockid_t clock_id_ = -1;
   struct wp_presentation_feedback* feedback_;
   FeedbackObserver* observer_;
