@@ -19,9 +19,9 @@
 # Client Options
 #
 option(ENABLE_XDG_CLIENT "Enable XDG Client" ON)
-option(ENABLE_AGL_SHELL_CLIENT "Enable AGL shell Client" OFF)
-option(ENABLE_IVI_SHELL_CLIENT "Enable ivi-shell Client" OFF)
-option(ENABLE_DRM_LEASE_CLIENT "Enable DRM Lease Client" OFF)
+option(ENABLE_AGL_SHELL_CLIENT "Enable AGL shell Client" ON)
+option(ENABLE_IVI_SHELL_CLIENT "Enable ivi-shell Client" ON)
+option(ENABLE_DRM_LEASE_CLIENT "Enable DRM Lease Client" ON)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(WAYLAND REQUIRED IMPORTED_TARGET wayland-client wayland-cursor xkbcommon)
@@ -90,17 +90,17 @@ if (ENABLE_XDG_CLIENT)
 endif ()
 
 if (ENABLE_AGL_SHELL_CLIENT)
-    add_protocol(${CMAKE_CURRENT_SOURCE_DIR}/third_party/agl/protocol/agl-shell.xml)
-    add_protocol(${CMAKE_CURRENT_SOURCE_DIR}/third_party/agl/protocol/agl-shell-desktop.xml)
-    add_protocol(${CMAKE_CURRENT_SOURCE_DIR}/third_party/agl/protocol/agl-screenshooter.xml)
+    add_protocol(${PROJECT_SOURCE_DIR}/third_party/agl/protocol/agl-shell.xml)
+    add_protocol(${PROJECT_SOURCE_DIR}/third_party/agl/protocol/agl-shell-desktop.xml)
+    add_protocol(${PROJECT_SOURCE_DIR}/third_party/agl/protocol/agl-screenshooter.xml)
 endif ()
 
 if (ENABLE_IVI_SHELL_CLIENT)
-    add_protocol(${CMAKE_CURRENT_SOURCE_DIR}/third_party/weston/protocol/ivi-application.xml)
-    add_protocol(${CMAKE_CURRENT_SOURCE_DIR}/third_party/weston/protocol/ivi-wm.xml)
+    add_protocol(${PROJECT_SOURCE_DIR}/third_party/weston/protocol/ivi-application.xml)
+    add_protocol(${PROJECT_SOURCE_DIR}/third_party/weston/protocol/ivi-wm.xml)
 endif ()
 
-add_protocol(${CMAKE_CURRENT_SOURCE_DIR}/third_party/weston/protocol/weston-output-capture.xml)
+add_protocol(${PROJECT_SOURCE_DIR}/third_party/weston/protocol/weston-output-capture.xml)
 
 
 #
