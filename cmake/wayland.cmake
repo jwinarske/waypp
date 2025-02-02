@@ -20,8 +20,8 @@
 #
 option(ENABLE_XDG_CLIENT "Enable XDG Client" ON)
 option(ENABLE_AGL_SHELL_CLIENT "Enable AGL shell Client" ON)
-option(ENABLE_IVI_SHELL_CLIENT "Enable ivi-shell Client" ON)
-option(ENABLE_DRM_LEASE_CLIENT "Enable DRM Lease Client" ON)
+option(ENABLE_IVI_SHELL_CLIENT "Enable ivi-shell Client" OFF)
+option(ENABLE_DRM_LEASE_CLIENT "Enable DRM Lease Client" OFF)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(WAYLAND REQUIRED IMPORTED_TARGET wayland-client wayland-cursor xkbcommon)

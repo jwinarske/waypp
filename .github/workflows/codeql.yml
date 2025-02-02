@@ -61,7 +61,7 @@ jobs:
             -D CMAKE_BUILD_TYPE=Release \
             -D CMAKE_STAGING_PREFIX=${{github.workspace}}/build/staging/usr/local \
             -D ENABLE_AGL_SHELL_CLIENT=ON \
-            -D BUILD_EXAMPLES=ON \
+            -D WAYPP_BUILD_EXAMPLES=ON \
             -D ENABLE_LTO=ON
 
       - name: Perform CodeQL Analysis

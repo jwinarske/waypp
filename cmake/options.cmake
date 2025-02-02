@@ -17,9 +17,6 @@
 #
 # Configure options
 #
-option(ENABLE_XDG_CLIENT "Enable XDG Client" ON)
-option(ENABLE_AGL_SHELL_CLIENT "Enable AGL Shell" OFF)
-
 option(ENABLE_EGL "Enable EGL dependency" ON)
 
 #
@@ -31,14 +28,14 @@ MESSAGE(STATUS "Link Time Optimizaiton.. ${ENABLE_LTO}")
 #
 # Examples
 #
-option(BUILD_EXAMPLES "Build Examples" OFF)
-MESSAGE(STATUS "Build Examples ......... ${BUILD_EXAMPLES}")
+option(WAYPP_BUILD_EXAMPLES "Build Examples" OFF)
+MESSAGE(STATUS "Build Examples ......... ${WAYPP_BUILD_EXAMPLES}")
 
 #
 # Unit Tests
 #
-option(BUILD_UNIT_TESTS "Build Unit Tests" OFF)
-MESSAGE(STATUS "Build Unit Tests ....... ${BUILD_UNIT_TESTS}")
+option(WAYPP_BUILD_UNIT_TESTS "Build Unit Tests" OFF)
+MESSAGE(STATUS "Build Unit Tests ....... ${WAYPP_BUILD_UNIT_TESTS}")
 
 #
 # Sanitizers

@@ -60,11 +60,11 @@ add_subdirectory(src)
 #
 # Examples
 #
-if (BUILD_EXAMPLES)
+if (WAYPP_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif ()
 
-if (BUILD_UNIT_TESTS)
+if (WAYPP_BUILD_UNIT_TESTS)
     enable_testing()
     # add_subdirectory(test)
 endif ()
