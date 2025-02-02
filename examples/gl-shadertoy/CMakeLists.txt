@@ -16,13 +16,9 @@
 
 add_executable(gl-shadertoy shadertoy.cc)
 
-target_include_directories(gl-shadertoy PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party)
+target_compile_options(gl-shadertoy PRIVATE -isystem ${PROJECT_SOURCE_DIR}/third_party)
 
-target_link_libraries(gl-shadertoy PRIVATE waypp wayland-gen cxxopts::cxxopts)
-
-if (IPO_SUPPORT_RESULT)
-    set_property(TARGET gl-shadertoy PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-endif ()
+target_link_libraries(gl-shadertoy PRIVATE waypp wayland-gen cxxopts::cxxopts toolchain::toolchain)
 
 add_sanitizers(gl-shadertoy)
 

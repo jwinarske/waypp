@@ -17,8 +17,10 @@
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GLIB REQUIRED IMPORTED_TARGET glib-2.0)
 
-set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package(Threads REQUIRED)
+if (NOT LLVM_ENABLE_THREADS)
+    set(THREADS_PREFER_PTHREAD_FLAG ON)
+    find_package(Threads REQUIRED)
+endif ()
 
 if (ENABLE_EGL)
     pkg_check_modules(EGL REQUIRED IMPORTED_TARGET glesv2 egl)
@@ -71,10 +73,13 @@ target_link_libraries(waypp PUBLIC
         wayland-gen
         PkgConfig::GLIB
         spdlog
-        Threads::Threads
         dl
         rt
 )
+
+if (NOT LLVM_ENABLE_THREADS)
+    target_link_libraries(waypp PUBLIC Threads::Threads)
+endif ()
 
 if (ENABLE_EGL)
     target_link_libraries(waypp PUBLIC PkgConfig::EGL)

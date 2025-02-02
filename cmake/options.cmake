@@ -44,3 +44,13 @@ MESSAGE(STATUS "Build Unit Tests ....... ${BUILD_UNIT_TESTS}")
 # Sanitizers
 #
 find_package(Sanitizers)
+
+#
+# Standalone build
+#
+if (CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    set(LOGGING_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include/waypp)
+    set(BUILD_WAYPP_STANDALONE ON)
+else()
+    set(BUILD_WAYPP_STANDALONE OFF)
+endif()

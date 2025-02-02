@@ -22,11 +22,7 @@ if (ENABLE_EGL)
     #
     add_executable(simple-egl simple-egl.cc)
 
-    target_link_libraries(simple-egl PRIVATE waypp wayland-gen cxxopts::cxxopts)
-
-    if (IPO_SUPPORT_RESULT)
-        set_property(TARGET simple-egl PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-    endif ()
+    target_link_libraries(simple-egl PRIVATE waypp wayland-gen cxxopts::cxxopts toolchain::toolchain)
 
     add_sanitizers(simple-egl)
 
@@ -49,11 +45,7 @@ add_subdirectory(view_manager)
 #
 add_executable(simple-shm simple-shm.cc)
 
-target_link_libraries(simple-shm PRIVATE waypp wayland-gen cxxopts::cxxopts)
-
-if (IPO_SUPPORT_RESULT)
-    set_property(TARGET simple-shm PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-endif ()
+target_link_libraries(simple-shm PRIVATE waypp wayland-gen cxxopts::cxxopts toolchain::toolchain)
 
 add_sanitizers(simple-shm)
 
@@ -65,11 +57,7 @@ install(TARGETS simple-shm DESTINATION bin)
 if (FALSE)
     add_executable(presentation-shm presentation-shm.cc)
 
-    target_link_libraries(presentation-shm PRIVATE waypp wayland-gen cxxopts::cxxopts)
-
-    if (IPO_SUPPORT_RESULT)
-        set_property(TARGET presentation-shm PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-    endif ()
+    target_link_libraries(presentation-shm PRIVATE waypp wayland-gen cxxopts::cxxopts toolchain::toolchain)
 
     add_sanitizers(presentation-shm)
 
@@ -82,11 +70,7 @@ endif ()
 if (HAS_WAYLAND_PROTOCOL_XDG_OUTPUT_UNSTABLE_V1)
     add_executable(simple-ext-protocol simple-ext-protocol.cc)
 
-    target_link_libraries(simple-ext-protocol PRIVATE waypp wayland-gen cxxopts::cxxopts)
-
-    if (IPO_SUPPORT_RESULT)
-        set_property(TARGET simple-ext-protocol PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-    endif ()
+    target_link_libraries(simple-ext-protocol PRIVATE waypp wayland-gen cxxopts::cxxopts toolchain::toolchain)
 
     add_sanitizers(simple-ext-protocol)
 
@@ -103,11 +87,7 @@ if (ENABLE_AGL_SHELL_CLIENT)
     #
     add_executable(agl-simple-shm agl-simple-shm.cc)
 
-    target_link_libraries(agl-simple-shm PRIVATE waypp wayland-gen cxxopts::cxxopts)
-
-    if (IPO_SUPPORT_RESULT)
-        set_property(TARGET agl-simple-shm PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-    endif ()
+    target_link_libraries(agl-simple-shm PRIVATE waypp wayland-gen cxxopts::cxxopts toolchain::toolchain)
 
     add_sanitizers(agl-simple-shm)
 
@@ -116,11 +96,7 @@ if (ENABLE_AGL_SHELL_CLIENT)
 
     add_executable(agl-capture agl-capture.cc agl-capture.cc)
 
-    target_link_libraries(agl-capture PRIVATE waypp wayland-gen cxxopts::cxxopts)
-
-    if (IPO_SUPPORT_RESULT)
-        set_property(TARGET agl-capture PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-    endif ()
+    target_link_libraries(agl-capture PRIVATE waypp wayland-gen cxxopts::cxxopts toolchain::toolchain)
 
     add_sanitizers(agl-capture)
 

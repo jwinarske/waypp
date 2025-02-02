@@ -12,7 +12,7 @@ env:
 
 jobs:
   build:
-    # The CMake configure and build commands are platform agnostic and should work equally well on Windows or Mac.
+    # The CMake configure and build commands are platform-agnostic and should work equally well on Windows or Mac.
     # You can convert this to a matrix build if you need cross-platform coverage.
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     runs-on: ubuntu-22.04
@@ -31,10 +31,13 @@ jobs:
 
       - name: Configure CMake
         run: |
-          cmake -G Ninja -B ${{github.workspace}}/build \
-          -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} \
-          -DENABLE_AGL_SHELL_CLIENT=ON \
-          -DBUILD_EXAMPLES=ON
+          cmake -G Ninja \
+          -D CMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} \
+          -D ENABLE_AGL_SHELL_CLIENT=ON \
+          -D BUILD_EXAMPLES=ON \
+          -D ENABLE_LTO=ON \
+          -S ${{github.workspace}} \
+          -B ${{github.workspace}}/build
 
       - name: Build
         run: ninja -C ${{github.workspace}}/build

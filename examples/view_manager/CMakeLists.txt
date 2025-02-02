@@ -23,11 +23,7 @@ add_executable(view-manager
 
 target_include_directories(view-manager PRIVATE .)
 
-target_link_libraries(view-manager PRIVATE waypp wayland-gen cxxopts::cxxopts)
-
-if (IPO_SUPPORT_RESULT)
-    set_property(TARGET view-manager PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-endif ()
+target_link_libraries(view-manager PRIVATE waypp wayland-gen cxxopts::cxxopts toolchain::toolchain)
 
 add_sanitizers(view-manager)
 

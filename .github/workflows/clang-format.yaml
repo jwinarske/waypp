@@ -32,8 +32,10 @@ jobs:
       - name: Configure CMake
         run: |
           cmake -G Ninja -B ${{github.workspace}}/build \
-          -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} \
-          -DENABLE_AGL_SHELL_CLIENT=ON \
+          -D CMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} \
+          -D ENABLE_AGL_SHELL_CLIENT=ON \
+          -D BUILD_EXAMPLES=ON \
+          -D ENABLE_LTO=ON \
           -D CMAKE_EXPORT_COMPILE_COMMANDS=ON
 
       - name: Run clang-format
