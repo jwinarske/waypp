@@ -2,6 +2,8 @@
 
 #include <waypp/waypp.h>
 
+#include <time.h>
+
 class Feedback;
 
 class FeedbackObserver {
