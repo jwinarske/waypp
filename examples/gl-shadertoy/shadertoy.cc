@@ -228,11 +228,11 @@ void initialize_scene(Window* window) {
  * swaps the buffers to display the updated frame, and clears the current
  * rendering context.
  *
- * @param data A pointer to the WindowEgl object.
+ * @param userdata A pointer to the WindowEgl object.
  * @param time The current time in milliseconds.
  */
 static void draw_frame(void* userdata, uint32_t /* time */) {
-  auto window = static_cast<Window*>(userdata);
+  const auto window = static_cast<Window*>(userdata);
 
   window->update_buffer_geometry();
 

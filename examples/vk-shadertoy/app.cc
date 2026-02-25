@@ -69,8 +69,10 @@ App::App(const Configuration& config) : logging_(std::make_unique<Logging>()) {
 App::~App() {
   toplevel_.reset();
   wm_.reset();
-  wl_display_flush(display_);
-  wl_display_flush(display_);
+  if (display_) {
+    wl_display_flush(display_);
+    wl_display_disconnect(display_);
+  }
 }
 
 bool App::run() {

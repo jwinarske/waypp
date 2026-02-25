@@ -124,8 +124,13 @@ void draw_frame(void* data, const uint32_t time) {
                window->get_height(), time);
 
   wl_surface_attach(window->get_surface(), buffer->get_wl_buffer(), 0, 0);
-  wl_surface_damage(window->get_surface(), 20, 20, window->get_width() - 40,
-                    window->get_height() - 40);
+
+  const int damage_width = std::max(0, window->get_width() - 40);
+  const int damage_height = std::max(0, window->get_height() - 40);
+  if (damage_width > 0 && damage_height > 0) {
+    wl_surface_damage(window->get_surface(), 20, 20, damage_width,
+                      damage_height);
+  }
 
   buffer->set_busy();
 }

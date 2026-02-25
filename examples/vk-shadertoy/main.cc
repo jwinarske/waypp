@@ -23,6 +23,7 @@
 
 #include <csignal>
 
+#include <cstdint>
 #include <cxxopts.hpp>
 
 #include "app.h"

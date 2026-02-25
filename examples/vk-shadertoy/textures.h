@@ -24,6 +24,9 @@
 // Danil, 2021+ Vulkan shader launcher, self
 // https://github.com/danilw/vulkan-shadertoy-launcher The MIT License
 
+#ifndef EXAMPLES_VK_SHADERTOY_TEXTURES_H_
+#define EXAMPLES_VK_SHADERTOY_TEXTURES_H_
+
 #include "vulkan/render.h"
 
 #include "logging/logging.h"
@@ -35,27 +38,33 @@ static vk_error init_texture_mem(struct vk_physical_device* phy_dev,
                                  struct vk_render_essentials* essentials,
                                  struct vk_image* image,
                                  uint8_t* texture,
-                                 int width,
-                                 int height,
+                                 const int width,
+                                 const int height,
                                  const char* name,
-                                 bool mipmaps,
-                                 bool linear) {
-  vk_error retval = VK_ERROR_NONE;
-  VkFormat img_format = VK_FORMAT_R8G8B8A8_UNORM;  // VK_FORMAT_R8G8B8A8_SRGB
+                                 const bool mipmaps,
+                                 const bool linear) {
+  auto retval = VK_ERROR_NONE;
+  constexpr VkFormat img_format = VK_FORMAT_R8G8B8A8_UNORM;  // VK_FORMAT_R8G8B8A8_SRGB
   *image = (struct vk_image){
       .format = img_format,
-      .extent = {.width = static_cast<uint32_t>(width),
-                 .height = static_cast<uint32_t>(height)},
-      .usage = (VkImageUsageFlagBits)(VK_IMAGE_USAGE_SAMPLED_BIT |
-                                      VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-                                      VK_IMAGE_USAGE_TRANSFER_SRC_BIT),
+      .extent = {.width = static_cast<uint32_t>(width), .height = static_cast<uint32_t>(height)},
+      .usage = static_cast<VkImageUsageFlagBits>(VK_IMAGE_USAGE_SAMPLED_BIT |
+                                                 VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+                                                 VK_IMAGE_USAGE_TRANSFER_SRC_BIT),
       .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
       .make_view = true,
+      .will_be_initialized = false,
       .host_visible = false,
+      .multisample = false,
+      .sharing_queues = nullptr,
+      .sharing_queue_count = 0,
+      .image = VK_NULL_HANDLE,
+      .image_mem = VK_NULL_HANDLE,
+      .view = VK_NULL_HANDLE,
+      .sampler = VK_NULL_HANDLE,
       .anisotropyEnable = true,
-      .repeat_mode =
-          VK_SAMPLER_ADDRESS_MODE_REPEAT,  // VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER
-                                           // //VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
+      .repeat_mode = VK_SAMPLER_ADDRESS_MODE_REPEAT,  // VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER
+                                                      // //VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
       .mipmaps = mipmaps,
       .linear = linear || mipmaps,
   };
@@ -67,8 +76,7 @@ static vk_error init_texture_mem(struct vk_physical_device* phy_dev,
     return retval;
   }
   retval = VulkanRender::init_texture(phy_dev, dev, essentials, image,
-                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                      texture, name);
+                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, texture, name);
   return retval;
 }
 
@@ -83,16 +91,15 @@ static vk_error init_texture_file(struct vk_physical_device* phy_dev,
   vk_error retval = VK_ERROR_NONE;
   int width, height, channels;
   stbi_set_flip_vertically_on_load(true);  // flip image Y
-  uint8_t* generated_texture =
-      stbi_load(name, &width, &height, &channels, STBI_rgb_alpha);
+  uint8_t* generated_texture = stbi_load(name, &width, &height, &channels, STBI_rgb_alpha);
   if (generated_texture == nullptr) {
     retval.error.type = VK_ERROR_ERRNO;
     spdlog::error("Error in loading image {}", name);
     return retval;
   }
 
-  retval = init_texture_mem(phy_dev, dev, essentials, image, generated_texture,
-                            width, height, name, mipmaps, true);
+  retval = init_texture_mem(phy_dev, dev, essentials, image, generated_texture, width, height, name,
+                            mipmaps, true);
   stbi_image_free(generated_texture);
   return retval;
 }
@@ -106,26 +113,28 @@ static vk_error texture_empty(struct vk_physical_device* phy_dev,
                               int width,
                               int height) {
   vk_error retval = VK_ERROR_NONE;
-  size_t texture_size =
-      static_cast<unsigned long>(width * height * 4) * sizeof(uint8_t);
-  auto* generated_texture = (uint8_t*)malloc(texture_size);
+  size_t texture_size = static_cast<unsigned long>(width * height * 4) * sizeof(uint8_t);
+  auto* generated_texture = static_cast<uint8_t*>(malloc(texture_size));
   if (generated_texture == nullptr) {
     retval.error.type = VK_ERROR_ERRNO;
     spdlog::error("Error in allocating memory");
     return retval;
   }
-  for (unsigned int i = 0; i < height; ++i) {
-    for (unsigned int j = 0; j < width; ++j) {
-      size_t pixel =
-          (i * static_cast<unsigned int>(width) + j) * 4 * sizeof(uint8_t);
+  for (int i = 0; i < height; ++i) {
+    for (int j = 0; j < width; ++j) {
+      const size_t pixel = (static_cast<unsigned int>(i) * static_cast<unsigned int>(width) +
+                            static_cast<unsigned int>(j)) *
+                           4 * sizeof(uint8_t);
       generated_texture[pixel + 0] = 0x00;
       generated_texture[pixel + 1] = 0x00;
       generated_texture[pixel + 2] = 0x00;
       generated_texture[pixel + 3] = 0x00;
     }
   }
-  retval = init_texture_mem(phy_dev, dev, essentials, image, generated_texture,
-                            width, height, "empty", false, false);
+  retval = init_texture_mem(phy_dev, dev, essentials, image, generated_texture, width, height,
+                            "empty", false, false);
   free(generated_texture);
   return retval;
 }
+
+#endif // EXAMPLES_VK_SHADERTOY_TEXTURES_H_

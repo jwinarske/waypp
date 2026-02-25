@@ -415,6 +415,8 @@ vk_error VulkanUtils::get_dev_ext(vk_physical_device* phy_dev,
 
     queue_info[(*queue_info_count)++] = (VkDeviceQueueCreateInfo){
         .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
         .queueFamilyIndex = i,
         .queueCount = phy_dev->queue_families[i].queueCount,
         .pQueuePriorities = queue_priorities,
@@ -435,8 +437,8 @@ vk_error VulkanUtils::get_dev_ext(vk_physical_device* phy_dev,
   dev_info.ppEnabledExtensionNames = ext_names;
   dev_info.pEnabledFeatures = &phy_dev->features;
 
-  auto res = d.vkCreateDevice(phy_dev->physical_device, &dev_info, nullptr,
-                              &dev->device);
+  const auto res = d.vkCreateDevice(phy_dev->physical_device, &dev_info,
+                                    nullptr, &dev->device);
   vk_error_set_vkresult(&retval, res);
 
   free(queue_priorities);
@@ -533,16 +535,16 @@ vk_error VulkanUtils::get_swapchain(VkInstance /* vk */,
   swapchain->surface_format = surface_format[0];
 
   if (surface_format_count > 1) {
-    uint32_t suported_format_srgb = VK_FORMAT_B8G8R8A8_SRGB;
+    uint32_t supported_format_srgb = VK_FORMAT_B8G8R8A8_SRGB;
     int found_srgb = -1;
-    uint32_t suported_format_linear = VK_FORMAT_B8G8R8A8_UNORM;
+    uint32_t supported_format_linear = VK_FORMAT_B8G8R8A8_UNORM;
     int found_linear = -1;
 
-    for (int i = 0; i < surface_format_count; i++) {
-      if (surface_format[i].format == suported_format_srgb)
-        found_srgb = i;
-      if (surface_format[i].format == suported_format_linear)
-        found_linear = i;
+    for (uint32_t i = 0; i < surface_format_count; i++) {
+      if (surface_format[i].format == supported_format_srgb)
+        found_srgb = static_cast<int>(i);
+      if (surface_format[i].format == supported_format_linear)
+        found_linear = static_cast<int>(i);
     }
 
     if (found_linear >= 0)
@@ -591,40 +593,41 @@ vk_error VulkanUtils::get_swapchain(VkInstance /* vk */,
     }
   }
 
-  VkExtent2D swapchainExtent;
+  VkExtent2D swapChainExtent;
   VkImageFormatProperties format_properties;
   res = d.vkGetPhysicalDeviceImageFormatProperties(
       phy_dev->physical_device, swapchain->surface_format.format,
       VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL,
       VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 0, &format_properties);
-  if (res == VK_SUCCESS && (format_properties.maxExtent.width >=
-                                swapchain->surface_caps.currentExtent.width &&
-                            format_properties.maxExtent.height >=
-                                swapchain->surface_caps.currentExtent.height) ||
+  if ((res == VK_SUCCESS &&
+       (format_properties.maxExtent.width >=
+            swapchain->surface_caps.currentExtent.width &&
+        format_properties.maxExtent.height >=
+            swapchain->surface_caps.currentExtent.height)) ||
       (swapchain->surface_caps.currentExtent.width == 0xFFFFFFFF)) {
     if (swapchain->surface_caps.currentExtent.width == 0xFFFFFFFF) {
-      swapchainExtent.width =
+      swapChainExtent.width =
           static_cast<uint32_t>(os_window->app_data.iResolution[0]);
-      swapchainExtent.height =
+      swapChainExtent.height =
           static_cast<uint32_t>(os_window->app_data.iResolution[1]);
 
-      if (swapchainExtent.width <
+      if (swapChainExtent.width <
           swapchain->surface_caps.minImageExtent.width) {
-        swapchainExtent.width = swapchain->surface_caps.minImageExtent.width;
-      } else if (swapchainExtent.width >
+        swapChainExtent.width = swapchain->surface_caps.minImageExtent.width;
+      } else if (swapChainExtent.width >
                  swapchain->surface_caps.maxImageExtent.width) {
-        swapchainExtent.width = swapchain->surface_caps.maxImageExtent.width;
+        swapChainExtent.width = swapchain->surface_caps.maxImageExtent.width;
       }
 
-      if (swapchainExtent.height <
+      if (swapChainExtent.height <
           swapchain->surface_caps.minImageExtent.height) {
-        swapchainExtent.height = swapchain->surface_caps.minImageExtent.height;
-      } else if (swapchainExtent.height >
+        swapChainExtent.height = swapchain->surface_caps.minImageExtent.height;
+      } else if (swapChainExtent.height >
                  swapchain->surface_caps.maxImageExtent.height) {
-        swapchainExtent.height = swapchain->surface_caps.maxImageExtent.height;
+        swapChainExtent.height = swapchain->surface_caps.maxImageExtent.height;
       }
     } else {
-      swapchainExtent = swapchain->surface_caps.currentExtent;
+      swapChainExtent = swapchain->surface_caps.currentExtent;
       os_window->app_data.iResolution[0] =
           static_cast<int>(swapchain->surface_caps.currentExtent.width);
       os_window->app_data.iResolution[1] =
@@ -634,12 +637,13 @@ vk_error VulkanUtils::get_swapchain(VkInstance /* vk */,
     spdlog::error(
         "Error: too large resolution, currentExtent width, height: {}, {}; "
         "iResolution.xy: {}, {}; maxExtent width, height: {}, {}",
-        (unsigned long)swapchain->surface_caps.currentExtent.width,
-        (unsigned long)swapchain->surface_caps.currentExtent.height,
-        (unsigned long)os_window->app_data.iResolution[0],
-        (unsigned long)os_window->app_data.iResolution[1],
-        (unsigned long)format_properties.maxExtent.width,
-        (unsigned long)format_properties.maxExtent.height);
+        static_cast<unsigned long>(swapchain->surface_caps.currentExtent.width),
+        static_cast<unsigned long>(
+            swapchain->surface_caps.currentExtent.height),
+        static_cast<unsigned long>(os_window->app_data.iResolution[0]),
+        static_cast<unsigned long>(os_window->app_data.iResolution[1]),
+        static_cast<unsigned long>(format_properties.maxExtent.width),
+        static_cast<unsigned long>(format_properties.maxExtent.height));
     os_window->app_data.iResolution[0] =
         static_cast<int>(swapchain->surface_caps.currentExtent.width);
     os_window->app_data.iResolution[1] =
@@ -652,9 +656,9 @@ vk_error VulkanUtils::get_swapchain(VkInstance /* vk */,
         swapchain->surface_caps.currentExtent.height)
       os_window->app_data.iResolution[1] =
           static_cast<int>(format_properties.maxExtent.height);
-    swapchainExtent.width =
+    swapChainExtent.width =
         static_cast<uint32_t>(os_window->app_data.iResolution[0]);
-    swapchainExtent.height =
+    swapChainExtent.height =
         static_cast<uint32_t>(os_window->app_data.iResolution[1]);
   }
 
@@ -666,30 +670,30 @@ vk_error VulkanUtils::get_swapchain(VkInstance /* vk */,
     os_window->is_minimized = false;
   }
 
-  VkSwapchainCreateInfoKHR swapchain_info{};
-  swapchain_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-  swapchain_info.pNext = nullptr;
-  swapchain_info.flags =
+  VkSwapchainCreateInfoKHR swapChain_info{};
+  swapChain_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+  swapChain_info.pNext = nullptr;
+  swapChain_info.flags =
       0;  // bug
           // https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/4274
-  swapchain_info.surface = swapchain->surface;
-  swapchain_info.minImageCount = image_count;
-  swapchain_info.imageFormat = swapchain->surface_format.format;
-  swapchain_info.imageColorSpace = swapchain->surface_format.colorSpace;
-  swapchain_info.imageExtent.width = swapchainExtent.width;
-  swapchain_info.imageExtent.height = swapchainExtent.height;
-  swapchain_info.imageArrayLayers = 1;
-  swapchain_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-  swapchain_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-  swapchain_info.preTransform = swapchain->surface_caps.currentTransform;
-  swapchain_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-  swapchain_info.presentMode = *present_mode;
-  swapchain_info.clipped = true;
-  swapchain_info.oldSwapchain = oldSwapchain;
+  swapChain_info.surface = swapchain->surface;
+  swapChain_info.minImageCount = image_count;
+  swapChain_info.imageFormat = swapchain->surface_format.format;
+  swapChain_info.imageColorSpace = swapchain->surface_format.colorSpace;
+  swapChain_info.imageExtent.width = swapChainExtent.width;
+  swapChain_info.imageExtent.height = swapChainExtent.height;
+  swapChain_info.imageArrayLayers = 1;
+  swapChain_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+  swapChain_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  swapChain_info.preTransform = swapchain->surface_caps.currentTransform;
+  swapChain_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+  swapChain_info.presentMode = *present_mode;
+  swapChain_info.clipped = true;
+  swapChain_info.oldSwapchain = oldSwapchain;
 
   if (swapchain->surface_caps.supportedUsageFlags &
       VK_IMAGE_USAGE_TRANSFER_SRC_BIT) {
-    swapchain_info.imageUsage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    swapChain_info.imageUsage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
   }
 
   uint32_t* presentable_queues = nullptr;
@@ -702,7 +706,7 @@ vk_error VulkanUtils::get_swapchain(VkInstance /* vk */,
     return retval;
   free(presentable_queues);
 
-  res = d.vkCreateSwapchainKHR(dev->device, &swapchain_info, nullptr,
+  res = d.vkCreateSwapchainKHR(dev->device, &swapChain_info, nullptr,
                                &swapchain->swapchain);
   vk_error_set_vkresult(&retval, res);
 
@@ -737,7 +741,7 @@ VkImage* VulkanUtils::get_swapchain_images(struct vk_device* dev,
     return nullptr;
   }
 
-  auto* images = (VkImage*)malloc(image_count * sizeof(VkImage*));
+  auto* images = static_cast<VkImage*>(malloc(image_count * sizeof(VkImage*)));
   if (images == nullptr) {
     spdlog::error("Out of memory");
     return nullptr;
@@ -925,7 +929,7 @@ vk_error VulkanUtils::create_images(vk_physical_device* phy_dev,
 vk_error VulkanUtils::create_buffers(vk_physical_device* phy_dev,
                                      vk_device* dev,
                                      vk_buffer* buffers,
-                                     uint32_t buffer_count) {
+                                     const uint32_t buffer_count) {
   uint32_t successful = 0;
   auto retval = VK_ERROR_NONE;
 
@@ -934,7 +938,7 @@ vk_error VulkanUtils::create_buffers(vk_physical_device* phy_dev,
     buffers[i].buffer_mem = nullptr;
     buffers[i].view = nullptr;
 
-    bool shared = buffers[i].sharing_queue_count > 1;
+    const bool shared = buffers[i].sharing_queue_count > 1;
 
     VkBufferCreateInfo buffer_info{};
     buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -955,7 +959,7 @@ vk_error VulkanUtils::create_buffers(vk_physical_device* phy_dev,
 
     VkMemoryRequirements mem_req{};
     d.vkGetBufferMemoryRequirements(dev->device, buffers[i].buffer, &mem_req);
-    uint32_t mem_index = find_suitable_memory(
+    const uint32_t mem_index = find_suitable_memory(
         phy_dev, dev, &mem_req,
         buffers[i].host_visible ? VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                                       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
@@ -1008,9 +1012,9 @@ vk_error VulkanUtils::create_buffers(vk_physical_device* phy_dev,
 
 vk_error VulkanUtils::load_shaders(struct vk_device* dev,
                                    struct vk_shader* shaders,
-                                   uint32_t shader_count) {
+                                   const uint32_t shader_count) {
   uint32_t successful = 0;
-  vk_error retval = VK_ERROR_NONE;
+  auto retval = VK_ERROR_NONE;
   vk_error err;
 
   for (uint32_t i = 0; i < shader_count; ++i) {
@@ -1154,7 +1158,7 @@ vk_error VulkanUtils::make_graphics_layouts(vk_device* dev,
 
   for (uint32_t i = 0; i < layout_count; ++i) {
     vk_layout* layout = &layouts[i];
-    auto* resources = layout->resources;
+    const auto* resources = layout->resources;
 
     layout->set_layout = nullptr;
     layout->pipeline_layout = nullptr;
@@ -1178,7 +1182,7 @@ vk_error VulkanUtils::make_graphics_layouts(vk_device* dev,
         continue;
       tidx = 0;
       if (w_img_pattern) {
-        for (int tj = 0; tj < j; tj++)
+        for (uint32_t tj = 0; tj < j; tj++)
           tidx += img_pattern[tj];
       }
       set_layout_bindings[binding_count] = {};
