@@ -16,6 +16,9 @@
 
 #include "waypp/seat/seat.h"
 
+#include <sstream>
+#include <string>
+
 #include "logging/logging.h"
 
 /**
@@ -155,8 +158,7 @@ std::optional<Pointer*> Seat::get_pointer() const {
 }
 
 void Seat::event_mask_print() const {
-  const std::string out;
-  std::stringstream ss(out);
+  std::stringstream ss;
   ss << "Seat Event Mask";
   if (event_mask_.pointer.enabled)
     ss << "\n\tpointer [enabled]";
