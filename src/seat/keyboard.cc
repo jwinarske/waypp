@@ -118,31 +118,54 @@ void Keyboard::handle_keymap(void* data,
   obj->format_ = static_cast<wl_keyboard_keymap_format>(format);
 
   if (obj->format_ == WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
-    char* keymap_string;
     /// From version 7 onwards, the fd must be mapped with MAP_PRIVATE by the
     /// recipient, as MAP_SHARED may fail.
-    if (wl_keyboard_get_version(wl_keyboard) >= 7) {
-      keymap_string = static_cast<char*>(
-          mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0));
-    } else {
-      keymap_string =
-          static_cast<char*>(mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0));
+    constexpr int prot = PROT_READ;
+    const int flags =
+        (wl_keyboard_get_version(wl_keyboard) >= 7) ? MAP_PRIVATE : MAP_SHARED;
+    const auto keymap_string =
+        static_cast<char*>(mmap(nullptr, size, prot, flags, fd, 0));
+
+    if (keymap_string == MAP_FAILED) {
+      LOG_ERROR("[Keyboard] mmap of keymap fd failed ({}): {} — "
+                "keymap and key state unchanged",
+                errno, std::strerror(errno));
+      close(fd);
+      return;
     }
-    xkb_keymap_unref(obj->xkb_keymap_);
-    obj->xkb_keymap_ = xkb_keymap_new_from_string(
+
+    xkb_keymap* new_keymap = xkb_keymap_new_from_string(
         obj->xkb_context_, keymap_string, XKB_KEYMAP_FORMAT_TEXT_V1,
         XKB_KEYMAP_COMPILE_NO_FLAGS);
     munmap(keymap_string, size);
-    close(fd);
+
+    if (!new_keymap) {
+      LOG_ERROR("[Keyboard] xkb_keymap_new_from_string failed — "
+                "keymap and key state unchanged");
+      close(fd);
+      return;
+    }
+
+    // Replace the keymap first, then rebuild state from the new keymap.
+    xkb_keymap_unref(obj->xkb_keymap_);
+    obj->xkb_keymap_ = new_keymap;
+
+    xkb_state* new_state = xkb_state_new(obj->xkb_keymap_);
+    if (!new_state) {
+      LOG_ERROR("[Keyboard] xkb_state_new failed — key state cleared");
+    }
     xkb_state_unref(obj->xkb_state_);
-    obj->xkb_state_ = xkb_state_new(obj->xkb_keymap_);
+    obj->xkb_state_ = new_state;  // maybe nullptr; handle_key guards this
   } else {
     LOG_WARN("Usage without libxkbcommon is currently not supported.");
   }
 
+  // Notify observers before closing the fd so they can mmap it themselves
+  // if needed (the Wayland protocol transfers fd ownership to the client).
   for (const auto& observer : obj->observers_) {
     observer->notify_keyboard_keymap(obj, wl_keyboard, format, fd, size);
   }
+  close(fd);
 }
 
 void Keyboard::handle_enter(void* data,
