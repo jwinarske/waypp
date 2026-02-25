@@ -31,7 +31,9 @@ Buffer::Buffer(wl_shm* wl_shm)
     : width_(0), height_(0), busy_(false), wl_shm_(wl_shm) {}
 
 Buffer::~Buffer() {
-  munmap(shm_data_, static_cast<size_t>(size_));
+  if (shm_data_ != nullptr && shm_data_ != MAP_FAILED) {
+    munmap(shm_data_, static_cast<size_t>(size_));
+  }
 
   if (buffer_) {
     DLOG_TRACE("[Buffer] wl_buffer_destroy(buffer_)");
@@ -75,8 +77,19 @@ int Buffer::create_shm_buffer(int width, int height, uint32_t format) {
   }
 
   const auto wl_shm_pool = wl_shm_create_pool(wl_shm_, fd, size_);
+  if (!wl_shm_pool) {
+    LOG_ERROR("failed to create Wayland SHM pool");
+    close(fd);
+    return -1;
+  }
   buffer_ =
       wl_shm_pool_create_buffer(wl_shm_pool, 0, width, height, pitch, format_);
+  if (!buffer_) {
+    LOG_ERROR("failed to create Wayland SHM buffer");
+    wl_shm_pool_destroy(wl_shm_pool);
+    close(fd);
+    return -1;
+  }
   DLOG_TRACE("[Buffer] wl_shm_pool_destroy(wl_shm_pool)");
   wl_shm_pool_destroy(wl_shm_pool);
   close(fd);

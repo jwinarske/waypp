@@ -566,7 +566,12 @@ void Registrar::handle_interface_compositor(Registrar* r,
   r->wl_compositor_ = static_cast<wl_compositor*>(
       wl_registry_bind(registry, name, &wl_compositor_interface,
                        std::min(kWlCompositorMinVersion, version)));
-  LOG_DEBUG("{}: {}", interface, wl_compositor_get_version(r->wl_compositor_));
+  if (r->wl_compositor_) {
+    LOG_DEBUG("{}: {}", interface,
+              wl_compositor_get_version(r->wl_compositor_));
+  } else {
+    LOG_ERROR("failed to bind wl_compositor");
+  }
 }
 
 void Registrar::handle_interface_subcompositor(Registrar* r,
@@ -577,8 +582,12 @@ void Registrar::handle_interface_subcompositor(Registrar* r,
   r->wl_subcompositor_ = static_cast<wl_subcompositor*>(
       wl_registry_bind(registry, name, &wl_subcompositor_interface,
                        std::min(kWlSubcompositorMinVersion, version)));
-  LOG_DEBUG("{}: {}", interface,
-            wl_subcompositor_get_version(r->wl_subcompositor_));
+  if (r->wl_subcompositor_) {
+    LOG_DEBUG("{}: {}", interface,
+              wl_subcompositor_get_version(r->wl_subcompositor_));
+  } else {
+    LOG_ERROR("failed to bind wl_subcompositor");
+  }
 }
 
 void Registrar::handle_interface_shm(Registrar* r,
@@ -588,8 +597,12 @@ void Registrar::handle_interface_shm(Registrar* r,
                                      const uint32_t version) {
   r->wl_shm_ = static_cast<wl_shm*>(wl_registry_bind(
       registry, name, &wl_shm_interface, std::min(kWlShmMinVersion, version)));
-  wl_shm_add_listener(r->wl_shm_, &shm_listener_, r);
-  LOG_DEBUG("{}: {}", interface, wl_shm_get_version(r->wl_shm_));
+  if (r->wl_shm_) {
+    wl_shm_add_listener(r->wl_shm_, &shm_listener_, r);
+    LOG_DEBUG("{}: {}", interface, wl_shm_get_version(r->wl_shm_));
+  } else {
+    LOG_ERROR("failed to bind wl_shm");
+  }
 }
 
 void Registrar::handle_interface_seat(Registrar* r,
@@ -600,10 +613,14 @@ void Registrar::handle_interface_seat(Registrar* r,
   auto wl_seat = static_cast<struct wl_seat*>(
       wl_registry_bind(registry, name, &wl_seat_interface,
                        std::min(kWlSeatMinVersion, version)));
-  if (!r->seats_.count(wl_seat)) {
-    r->seats_[wl_seat] = std::make_unique<Seat>(
-        wl_seat, r->get_shm(), r->get_compositor(), r->disable_cursor_);
-    LOG_DEBUG("{}: {}", interface, wl_seat_get_version(wl_seat));
+  if (wl_seat) {
+    if (!r->seats_.count(wl_seat)) {
+      r->seats_[wl_seat] = std::make_unique<Seat>(
+          wl_seat, r->get_shm(), r->get_compositor(), r->disable_cursor_);
+      LOG_DEBUG("{}: {}", interface, wl_seat_get_version(wl_seat));
+    }
+  } else {
+    LOG_ERROR("failed to bind wl_seat");
   }
 }
 
@@ -615,10 +632,14 @@ void Registrar::handle_interface_output(Registrar* r,
   auto wl_output = static_cast<struct wl_output*>(
       wl_registry_bind(registry, name, &wl_output_interface,
                        std::min(kWlOutputMinVersion, version)));
-  if (!r->outputs_.count(wl_output)) {
-    r->outputs_[wl_output] =
-        std::make_unique<Output>(wl_output, r->zxdg_output_manager_v1_);
-    LOG_DEBUG("{}: {}", interface, wl_output_get_version(wl_output));
+  if (wl_output) {
+    if (!r->outputs_.count(wl_output)) {
+      r->outputs_[wl_output] =
+          std::make_unique<Output>(wl_output, r->zxdg_output_manager_v1_);
+      LOG_DEBUG("{}: {}", interface, wl_output_get_version(wl_output));
+    }
+  } else {
+    LOG_ERROR("failed to bind wl_output");
   }
 }
 

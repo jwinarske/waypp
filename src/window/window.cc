@@ -53,19 +53,23 @@ Window::Window(std::shared_ptr<WindowManager> wm,
       }),
       needs_buffer_geometry_update_(false) {
   wl_surface_ = wl_compositor_create_surface(wm_->get_compositor());
+  if (!wl_surface_) {
+    throw std::runtime_error("failed to create Wayland surface");
+  }
   wl_surface_add_listener(wl_surface_, &surface_listener_, this);
 
   if (buffer_count) {
     if (!wm_->shm_has_format(static_cast<wl_shm_format>(buffer_format))) {
-      LOG_CRITICAL("{} is not supported.",
-                   WindowManager::shm_format_to_text(
-                       static_cast<wl_shm_format>(buffer_format)));
-      abort();
+      throw std::runtime_error(std::string("SHM format not supported: ") +
+                               WindowManager::shm_format_to_text(
+                                   static_cast<wl_shm_format>(buffer_format)));
     }
     buffers_.reserve(static_cast<unsigned long>(buffer_count));
     for (int i = 0; i < buffer_count_; i++) {
       auto buffer = std::make_unique<Buffer>(wm_->get_shm());
-      buffer->create_shm_buffer(width, height, buffer_format_);
+      if (buffer->create_shm_buffer(width, height, buffer_format_) < 0) {
+        throw std::runtime_error("failed to create SHM buffer");
+      }
       buffers_.push_back(std::move(buffer));
     }
   }
@@ -88,6 +92,9 @@ Window::Window(std::shared_ptr<WindowManager> wm,
   if (wm_->get_viewporter()) {
 #if HAS_WAYLAND_PROTOCOL_VIEWPORTER
     viewport_ = wp_viewporter_get_viewport(wm_->get_viewporter(), wl_surface_);
+    if (!viewport_) {
+      LOG_WARN("failed to get Wayland viewport");
+    }
 #endif
   }
 
@@ -95,8 +102,12 @@ Window::Window(std::shared_ptr<WindowManager> wm,
   if (wm_->get_fractional_scale_manager()) {
     fractional_scale_ = wp_fractional_scale_manager_v1_get_fractional_scale(
         wm_->get_fractional_scale_manager(), wl_surface_);
-    wp_fractional_scale_v1_add_listener(fractional_scale_,
-                                        &fractional_scale_listener_, this);
+    if (fractional_scale_) {
+      wp_fractional_scale_v1_add_listener(fractional_scale_,
+                                          &fractional_scale_listener_, this);
+    } else {
+      LOG_WARN("failed to get Wayland fractional scale");
+    }
   }
 #endif
 
@@ -104,14 +115,18 @@ Window::Window(std::shared_ptr<WindowManager> wm,
   if (wm_->get_tearing_control_manager()) {
     tearing_control_ = wp_tearing_control_manager_v1_get_tearing_control(
         wm_->get_tearing_control_manager(), wl_surface_);
-    if (tearing) {
-      DLOG_DEBUG("[Surface] Set Presentation Hint: ASYNC");
-      wp_tearing_control_v1_set_presentation_hint(
-          tearing_control_, WP_TEARING_CONTROL_V1_PRESENTATION_HINT_ASYNC);
+    if (tearing_control_) {
+      if (tearing) {
+        DLOG_DEBUG("[Surface] Set Presentation Hint: ASYNC");
+        wp_tearing_control_v1_set_presentation_hint(
+            tearing_control_, WP_TEARING_CONTROL_V1_PRESENTATION_HINT_ASYNC);
+      } else {
+        DLOG_DEBUG("[Surface] Set Presentation Hint: VSYNC");
+        wp_tearing_control_v1_set_presentation_hint(
+            tearing_control_, WP_TEARING_CONTROL_V1_PRESENTATION_HINT_VSYNC);
+      }
     } else {
-      DLOG_DEBUG("[Surface] Set Presentation Hint: VSYNC");
-      wp_tearing_control_v1_set_presentation_hint(
-          tearing_control_, WP_TEARING_CONTROL_V1_PRESENTATION_HINT_VSYNC);
+      LOG_WARN("failed to get Wayland tearing control");
     }
   }
 #else
