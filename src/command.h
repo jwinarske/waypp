@@ -40,9 +40,9 @@ class Command {
    * an underscore, a hyphen, a forward slash, or a period.
    *
    * @param c The character to check.
-   * @return Non-zero value if the character is safe, zero otherwise.
+   * @return true if the character is safe, false otherwise.
    */
-  static int is_safe_char(char c);
+  static bool is_safe_char(char c);
 
   /**
    * @brief Sanitizes a command string by removing unsafe characters.
