@@ -58,7 +58,70 @@ int Buffer::create_shm_buffer(int width, int height, uint32_t format) {
   height_ = height;
   format_ = format;
 
-  const auto pitch = width * 4;
+  // Compute bytes-per-pixel from the wl_shm_format.
+  // Only formats explicitly handled here are accepted; any unknown format
+  // returns an error rather than silently using a wrong stride.
+  int bpp;
+  switch (static_cast<wl_shm_format>(format)) {
+    // 32-bit formats
+    case WL_SHM_FORMAT_ARGB8888:
+    case WL_SHM_FORMAT_XRGB8888:
+    case WL_SHM_FORMAT_ABGR8888:
+    case WL_SHM_FORMAT_XBGR8888:
+    case WL_SHM_FORMAT_RGBA8888:
+    case WL_SHM_FORMAT_RGBX8888:
+    case WL_SHM_FORMAT_BGRA8888:
+    case WL_SHM_FORMAT_BGRX8888:
+    case WL_SHM_FORMAT_ARGB2101010:
+    case WL_SHM_FORMAT_XRGB2101010:
+    case WL_SHM_FORMAT_ABGR2101010:
+    case WL_SHM_FORMAT_XBGR2101010:
+    case WL_SHM_FORMAT_RGBA1010102:
+    case WL_SHM_FORMAT_RGBX1010102:
+    case WL_SHM_FORMAT_BGRA1010102:
+    case WL_SHM_FORMAT_BGRX1010102:
+      bpp = 4;
+      break;
+    // 24-bit formats
+    case WL_SHM_FORMAT_RGB888:
+    case WL_SHM_FORMAT_BGR888:
+      bpp = 3;
+      break;
+    // 16-bit formats
+    case WL_SHM_FORMAT_RGB565:
+    case WL_SHM_FORMAT_BGR565:
+    case WL_SHM_FORMAT_ARGB1555:
+    case WL_SHM_FORMAT_XRGB1555:
+    case WL_SHM_FORMAT_RGBA5551:
+    case WL_SHM_FORMAT_RGBX5551:
+    case WL_SHM_FORMAT_BGRA5551:
+    case WL_SHM_FORMAT_BGRX5551:
+    case WL_SHM_FORMAT_ARGB4444:
+    case WL_SHM_FORMAT_XRGB4444:
+    case WL_SHM_FORMAT_RGBA4444:
+    case WL_SHM_FORMAT_RGBX4444:
+    case WL_SHM_FORMAT_BGRA4444:
+    case WL_SHM_FORMAT_BGRX4444:
+    case WL_SHM_FORMAT_YUYV:
+    case WL_SHM_FORMAT_YVYU:
+    case WL_SHM_FORMAT_UYVY:
+    case WL_SHM_FORMAT_VYUY:
+    case WL_SHM_FORMAT_AYUV:
+      bpp = 2;
+      break;
+    // 8-bit formats
+    case WL_SHM_FORMAT_C8:
+    case WL_SHM_FORMAT_RGB332:
+    case WL_SHM_FORMAT_BGR233:
+      bpp = 1;
+      break;
+    default:
+      LOG_ERROR("[Buffer] unsupported wl_shm_format 0x{:08X} — "
+                "cannot compute stride; buffer not created", format);
+      return -1;
+  }
+
+  const int pitch = width * bpp;
   size_ = pitch * height;
 
   const auto fd = AnonymousFile::create(size_);

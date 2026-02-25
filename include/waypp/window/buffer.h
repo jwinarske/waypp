@@ -31,6 +31,8 @@ class Buffer {
 
   [[nodiscard]] uint32_t get_format() const { return format_; }
 
+  [[nodiscard]] int get_size() const { return size_; }
+
   int create_shm_buffer(int width, int height, uint32_t format);
 
   [[nodiscard]] bool is_busy() const { return busy_; }

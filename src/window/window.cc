@@ -487,8 +487,7 @@ Buffer* Window::next_buffer() const {
 
     /* paint the padding */
     memset(buffer->get_shm_data(), 0xff,
-           static_cast<size_t>(extents_.window.width) *
-               static_cast<size_t>(extents_.window.height) * 4);
+           static_cast<size_t>(buffer->get_size()));
   }
 
   return buffer;
