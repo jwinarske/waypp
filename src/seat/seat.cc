@@ -221,9 +221,9 @@ void Seat::set_event_mask(const char* ignore_events) {
         keyboard_->set_event_mask(event_mask_.keyboard);
       }
     } else if (event.rfind("touch", 0) == 0) {
-      event_mask_.touch.all = true;
+      event_mask_.touch.enabled = true;
       if (event == "touch") {
-        event_mask_.touch.enabled = true;
+        event_mask_.touch.all = true;
       }
       if (touch_) {
         touch_->set_event_mask(event_mask_.touch);
