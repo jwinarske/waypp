@@ -23,6 +23,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include <atomic>
 #include <csignal>
 #include <random>
 #include <stdexcept>
@@ -46,7 +47,7 @@ struct Configuration {
 
 static constexpr int kResizeMargin = 12;
 
-static volatile bool gRunning = true;
+static std::atomic<bool> gRunning{true};
 
 static std::vector<std::string> gCursors = Pointer::get_available_cursors();
 
@@ -63,7 +64,7 @@ static std::vector<std::string> gCursors = Pointer::get_available_cursors();
  */
 void handle_signal(const int signal) {
   if (signal == SIGINT) {
-    gRunning = false;
+    gRunning.store(false, std::memory_order_relaxed);
   }
 }
 
@@ -368,7 +369,7 @@ int main(const int argc, char** argv) {
         .tearing = result["tearing"].as<bool>(),
     });
 
-    while (gRunning && app.run()) {
+    while (gRunning.load(std::memory_order_acquire) && app.run()) {
     }
   } catch (const std::runtime_error& e) {
     spdlog::critical("Fatal error: {}", e.what());

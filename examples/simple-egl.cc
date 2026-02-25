@@ -22,6 +22,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include <atomic>
 #include <csignal>
 #include <stdexcept>
 
@@ -34,9 +35,13 @@
 
 #include "logging/logging.h"
 
-static volatile bool running = true;
+static std::atomic<bool> running{true};
 
-volatile bool scene_initialized = false;
+/// One-shot flag: set to true after the GL scene is initialised on the first
+/// draw_frame call. std::atomic ensures visibility across any scheduling
+/// boundary without UB, even though draw_frame is always called from the
+/// same thread.
+static std::atomic<bool> scene_initialized{false};
 
 static constexpr int kResizeMargin = 12;
 
@@ -98,7 +103,7 @@ Seat* seat_{};
  */
 void handle_signal(const int signal) {
   if (signal == SIGINT) {
-    running = false;
+    running.store(false, std::memory_order_relaxed);
   }
 }
 
@@ -294,9 +299,9 @@ static void draw_triangle(Window* window, EGLint buffer_age) {
 static void draw_frame(void* userdata, uint32_t /* time */) {
   const auto window = static_cast<Window*>(userdata);
 
-  if (!scene_initialized) {
+  if (!scene_initialized.load(std::memory_order_acquire)) {
     initialize_scene(window);
-    scene_initialized = true;
+    scene_initialized.store(true, std::memory_order_release);
   }
 
   GLfloat angle;
@@ -622,7 +627,7 @@ int main(const int argc, char** argv) {
 
     toplevel_->start_frame_callbacks();
 
-    while (running && toplevel_->is_valid() && wm->display_dispatch() != -1) {
+    while (running.load(std::memory_order_acquire) && toplevel_->is_valid() && wm->display_dispatch() != -1) {
     }
 
     toplevel_.reset();
