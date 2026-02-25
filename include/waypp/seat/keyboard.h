@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <list>
 #include <mutex>
@@ -71,7 +72,7 @@ class Keyboard {
     bool all;
   };
 
-  explicit Keyboard(wl_keyboard* keyboard, event_mask& event_mask);
+  explicit Keyboard(wl_keyboard* keyboard, const event_mask& event_mask);
 
   ~Keyboard();
 
@@ -122,6 +123,14 @@ class Keyboard {
     uint32_t code;
     sigevent sev;
     struct sigaction sa;
+    /// Self-pipe: the signal handler writes one byte; GLib IO watch reads it on
+    /// the main thread and dispatches the observer notification safely.
+    int pipe_read_fd{-1};
+    int pipe_write_fd{-1};
+    /// Set by the signal handler (async-signal-safe); cleared by the IO watch.
+    std::atomic<bool> pending{false};
+    /// GLib IO source that watches the read end of the pipe.
+    GSource* io_source{nullptr};
     struct {
       struct wl_keyboard* wl_keyboard;
       uint32_t serial;
@@ -134,12 +143,22 @@ class Keyboard {
   } repeat_{};
 
   /**
-   * @brief Handles the repeated key events for the Keyboard.
+   * @brief Minimal async-signal-safe signal handler for key-repeat timer.
    *
-   * This function is called by the kernel.
-   *
+   * Only writes one byte to the self-pipe and sets the atomic pending flag.
+   * All C++ observer notification is done on the main thread by
+   * repeat_dispatch_cb(), which is called by the GLib IO watch.
    */
   static void repeat_xkb_v1_key_callback(int, siginfo_t* si, void*);
+
+  /**
+   * @brief GLib IO watch callback – runs on the main event-loop thread.
+   *
+   * Drains the self-pipe and dispatches observer notifications safely.
+   */
+  static gboolean repeat_dispatch_cb(GIOChannel* channel,
+                                     GIOCondition condition,
+                                     gpointer user_data);
 
   /**
    * keyboard mapping
@@ -168,7 +187,7 @@ class Keyboard {
    *
    * The compositor must send the wl_keyboard.modifiers event after
    * this event.
-   * @param serial serial number of the enter event
+   * @param serial serial number of the entrance event
    * @param surface surface gaining keyboard focus
    * @param keys the currently pressed keys
    */
@@ -184,11 +203,11 @@ class Keyboard {
    * Notification that this seat's keyboard focus is no longer on a
    * certain surface.
    *
-   * The leave notification is sent before the enter notification for
+   * The leave notification is sent before the entrance notification for
    * the new focus.
    *
-   * After this event client must assume that all keys, including
-   * modifiers, are lifted and also it must stop key repeating if
+   * After this event a client must assume that all keys, including
+   * modifiers, are lifted, and also it must stop key repeating if
    * there's some going on.
    * @param serial serial number of the leave event
    * @param surface surface that lost keyboard focus
@@ -243,10 +262,10 @@ class Keyboard {
   /**
    * repeat rate and delay
    *
-   * Informs the client about the keyboard's repeat rate and delay.
+   * Inform the client about the keyboard's repeat rate and delay.
    *
    * This event is sent as soon as the wl_keyboard object has been
-   * created, and is guaranteed to be received by the client before
+   * created and is guaranteed to be received by the client before
    * any key press event.
    *
    * Negative values for either rate or delay are illegal. A rate of
