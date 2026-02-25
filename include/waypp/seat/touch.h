@@ -62,7 +62,7 @@ class Touch {
     bool all;
   };
 
-  explicit Touch(wl_touch* wl_touch, event_mask& event_mask);
+  explicit Touch(wl_touch* touch_device, const event_mask& event_mask);
 
   ~Touch();
 
@@ -84,7 +84,7 @@ class Touch {
   Touch& operator=(const Touch&) = delete;
 
  private:
-  struct wl_touch* touch_;
+  struct wl_touch* wl_touch_;
   std::vector<TouchObserver*> observers_{};
 
   event_mask event_mask_{};

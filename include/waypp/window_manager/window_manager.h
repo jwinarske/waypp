@@ -45,14 +45,12 @@ class WindowManager : public Registrar {
 
   ~WindowManager();
 
-  [[nodiscard]] wl_display* get_display() const { return wl_display_; }
-
   [[nodiscard]] int poll_events(int timeout) const;
 
   [[maybe_unused]] [[nodiscard]] int dispatch(int timeout) const;
 
   [[nodiscard]] int dispatch_pending() const {
-    return wl_display_dispatch_pending(wl_display_);
+    return wl_display_dispatch_pending(get_display());
   }
 
   [[nodiscard]] int display_dispatch() const;
@@ -80,7 +78,6 @@ class WindowManager : public Registrar {
   WindowManager& operator=(const WindowManager&) = delete;
 
  private:
-  wl_display* wl_display_;
   GMainContext* context_;
 
   std::vector<WindowManagerObserver*> observers_{};
