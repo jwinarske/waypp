@@ -32,8 +32,8 @@
 
 #include "logging/logging.h"
 
-#include "window/xdg_toplevel.h"
-#include "window_manager/agl_shell.h"
+#include "waypp/window/xdg_toplevel.h"
+#include "waypp/window_manager/agl_shell.h"
 
 struct Configuration {
   int width;
