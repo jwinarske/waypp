@@ -23,6 +23,7 @@
  */
 
 #include <csignal>
+#include <stdexcept>
 
 #include <GLES2/gl2.h>
 #include <linux/input.h>
@@ -199,7 +200,7 @@ struct weston_matrix {
  */
 
 void weston_matrix_init(weston_matrix* matrix) {
-  static const weston_matrix identity = {
+  static constexpr weston_matrix identity = {
       .d = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1},
       .type = 0,
   };
@@ -543,8 +544,8 @@ int main(const int argc, char** argv) {
 
   auto display = wl_display_connect(nullptr);
   if (!display) {
-    spdlog::critical("Unable to connect to Wayland socket.");
-    exit(EXIT_FAILURE);
+    spdlog::critical("Unable to connect to Wayland display socket.");
+    return EXIT_FAILURE;
   }
 
   std::signal(SIGINT, handle_signal);
@@ -564,7 +565,6 @@ int main(const int argc, char** argv) {
             ("v,vertical-bar", "Draw a moving vertical bar instead of a triangle")
             ("i,interval", "Set eglSwapInterval to interval", cxxopts::value<int>()->default_value("1"))
             ("b,non-blocking", "Don't sync to compositor redraw (eglSwapInterval 0)");
-
   // clang-format on
   const auto result = options.parse(argc, argv);
 
@@ -597,35 +597,42 @@ int main(const int argc, char** argv) {
     kLocalEglConfigAttribs[9] = 0;
   }
 
-  auto wm = std::make_shared<XdgWindowManager>(display);
-  const auto observer = std::make_unique<Observer>();
-  if (wm->get_seat().has_value()) {
-    seat_ = wm->get_seat().value();
-    seat_->register_observer(observer.get());
+  try {
+    auto wm = std::make_shared<XdgWindowManager>(display);
+    const auto observer = std::make_unique<Observer>();
+    if (wm->get_seat().has_value()) {
+      seat_ = wm->get_seat().value();
+      seat_->register_observer(observer.get());
+    }
+
+    Egl::config egl_config{};
+    egl_config.context_attribs_size = kLocalEglContextAttribs.size();
+    egl_config.context_attribs = kLocalEglContextAttribs.data();
+    egl_config.config_attribs_size = kLocalEglConfigAttribs.size();
+    egl_config.config_attribs = kLocalEglConfigAttribs.data();
+    egl_config.buffer_bpp = config.buffer_bpp;
+    egl_config.swap_interval = config.interval;
+    egl_config.type = Egl::OPENGL_ES_API;
+
+    toplevel_ = wm->create_top_level(
+        "simple-egl", "org.freedesktop.gitlab.jwinarske.waypp.simple_egl",
+        config.width, config.height, kResizeMargin, 0, 0, config.fullscreen,
+        config.maximized, config.fullscreen_ratio, config.tearing, draw_frame,
+        &egl_config);
+
+    toplevel_->start_frame_callbacks();
+
+    while (running && toplevel_->is_valid() && wm->display_dispatch() != -1) {
+    }
+
+    toplevel_.reset();
+    wm.reset();
+  } catch (const std::runtime_error& e) {
+    spdlog::critical("Fatal error: {}", e.what());
+    wl_display_flush(display);
+    wl_display_disconnect(display);
+    return EXIT_FAILURE;
   }
-
-  Egl::config egl_config{};
-  egl_config.context_attribs_size = kLocalEglContextAttribs.size();
-  egl_config.context_attribs = kLocalEglContextAttribs.data();
-  egl_config.config_attribs_size = kLocalEglConfigAttribs.size();
-  egl_config.config_attribs = kLocalEglConfigAttribs.data();
-  egl_config.buffer_bpp = config.buffer_bpp;
-  egl_config.swap_interval = config.interval;
-  egl_config.type = Egl::OPENGL_ES_API;
-
-  toplevel_ = wm->create_top_level(
-      "simple-egl", "org.freedesktop.gitlab.jwinarske.waypp.simple_egl",
-      config.width, config.height, kResizeMargin, 0, 0, config.fullscreen,
-      config.maximized, config.fullscreen_ratio, config.tearing, draw_frame,
-      &egl_config);
-
-  toplevel_->start_frame_callbacks();
-
-  while (running && toplevel_->is_valid() && wm->display_dispatch() != -1) {
-  }
-
-  toplevel_.reset();
-  wm.reset();
 
   wl_display_flush(display);
   wl_display_disconnect(display);

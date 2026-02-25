@@ -16,6 +16,8 @@
 
 #include "waypp/window_manager/xdg_window_manager.h"
 
+#include <stdexcept>
+
 #include "logging/logging.h"
 #include "waypp/window/xdg_toplevel.h"
 
@@ -41,8 +43,8 @@ XdgWindowManager::XdgWindowManager(wl_display* display,
   DLOG_TRACE("++XdgWindowManager::XdgWindowManager()");
   xdg_wm_base_ = get_xdg_wm_base();
   if (!xdg_wm_base_) {
-    LOG_CRITICAL("XDG Window Manager is not supported.");
-    exit(EXIT_FAILURE);
+    throw std::runtime_error(
+        "XDG Window Manager (xdg_wm_base) is not supported by the compositor");
   }
 
   xdg_wm_base_add_listener(xdg_wm_base_, &xdg_wm_base_listener_, this);

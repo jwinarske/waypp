@@ -25,6 +25,7 @@
 
 #include <csignal>
 #include <random>
+#include <stdexcept>
 
 #include <cxxopts.hpp>
 
@@ -143,8 +144,7 @@ class App final : public PointerObserver,
       : logging_(std::make_unique<Logging>()), gen_(rd_()) {
     display_ = wl_display_connect(nullptr);
     if (!display_) {
-      spdlog::critical("Unable to connect to Wayland socket.");
-      exit(EXIT_FAILURE);
+      throw std::runtime_error("Unable to connect to Wayland display socket");
     }
 
     agl_shell_ = std::make_shared<AglShell>(display_, config.disable_cursor);
@@ -355,21 +355,25 @@ int main(const int argc, char** argv) {
             ("m,maximized", "Run in maximized mode")
             ("r,fullscreen-ratio", "Use fixed width/height ratio when run in fullscreen mode")
             ("t,tearing", "Enable tearing via the tearing_control protocol");
-
   // clang-format on
   const auto result = options.parse(argc, argv);
 
-  const App app({
-      .width = result["width"].as<int>(),
-      .height = result["height"].as<int>(),
-      .disable_cursor = result["disable-cursor"].as<bool>(),
-      .fullscreen = result["fullscreen"].as<bool>(),
-      .maximized = result["maximized"].as<bool>(),
-      .fullscreen_ratio = result["fullscreen-ratio"].as<bool>(),
-      .tearing = result["tearing"].as<bool>(),
-  });
+  try {
+    const App app({
+        .width = result["width"].as<int>(),
+        .height = result["height"].as<int>(),
+        .disable_cursor = result["disable-cursor"].as<bool>(),
+        .fullscreen = result["fullscreen"].as<bool>(),
+        .maximized = result["maximized"].as<bool>(),
+        .fullscreen_ratio = result["fullscreen-ratio"].as<bool>(),
+        .tearing = result["tearing"].as<bool>(),
+    });
 
-  while (gRunning && app.run()) {
+    while (gRunning && app.run()) {
+    }
+  } catch (const std::runtime_error& e) {
+    spdlog::critical("Fatal error: {}", e.what());
+    return EXIT_FAILURE;
   }
 
   return EXIT_SUCCESS;

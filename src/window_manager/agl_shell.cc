@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <list>
+#include <stdexcept>
 
 #include "logging/logging.h"
 #include "waypp/window_manager/registrar.h"
@@ -44,8 +45,9 @@ AglShell::AglShell(struct wl_display* display,
       bound_ok_(false) {
   agl_shell_ = get_agl_shell();
   if (!agl_shell_) {
-    LOG_CRITICAL("{} is required.", agl_shell_interface.name);
-    exit(EXIT_FAILURE);
+    throw std::runtime_error(
+        std::string(agl_shell_interface.name) +
+        " protocol is required but not advertised by the compositor");
   }
 
   agl_shell_add_listener(agl_shell_, &agl_shell_listener_, this);
@@ -57,8 +59,9 @@ AglShell::AglShell(struct wl_display* display,
       continue;
   }
   if (!bound_ok_) {
-    LOG_CRITICAL("agl_shell extension already in use by other shell client.");
-    exit(EXIT_FAILURE);
+    throw std::runtime_error(
+        "agl_shell binding failed: extension already in use by another shell "
+        "client");
   }
 }
 
