@@ -2,7 +2,9 @@
 # cxxopts
 #
 if (NOT TARGET cxxopts)
-    add_subdirectory(cxxopts-3.2.1)
+    add_library(cxxopts INTERFACE)
+    target_compile_options(cxxopts INTERFACE -isystem${CMAKE_CURRENT_SOURCE_DIR}/cxxopts-3.2.1/include)
+    add_library(cxxopts::cxxopts ALIAS cxxopts)
 endif ()
 
 #
