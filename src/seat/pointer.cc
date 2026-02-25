@@ -51,11 +51,6 @@ Pointer::Pointer(wl_pointer* pointer,
   LOG_DEBUG("Pointer");
   wl_pointer_add_listener(pointer, &pointer_listener_, this);
   wl_surface_cursor_ = wl_compositor_create_surface(wl_compositor);
-
-  event_mask_.enabled = event_mask.enabled;
-  event_mask_.axis = event_mask.axis;
-  event_mask_.buttons = event_mask.buttons;
-  event_mask_.motion = event_mask.motion;
 }
 
 /**
