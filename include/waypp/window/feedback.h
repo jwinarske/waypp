@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <waypp/waypp.h>
 
 #include <time.h>
@@ -46,7 +47,7 @@ class Feedback {
   ~Feedback();
 
  private:
-  static unsigned sequence_;
+  static std::atomic<unsigned> sequence_;
 
   wp_presentation* wp_presentation_;
   clockid_t clock_id_ = -1;

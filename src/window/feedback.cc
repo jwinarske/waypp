@@ -5,7 +5,7 @@
 
 #include "logging/logging.h"
 
-unsigned Feedback::sequence_ = 0;
+std::atomic<unsigned> Feedback::sequence_{0};
 
 Feedback::Feedback(wp_presentation* wp_presentation,
                    const clockid_t clock_id,
@@ -17,7 +17,7 @@ Feedback::Feedback(wp_presentation* wp_presentation,
       observer_(observer) {
   clock_gettime(clock_id_, &committed_);
   frame_stamp_ = time;
-  frame_no_ = ++sequence_;
+  frame_no_ = sequence_.fetch_add(1u, std::memory_order_relaxed) + 1u;
 
   feedback_ = wp_presentation_feedback(wp_presentation, wl_surface);
   wp_presentation_feedback_add_listener(feedback_, &listener_, this);
