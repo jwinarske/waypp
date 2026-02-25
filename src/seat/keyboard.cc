@@ -71,10 +71,9 @@ Keyboard::Keyboard(wl_keyboard* keyboard, const event_mask& event_mask)
  */
 Keyboard::~Keyboard() {
   // Remove the GLib IO watch first, so no callback fires after destruction.
-  if (repeat_.io_source) {
-    g_source_destroy(repeat_.io_source);
-    g_source_unref(repeat_.io_source);
-    repeat_.io_source = nullptr;
+  if (repeat_.io_watch_id) {
+    g_source_remove(repeat_.io_watch_id);
+    repeat_.io_watch_id = 0;
   }
 
   if (repeat_.timer) {
@@ -230,7 +229,7 @@ void Keyboard::handle_key(void* data,
         xkb_state_key_get_syms(obj->xkb_state_, xkb_scancode, &key_syms);
 
     if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
-      if (key_repeats) {
+      if (key_repeats && !obj->repeat_setup_failed_) {
         // start/restart timer
         itimerspec in{};
         in.it_value.tv_nsec = obj->repeat_.delay * 1000000;
@@ -250,7 +249,8 @@ void Keyboard::handle_key(void* data,
       }
 
     } else if (state == WL_KEYBOARD_KEY_STATE_RELEASED) {
-      if (obj->repeat_.notify.xkb_scancode == xkb_scancode) {
+      if (!obj->repeat_setup_failed_ &&
+          obj->repeat_.notify.xkb_scancode == xkb_scancode) {
         // stop timer
         itimerspec its{};
         timer_settime(obj->repeat_.timer, 0, &its, nullptr);
@@ -314,8 +314,10 @@ void Keyboard::handle_repeat_info(void* data,
       const auto res =
           timer_create(CLOCK_REALTIME, &obj->repeat_.sev, &obj->repeat_.timer);
       if (res != 0) {
-        LOG_CRITICAL("Error timer_create: {}", std::strerror(errno));
-        abort();
+        LOG_ERROR("[Keyboard] timer_create failed ({}): {} — key-repeat disabled",
+                  errno, std::strerror(errno));
+        obj->repeat_setup_failed_ = true;
+        return;
       }
 
       /// Setup signal action – handler is minimal and async-signal-safe.
@@ -323,8 +325,13 @@ void Keyboard::handle_repeat_info(void* data,
       obj->repeat_.sa.sa_sigaction = repeat_xkb_v1_key_callback;
       sigemptyset(&obj->repeat_.sa.sa_mask);
       if (sigaction(SIGRTMIN, &obj->repeat_.sa, nullptr) == -1) {
-        LOG_CRITICAL("Error sigaction: {}", std::strerror(errno));
-        abort();
+        LOG_ERROR("[Keyboard] sigaction failed ({}): {} — key-repeat disabled",
+                  errno, std::strerror(errno));
+        // The timer was created successfully; destroy it before marking invalid.
+        timer_delete(obj->repeat_.timer);
+        obj->repeat_.timer = {};
+        obj->repeat_setup_failed_ = true;
+        return;
       }
 
       /// Attach a GLib IO watch on the read end of the self-pipe.
@@ -336,13 +343,11 @@ void Keyboard::handle_repeat_info(void* data,
         // Raw binary I/O – do not interpret the single-byte token.
         g_io_channel_set_encoding(channel, nullptr, nullptr);
         g_io_channel_set_buffered(channel, FALSE);
-        obj->repeat_.io_source =
-            g_io_create_watch(channel, G_IO_IN);
-        g_source_set_callback(obj->repeat_.io_source,
-                              reinterpret_cast<GSourceFunc>(repeat_dispatch_cb),
-                              data, nullptr);
-        g_source_attach(obj->repeat_.io_source,
-                        g_main_context_default());
+        // g_io_add_watch_full accepts a GIOFunc directly (no cast needed) and
+        // returns a source ID that can be used for cleanup.
+        obj->repeat_.io_watch_id = g_io_add_watch_full(
+            channel, G_PRIORITY_DEFAULT, G_IO_IN,
+            repeat_dispatch_cb, data, nullptr);
         g_io_channel_unref(channel);
       } else {
         LOG_ERROR("[Keyboard] self-pipe not available; key-repeat will not work");
@@ -387,7 +392,7 @@ void Keyboard::repeat_xkb_v1_key_callback(int /* sig */,
   // Write one byte token.  O_NONBLOCK ensures this never blocks in a signal
   // handler.  EINTR / EAGAIN are silently ignored; if the pipe is full the
   // pending flag is still set and the existing byte will be drained.
-  const char token = 1;
+  constexpr char token = 1;
   (void)write(obj->repeat_.pipe_write_fd, &token, 1);
 }
 

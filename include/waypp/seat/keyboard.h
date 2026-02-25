@@ -97,6 +97,16 @@ class Keyboard {
 
   [[nodiscard]] int32_t get_repeat_rate() const { return repeat_.rate; }
 
+  /**
+   * @brief Returns false if the POSIX repeat timer or sigaction setup failed.
+   *
+   * When false, key-repeat is unavailable, but all other keyboard events
+   * (enter, leave, key, modifiers) continue to function normally.
+   * The Keyboard object remains valid and usable; only auto-repeat is
+   * disabled.
+   */
+  [[nodiscard]] bool is_repeat_valid() const { return !repeat_setup_failed_; }
+
   void set_event_mask(const event_mask& event_mask);
 
   // Disallow copy and assign.
@@ -116,6 +126,11 @@ class Keyboard {
 
   event_mask event_mask_{};
 
+  /// Set to true when timer_create or sigaction fails in handle_repeat_info.
+  /// Key repeat is disabled for the lifetime of this object; all other
+  /// keyboard events continue to function normally.
+  bool repeat_setup_failed_{false};
+
   struct {
     int32_t rate;
     int32_t delay;
@@ -129,8 +144,8 @@ class Keyboard {
     int pipe_write_fd{-1};
     /// Set by the signal handler (async-signal-safe); cleared by the IO watch.
     std::atomic<bool> pending{false};
-    /// GLib IO source that watches the read end of the pipe.
-    GSource* io_source{nullptr};
+    /// GLib IO watch source ID returned by g_io_add_watch_full (0 = not set).
+    guint io_watch_id{0};
     struct {
       struct wl_keyboard* wl_keyboard;
       uint32_t serial;
