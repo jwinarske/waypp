@@ -210,9 +210,6 @@ void Keyboard::handle_leave(void* data,
     return;
   }
 
-  if (obj->event_mask_.enabled && obj->event_mask_.all) {
-    return;
-  }
 
   DLOG_TRACE("[Keyboard] handle_leave");
 
