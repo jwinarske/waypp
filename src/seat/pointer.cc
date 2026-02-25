@@ -372,9 +372,11 @@ void Pointer::set_cursor(uint32_t serial,
                          const char* cursor_name,
                          const char* theme_name) {
   if (disable_cursor_) {
-    wl_pointer_set_cursor(wl_pointer_, serial, wl_surface_cursor_, 0, 0);
-    wl_surface_damage(wl_surface_cursor_, 0, 0, 0, 0);
-    wl_surface_commit(wl_surface_cursor_);
+    // Per the Wayland protocol, passing NULL as the surface to
+    // wl_pointer_set_cursor hides the cursor. Committing a zero-damage surface
+    // (the previous approach) is protocol-incorrect and may cause compositor
+    // warnings or undefined cursor behavior.
+    wl_pointer_set_cursor(wl_pointer_, serial, nullptr, 0, 0);
     return;
   }
 
