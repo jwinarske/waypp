@@ -93,6 +93,4 @@ class WindowManager : public Registrar {
 
   int32_t buffer_scale_ = 1;
   double fractional_buffer_scale_ = 1.0;
-
-  struct wl_display* get_display(const char* name);
 };

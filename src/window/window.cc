@@ -355,7 +355,7 @@ void Window::handle_frame_callback(void* data,
   }
 
   if (obj->frame_callback_) {
-    obj->frame_callback_(data, time);
+    obj->frame_callback_(obj->user_data_ ? obj->user_data_ : data, time);
   }
 
   if (obj->wl_surface_) {
