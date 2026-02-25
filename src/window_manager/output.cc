@@ -101,7 +101,7 @@ void Output::handle_scale(void* data, wl_output* wl_output, int32_t factor) {
     return;
   }
   obj->output_.factor = factor;
-  LOG_TRACE("++Output::handle_scale()");
+  LOG_TRACE("--Output::handle_scale()");
 }
 
 void Output::handle_done(void* data, wl_output* wl_output) {
@@ -111,7 +111,7 @@ void Output::handle_done(void* data, wl_output* wl_output) {
     return;
   }
 
-  auto output = obj->output_;
+  auto& output = obj->output_;
 
   output.done = true;
   LOG_TRACE("--Output::handle_done()");
