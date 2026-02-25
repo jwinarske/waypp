@@ -119,7 +119,6 @@ Egl::Egl(wl_display* display,
   if (!wl_egl_window_) {
     throw std::runtime_error("failed to create Wayland EGL window");
   }
-  eglMakeCurrent(dpy_, egl_surface_, egl_surface_, context_);
   egl_surface_ = eglCreateWindowSurface(
       dpy_, config_, reinterpret_cast<EGLNativeWindowType>(wl_egl_window_),
       nullptr);
