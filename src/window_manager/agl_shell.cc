@@ -91,19 +91,22 @@ void AglShell::activate_app(const std::string& app_id) {
   if (it != pending_app_list_.end()) {
     DLOG_DEBUG("[AGL] pending: {}", app_id);
 
-    wl_output = find_output_by_name(it->second);
+    // Save the output name before erasing — erase() invalidates the iterator.
+    const std::string output_name = it->second;
+    pending_app_list_.erase(it);
+
+    wl_output = find_output_by_name(output_name);
     if (!wl_output) {
       // try with remoting-remote-X which is the streaming
-      wl_output = find_output_by_name("remoting-" + it->second);
+      wl_output = find_output_by_name("remoting-" + output_name);
       if (!wl_output) {
         DLOG_DEBUG("[AGL] Not activating app_id {} at all", app_id);
         return;
       }
     }
-    pending_app_list_.erase(it);
+    DLOG_DEBUG("[AGL] Activating app_id {} on output {}", app_id, output_name);
   }
 
-  DLOG_DEBUG("[AGL] Activating app_id {} on output {}", app_id, it->second);
   agl_shell_activate_app(agl_shell_, app_id.c_str(), wl_output);
   wl_display_flush(get_display());
 }
