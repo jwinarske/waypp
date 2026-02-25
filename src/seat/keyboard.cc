@@ -304,6 +304,8 @@ void Keyboard::handle_modifiers(void* data,
   DLOG_TRACE("[Keyboard] handle_modifiers");
 
   if (obj->format_ == WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
+    if (!obj->xkb_state_)
+      return;
     xkb_state_update_mask(obj->xkb_state_, mods_depressed, mods_latched,
                           mods_locked, 0, 0, group);
   }
