@@ -16,8 +16,9 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
-#include <list>
+#include <vector>
 
 #include <wayland-client.h>
 
@@ -70,7 +71,9 @@ class Touch {
   }
 
   void unregister_observer(TouchObserver* observer) {
-    observers_.remove(observer);
+    observers_.erase(
+        std::remove(observers_.begin(), observers_.end(), observer),
+        observers_.end());
   }
 
   void set_event_mask(event_mask& event_mask);
@@ -82,7 +85,7 @@ class Touch {
 
  private:
   struct wl_touch* touch_;
-  std::list<TouchObserver*> observers_{};
+  std::vector<TouchObserver*> observers_{};
 
   event_mask event_mask_{};
 

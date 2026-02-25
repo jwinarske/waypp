@@ -16,6 +16,9 @@
 
 #pragma once
 
+#include <algorithm>
+#include <vector>
+
 #include <EGL/egl.h>
 
 #include "registrar.h"
@@ -61,7 +64,9 @@ class WindowManager : public Registrar {
   }
 
   void unregister_task_observer(WindowManagerObserver* observer) {
-    observers_.remove(observer);
+    observers_.erase(
+        std::remove(observers_.begin(), observers_.end(), observer),
+        observers_.end());
   }
 
   [[nodiscard]] wl_output* get_primary_output() const;
@@ -78,7 +83,7 @@ class WindowManager : public Registrar {
   wl_display* wl_display_;
   GMainContext* context_;
 
-  std::list<WindowManagerObserver*> observers_{};
+  std::vector<WindowManagerObserver*> observers_{};
 
   struct {
     int width;

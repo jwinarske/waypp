@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <list>
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -107,7 +107,9 @@ class Pointer {
   }
 
   void unregister_observer(PointerObserver* observer) {
-    observers_.remove(observer);
+    observers_.erase(
+        std::remove(observers_.begin(), observers_.end(), observer),
+        observers_.end());
   }
 
   void set_user_data(void* user_data) { user_data_ = user_data; }
@@ -136,7 +138,7 @@ class Pointer {
 
  private:
   struct wl_pointer* wl_pointer_;
-  std::list<PointerObserver*> observers_{};
+  std::vector<PointerObserver*> observers_{};
   struct wl_surface* wl_surface_cursor_;
   struct wl_cursor_theme* theme_{};
   wl_shm* wl_shm_;

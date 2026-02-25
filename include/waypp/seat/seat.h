@@ -16,9 +16,11 @@
 
 #pragma once
 
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include <wayland-client.h>
 
@@ -72,7 +74,9 @@ class Seat {
   }
 
   void unregister_observer(SeatObserver* observer) {
-    observers_.remove(observer);
+    observers_.erase(
+        std::remove(observers_.begin(), observers_.end(), observer),
+        observers_.end());
   }
 
   [[nodiscard]] void* get_user_data() const { return user_data_; }
@@ -104,7 +108,7 @@ class Seat {
   void* user_data_{};
   event_mask event_mask_{};
 
-  std::list<SeatObserver*> observers_{};
+  std::vector<SeatObserver*> observers_{};
 
   std::unique_ptr<Keyboard> keyboard_;
   std::unique_ptr<Pointer> pointer_;

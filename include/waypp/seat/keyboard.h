@@ -16,10 +16,10 @@
 
 #pragma once
 
+#include <algorithm>
 #include <atomic>
 #include <cstdint>
-#include <list>
-#include <mutex>
+#include <vector>
 
 #include <glib-2.0/glib.h>
 #include <wayland-client-protocol.h>
@@ -86,7 +86,9 @@ class Keyboard {
   }
 
   void unregister_observer(KeyboardObserver* observer) {
-    observers_.remove(observer);
+    observers_.erase(
+        std::remove(observers_.begin(), observers_.end(), observer),
+        observers_.end());
   }
 
   void set_user_data(void* user_data) { user_data_ = user_data; }
@@ -121,7 +123,7 @@ class Keyboard {
   xkb_keymap* xkb_keymap_{};
   xkb_state* xkb_state_{};
   wl_keyboard_keymap_format format_{};
-  std::list<KeyboardObserver*> observers_{};
+  std::vector<KeyboardObserver*> observers_{};
   void* user_data_{};
 
   event_mask event_mask_{};
