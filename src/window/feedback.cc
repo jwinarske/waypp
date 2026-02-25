@@ -70,6 +70,10 @@ void Feedback::handle_presented(
         seq_hi, seq_lo, flags, f->committed_, f->presented_, f->frame_stamp_,
         f->frame_no_);
   }
+
+  if (f->on_done_) {
+    f->on_done_(f);
+  }
 }
 
 void Feedback::handle_discarded(
@@ -82,5 +86,9 @@ void Feedback::handle_discarded(
 
   if (f->observer_) {
     f->observer_->notify_feedback_discarded(f, wp_presentation_feedback);
+  }
+
+  if (f->on_done_) {
+    f->on_done_(f);
   }
 }

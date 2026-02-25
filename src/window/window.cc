@@ -16,6 +16,7 @@
 
 #include "waypp/window/window.h"
 
+#include <algorithm>
 #include <wayland-egl.h>
 
 #include "logging/logging.h"
@@ -30,7 +31,7 @@ Window::Window(std::shared_ptr<WindowManager> wm,
                const bool fullscreen,
                const bool maximized,
                const bool fullscreen_ratio,
-               bool tearing,
+               const bool tearing,
                Egl::config* egl_config)
     : wm_(std::move(wm)),
       outputs_(wm_->get_outputs()),
@@ -370,6 +371,20 @@ void Window::handle_frame_callback(void* data,
       auto feedback = std::make_unique<Feedback>(
           obj->presentation_.wp_presentation, obj->presentation_.clock_id,
           obj->wl_surface_, time);
+
+      // Register a completion hook so the entry is removed from feedback_list
+      // when the compositor sends presented or discarded, preventing unbounded
+      // growth of the list for long-running sessions (LOW-8).
+      Feedback* raw = feedback.get();
+      raw->set_on_done([obj](Feedback* done) {
+        auto& list = obj->presentation_.feedback_list;
+        list.erase(std::remove_if(list.begin(), list.end(),
+                                  [done](const std::unique_ptr<Feedback>& p) {
+                                    return p.get() == done;
+                                  }),
+                   list.end());
+      });
+
       obj->presentation_.feedback_list.push_back(std::move(feedback));
       //            window_create_feedback(window, time);
       //            window_commit_next(window);
