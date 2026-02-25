@@ -118,8 +118,13 @@ void draw_frame(void* data, const uint32_t time) {
 
   const auto buffer = window->next_buffer();
   if (!buffer) {
-    spdlog::error("Failed to acquire a buffer");
-    exit(EXIT_FAILURE);
+    spdlog::error("[draw_frame] Failed to acquire a buffer — stopping render loop");
+    // Do not call exit(): we are inside a wl_surface_frame callback.
+    // Halt the frame-callback chain and signal the run loop to exit cleanly.
+    window->stop_frame_callbacks();
+    window->close();
+    gRunning.store(false, std::memory_order_relaxed);
+    return;
   }
 
   paint_pixels(buffer->get_shm_data(), 20, window->get_width(),
