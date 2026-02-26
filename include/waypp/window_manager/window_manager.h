@@ -78,19 +78,7 @@ class WindowManager : public Registrar {
   WindowManager& operator=(const WindowManager&) = delete;
 
  private:
-  GMainContext* context_;
-
   std::vector<WindowManagerObserver*> observers_{};
 
-  struct {
-    int width;
-    int height;
-  } buffer_size_{};
-
   const std::map<wl_output*, std::unique_ptr<Output>>& outputs_;
-
-  wl_output_transform buffer_transform_{};
-
-  int32_t buffer_scale_ = 1;
-  double fractional_buffer_scale_ = 1.0;
 };

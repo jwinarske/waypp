@@ -34,8 +34,6 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 ShaderToy::ShaderToy() = default;
 
-ShaderToy::~ShaderToy() = default;
-
 int ShaderToy::init(const int width,
                     const int height,
                     wl_display* wl_display,
@@ -254,7 +252,7 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
         .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
         .shader = VK_NULL_HANDLE,
     };
-    char txt[OFFSCREEN_BUFFERS][255] = {0};
+    char txt[OFFSCREEN_BUFFERS][255] = {{0}};
     for (uint32_t i = 0; i < OFFSCREEN_BUFFERS * 2; i += 2) {
       render_data->shaders[i + 2] = (struct vk_shader){
           .spirv_file = "shaders/spv/buf.vert.spv",
@@ -321,7 +319,7 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
 #endif
   render_data->main_gbuffers = static_cast<vk_graphics_buffers*>(
       malloc(essentials->image_count * sizeof *render_data->main_gbuffers));
-  for (uint32_t i = 0; i < essentials->image_count; ++i)
+  for (uint32_t i = 0; i < essentials->image_count; ++i) {
     render_data->main_gbuffers[i] = (struct vk_graphics_buffers){
         .surface_size = init_size,
         .swapchain_image = essentials->images[i],
@@ -329,6 +327,7 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
         .depth = {},
         .framebuffer = VK_NULL_HANDLE,
     };
+  }
 
 #ifdef NO_RESIZE_BUF
   if (!load_once) {
@@ -914,7 +913,7 @@ void ShaderToy::update_push_constants_window_size(app_os_window* os_window) {
       static_cast<float>(os_window->app_data.iResolution[1]);
 }
 
-#define sign(x) ((x > 0) ? 1 : ((x < 0) ? -1 : 0))
+#define sign(x) (((x) > 0) ? 1 : (((x) < 0) ? -1 : 0))
 
 void ShaderToy::update_push_constants_local_size(const float width,
                                                  const float height) {

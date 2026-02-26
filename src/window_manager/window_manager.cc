@@ -46,8 +46,9 @@ WindowManager::WindowManager(wl_display* display,
                 ext_interface_count,
                 ext_interface_data,
                 disable_cursor),
-      context_(context),
       outputs_(get_outputs()) {
+  (void)
+      context;  // parameter kept for API compatibility; GMainContext is unused
   DLOG_TRACE("++WindowManager::WindowManager()");
   DLOG_TRACE("--WindowManager::WindowManager()");
 }

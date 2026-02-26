@@ -37,7 +37,7 @@ class VulkanRender {
  public:
   VulkanRender();
 
-  ~VulkanRender();
+  ~VulkanRender() = default;
 
   static int get_essentials(vk_render_essentials* essentials,
                             vk_physical_device* phy_dev,

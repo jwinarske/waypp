@@ -37,8 +37,6 @@ class VulkanUtils;
 
 VulkanRender::VulkanRender() = default;
 
-VulkanRender::~VulkanRender() = default;
-
 int VulkanRender::get_essentials(vk_render_essentials* essentials,
                                  vk_physical_device* phy_dev,
                                  vk_device* dev,

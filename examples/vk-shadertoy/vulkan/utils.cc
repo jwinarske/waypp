@@ -40,8 +40,6 @@
 
 VulkanUtils::VulkanUtils() = default;
 
-VulkanUtils::~VulkanUtils() = default;
-
 void VulkanUtils::exit(VkInstance vk) {
   d.vkDestroyInstance(vk, nullptr);
 }

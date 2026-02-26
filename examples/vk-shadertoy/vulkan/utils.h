@@ -43,7 +43,7 @@ class VulkanUtils {
 
   VulkanUtils();
 
-  ~VulkanUtils();
+  ~VulkanUtils() = default;
 
   static void exit(VkInstance vk);
 
@@ -232,7 +232,7 @@ class VulkanUtils {
 
   static void free_offscreen_buffers(vk_device* dev,
                                      vk_offscreen_buffers* offscreen_buffers,
-                                     uint32_t offscreen_buffer_count,
+                                     uint32_t graphics_buffer_count,
                                      VkRenderPass render_pass);
 
   static void get_local_time(my_time_struct* my_time);

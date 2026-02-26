@@ -37,7 +37,7 @@ class ShaderToy : public VulkanUtils, public VulkanRender {
  public:
   ShaderToy();
 
-  ~ShaderToy();
+  ~ShaderToy() = default;
 
   int init(int width,
            int height,
