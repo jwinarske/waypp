@@ -98,6 +98,27 @@ class Registrar {
 
 #endif
 
+#if HAS_WAYLAND_PROTOCOL_XDG_DECORATION_UNSTABLE_V1
+
+  /// Returns the per-display decoration manager used to negotiate CSD vs SSD
+  /// for each toplevel window. Per-window decoration objects are created by
+  /// CsdFrame via zxdg_decoration_manager_v1_get_toplevel_decoration().
+  [[nodiscard]] zxdg_decoration_manager_v1* get_xdg_decoration_manager() const {
+    return zxdg_decoration_manager_v1_;
+  }
+
+#endif
+
+#if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
+
+  /// Returns the cursor-shape manager for compositors that support
+  /// wp_cursor_shape_manager_v1 (preferred over wl_cursor_theme).
+  [[nodiscard]] wp_cursor_shape_manager_v1* get_cursor_shape_manager() const {
+    return wp_cursor_shape_manager_;
+  }
+
+#endif
+
 #endif
 
 #if ENABLE_AGL_SHELL_CLIENT
@@ -234,8 +255,8 @@ class Registrar {
 #if ENABLE_XDG_CLIENT
   xdg_wm_base* xdg_wm_base_{};
 #if HAS_WAYLAND_PROTOCOL_XDG_DECORATION_UNSTABLE_V1
+  // Per-display singleton — used to create per-window decoration objects.
   zxdg_decoration_manager_v1* zxdg_decoration_manager_v1_{};
-  zxdg_toplevel_decoration_v1* zxdg_toplevel_decoration_v1_{};
 #endif
 #if HAS_WAYLAND_PROTOCOL_XDG_OUTPUT_UNSTABLE_V1
   zxdg_output_manager_v1* zxdg_output_manager_v1_{};
@@ -243,6 +264,10 @@ class Registrar {
 #if HAS_WAYLAND_PROTOCOL_XDG_ACTIVATION_V1
   struct xdg_activation_v1* xdg_activation_v1_{};
 #endif
+#endif
+
+#if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
+  wp_cursor_shape_manager_v1* wp_cursor_shape_manager_{};
 #endif
 
 #if ENABLE_AGL_SHELL_CLIENT
@@ -351,12 +376,6 @@ class Registrar {
                                                uint32_t name,
                                                const char* interface,
                                                uint32_t version);
-
-  static void handle_interface_zxdg_toplevel_decoration(Registrar* r,
-                                                        wl_registry* registry,
-                                                        uint32_t name,
-                                                        const char* interface,
-                                                        uint32_t version);
 
 #endif
 #if HAS_WAYLAND_PROTOCOL_XDG_ACTIVATION_V1
@@ -486,6 +505,16 @@ class Registrar {
       uint32_t name,
       const char* interface,
       uint32_t version);
+
+#endif
+
+#if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
+
+  static void handle_interface_cursor_shape_manager(Registrar* r,
+                                                    wl_registry* registry,
+                                                    uint32_t name,
+                                                    const char* interface,
+                                                    uint32_t version);
 
 #endif
 };

@@ -72,11 +72,15 @@ void Seat::handle_capabilities(void* data, wl_seat* seat, uint32_t caps) {
 
   if (caps & WL_SEAT_CAPABILITY_POINTER && !obj->pointer_) {
     if (!obj->event_mask_.pointer.all) {
-      auto wl_pointer = wl_seat_get_pointer(seat);
-      if (wl_pointer) {
+      if (auto wl_pointer = wl_seat_get_pointer(seat)) {
         obj->pointer_ = std::make_unique<Pointer>(
             wl_pointer, obj->wl_compositor_, obj->wl_shm_, obj->disable_cursor_,
             obj->event_mask_.pointer);
+#if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
+        if (obj->cursor_shape_manager_) {
+          obj->pointer_->set_cursor_shape_manager(obj->cursor_shape_manager_);
+        }
+#endif
       } else {
         LOG_ERROR("failed to get Wayland pointer");
       }
@@ -87,8 +91,7 @@ void Seat::handle_capabilities(void* data, wl_seat* seat, uint32_t caps) {
 
   if ((caps & WL_SEAT_CAPABILITY_KEYBOARD) && !obj->keyboard_) {
     if (!obj->event_mask_.keyboard.all) {
-      auto wl_keyboard = wl_seat_get_keyboard(seat);
-      if (wl_keyboard) {
+      if (auto wl_keyboard = wl_seat_get_keyboard(seat)) {
         obj->keyboard_ =
             std::make_unique<Keyboard>(wl_keyboard, obj->event_mask_.keyboard);
       } else {
@@ -101,8 +104,7 @@ void Seat::handle_capabilities(void* data, wl_seat* seat, uint32_t caps) {
 
   if ((caps & WL_SEAT_CAPABILITY_TOUCH) && !obj->touch_) {
     if (!obj->event_mask_.touch.all) {
-      auto wl_touch = wl_seat_get_touch(seat);
-      if (wl_touch) {
+      if (auto wl_touch = wl_seat_get_touch(seat)) {
         obj->touch_ = std::make_unique<Touch>(wl_touch, obj->event_mask_.touch);
       } else {
         LOG_ERROR("failed to get Wayland touch");
@@ -112,7 +114,7 @@ void Seat::handle_capabilities(void* data, wl_seat* seat, uint32_t caps) {
     obj->touch_.reset();
   }
 
-  for (auto observer : obj->observers_) {
+  for (const auto observer : obj->observers_) {
     observer->notify_seat_capabilities(obj, seat, caps);
   }
 }
@@ -138,7 +140,7 @@ void Seat::handle_name(void* data, wl_seat* seat, const char* name) {
 
   obj->name_ = name;
 
-  for (auto observer : obj->observers_) {
+  for (const auto observer : obj->observers_) {
     observer->notify_seat_name(obj, seat, name);
   }
 }
@@ -156,6 +158,17 @@ std::optional<Pointer*> Seat::get_pointer() const {
   }
   return {};
 }
+
+#if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
+void Seat::set_cursor_shape_manager(wp_cursor_shape_manager_v1* manager) {
+  cursor_shape_manager_ = manager;
+  // If the Pointer is already constructed (capabilities arrived before the
+  // manager was registered), forward immediately.
+  if (pointer_ && manager) {
+    pointer_->set_cursor_shape_manager(manager);
+  }
+}
+#endif
 
 void Seat::event_mask_print() const {
   std::stringstream ss;
@@ -183,7 +196,7 @@ void Seat::event_mask_print() const {
 }
 
 void Seat::set_event_mask(const char* ignore_events) {
-  std::string ignore_wayland_events(ignore_events);
+  const std::string ignore_wayland_events(ignore_events);
 
   std::string events;
   events.reserve(ignore_wayland_events.size());

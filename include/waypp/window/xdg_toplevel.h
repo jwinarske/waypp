@@ -23,6 +23,10 @@
 #include "waypp/window_manager/xdg_window_manager.h"
 #include "window.h"
 
+#if ENABLE_CSD
+#include "waypp/window/csd_frame.h"
+#endif
+
 class Output;
 
 class Window;
@@ -44,7 +48,8 @@ class XdgTopLevel : public Window {
               bool fullscreen_ratio,
               bool tearing,
               const std::function<void(void*, const uint32_t)>& frame_callback,
-              Egl::config* egl_config);
+              Egl::config* egl_config,
+              bool enable_csd = false);
 
   ~XdgTopLevel();
 
@@ -82,6 +87,15 @@ class XdgTopLevel : public Window {
 
   void resize(wl_seat* seat, uint32_t serial, uint32_t edges) const;
 
+  void move(wl_seat* seat, uint32_t serial) const {
+    xdg_toplevel_move(xdg_toplevel_, seat, serial);
+  }
+
+  /// Returns the underlying xdg_toplevel object.
+  /// Used by CsdFrame to create the per-window decoration object via
+  /// zxdg_decoration_manager_v1_get_toplevel_decoration().
+  [[nodiscard]] xdg_toplevel* get_xdg_toplevel() const { return xdg_toplevel_; }
+
   void set_surface_damage(const int x,
                           const int y,
                           const int width,
@@ -93,6 +107,12 @@ class XdgTopLevel : public Window {
       const std::pair<double, double>& xy) const;
 
   [[nodiscard]] bool is_resizing() const { return get_resizing(); }
+
+#if ENABLE_CSD
+  /// Returns the current decoration extents, or {0,0,0,0} when CSD is
+  /// disabled or the compositor chose server-side decorations.
+  [[nodiscard]] const CsdFrameExtents& csd_extents() const;
+#endif
 
   // Disallow copy and assign.
   XdgTopLevel(const XdgTopLevel&) = delete;
@@ -107,11 +127,15 @@ class XdgTopLevel : public Window {
   std::string title_;
   std::string app_id_;
 
-  bool prev_state_[6]{false};
+  bool prev_state_[13]{false};
   int resize_margin_;
 
   uint32_t configure_serial_{};
   volatile bool wait_for_configure_;
+
+#if ENABLE_CSD
+  std::unique_ptr<CsdFrame> csd_frame_;
+#endif
 
   static void handle_xdg_surface_configure(void* data,
                                            xdg_surface* xdg_surface,

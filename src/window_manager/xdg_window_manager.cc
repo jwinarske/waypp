@@ -97,10 +97,11 @@ std::shared_ptr<XdgTopLevel> XdgWindowManager::create_top_level(
     bool fullscreen_ratio,
     bool tearing,
     const std::function<void(void*, const uint32_t)>& frame_callback,
-    Egl::config* egl_config) {
+    Egl::config* egl_config,
+    bool enable_csd) {
   xdg_top_level_ = std::make_shared<XdgTopLevel>(
       shared_from_this(), title, app_id, width, height, resize_margin,
       buffer_count, buffer_format, fullscreen, maximized, fullscreen_ratio,
-      tearing, frame_callback, egl_config);
+      tearing, frame_callback, egl_config, enable_csd);
   return xdg_top_level_;
 }

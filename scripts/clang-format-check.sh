@@ -12,6 +12,9 @@ workdir="${2:-.}"
 file_list="clang-format-files"
 results_file="clang-format-results.txt"
 
+# Allow override via env; fall back to clang-format-18.
+CLANG_FORMAT="${CLANG_FORMAT:-clang-format-18}"
+
 print_results() {
   if [[ -f "$results_file" ]]; then
     cat "$results_file"
@@ -27,6 +30,6 @@ find "$name" -type d -name third_party -prune -false -o -name '*.cc' -o -name '*
 echo "Formatting files:"
 cat "$file_list"
 
-which clang-format-19
-clang-format-19 --version
-clang-format-19 -n --Werror --files="$file_list" 2> "$results_file"
+which "$CLANG_FORMAT"
+"$CLANG_FORMAT" --version
+"$CLANG_FORMAT" -n --Werror --files="$file_list" 2> "$results_file"

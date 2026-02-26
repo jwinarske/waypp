@@ -22,6 +22,8 @@
 
 #include <wayland-client.h>
 
+#include "waypp/waypp.h"
+
 class Pointer;
 
 class PointerObserver {
@@ -129,6 +131,14 @@ class Pointer {
 
   void set_event_mask(const event_mask& event_mask);
 
+#if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
+  /// Provide the cursor-shape manager so set_cursor() can use the
+  /// wp_cursor_shape_device_v1 protocol instead of wl_cursor_theme.
+  /// Called by Seat after the Pointer is constructed, when the manager
+  /// becomes available from the registry.
+  void set_cursor_shape_manager(wp_cursor_shape_manager_v1* manager);
+#endif
+
   [[nodiscard]] std::pair<double, double> get_xy() const { return {sx_, sy_}; }
 
   // Disallow copy and assign.
@@ -148,6 +158,10 @@ class Pointer {
 
   double sx_{};
   double sy_{};
+
+#if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
+  wp_cursor_shape_device_v1* cursor_shape_device_{};
+#endif
 
 #if ENABLE_XDG_CLIENT
   enum xdg_toplevel_resize_edge prev_resize_edge_ =

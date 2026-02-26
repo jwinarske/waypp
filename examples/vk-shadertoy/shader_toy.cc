@@ -309,13 +309,16 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
     }
 #endif
   }
-  struct VkExtent2D init_size{};
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-  init_size.width = resize_size_[0];
-  init_size.height = resize_size_[1];
+  struct VkExtent2D init_size = {
+      .width = resize_size_[0],
+      .height = resize_size_[1],
+  };
 #else
-  init_size.width = swapchain->surface_caps.currentExtent.width;
-  init_size.height = swapchain->surface_caps.currentExtent.height;
+  struct VkExtent2D init_size = {
+      .width = swapchain->surface_caps.currentExtent.width,
+      .height = swapchain->surface_caps.currentExtent.height,
+  };
 #endif
   render_data->main_gbuffers = static_cast<vk_graphics_buffers*>(
       malloc(essentials->image_count * sizeof *render_data->main_gbuffers));

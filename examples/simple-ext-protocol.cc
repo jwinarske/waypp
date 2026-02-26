@@ -115,7 +115,8 @@ void draw_frame(void* data, const uint32_t time) {
 
   const auto buffer = window->next_buffer();
   if (!buffer) {
-    spdlog::error("[draw_frame] Failed to acquire a buffer — stopping render loop");
+    spdlog::error(
+        "[draw_frame] Failed to acquire a buffer — stopping render loop");
     window->stop_frame_callbacks();
     window->close();
     running = false;

@@ -1,12 +1,22 @@
 name: clang-tidy
 
 on:
+  workflow_call:
+    inputs:
+      clang-version:
+        description: "The version of Clang/LLVM to use"
+        type: string
+        required: false
+        default: "18"
   pull_request:
     types: [ opened, synchronize, reopened, closed ]
 
 jobs:
   tidy:
     runs-on: ubuntu-24.04
+
+    env:
+      CLANG_VERSION: ${{ inputs.clang-version || '18' }}
 
     steps:
       - name: Checkout
@@ -17,54 +27,52 @@ jobs:
 
       - name: Install Packages
         run: |
-          echo ${{ github.server_url }}
           sudo apt-get -y update
           sudo apt-get -y install ninja-build \
-          libwayland-dev wayland-protocols libxkbcommon-dev libglib2.0-dev \
-          mesa-common-dev libegl1-mesa-dev libgles2-mesa-dev mesa-utils
-
-          wget http://security.ubuntu.com/ubuntu/pool/universe/n/ncurses/libtinfo5_6.3-2ubuntu0.1_amd64.deb
-          sudo apt install ./libtinfo5_6.3-2ubuntu0.1_amd64.deb
-          rm libtinfo5_6.3-2ubuntu0.1_amd64.deb
-
-          mkdir clang18 && cd clang18
-          curl -L -O https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.8/clang+llvm-18.1.8-x86_64-linux-gnu-ubuntu-18.04.tar.xz
-          tar -xJf clang+llvm-18.1.8-x86_64-linux-gnu-ubuntu-18.04.tar.xz --strip-components=1
-          bin/clang-tidy --version
-
+            libwayland-dev wayland-protocols libxkbcommon-dev libglib2.0-dev \
+            mesa-common-dev libegl1-mesa-dev libgles2-mesa-dev mesa-utils
           cmake --version
           gcc --version
 
+      - name: Install clang-tidy
+        run: |
+          # Disable man-db (massive speed-up!)
+          sudo apt-get remove --purge man-db -yq
+          # Install LLVM apt repo key
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
+            | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+          # Add LLVM apt repo — version resolved at job level via env.CLANG_VERSION
+          RELEASE_NAME=$(lsb_release -sc 2>/dev/null || echo "noble")
+          echo "deb http://apt.llvm.org/${RELEASE_NAME}/ llvm-toolchain-${RELEASE_NAME}-${CLANG_VERSION} main" \
+            | sudo tee /etc/apt/sources.list.d/llvm.list
+          sudo apt-get update -yq
+          sudo apt-get install -yq "clang-tidy-${CLANG_VERSION}"
+
       - name: Configure CMake
         run: |
-          cmake -G Ninja -B ${{github.workspace}}/build \
-          -D CMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} \
-          -D ENABLE_AGL_SHELL_CLIENT=ON \
-          -D WAYPP_BUILD_EXAMPLES=ON \
-          -D ENABLE_LTO=ON \
-          -D CMAKE_EXPORT_COMPILE_COMMANDS=ON
+          cmake -G Ninja -B ${{ github.workspace }}/build \
+            -D CMAKE_BUILD_TYPE=Release \
+            -D ENABLE_AGL_SHELL_CLIENT=ON \
+            -D WAYPP_BUILD_EXAMPLES=ON \
+            -D ENABLE_LTO=ON \
+            -D CMAKE_EXPORT_COMPILE_COMMANDS=ON
 
       - name: Build
-        run: ninja -C ${{github.workspace}}/build
+        run: ninja -C ${{ github.workspace }}/build
 
       - name: clang-tidy
-        working-directory: ${{github.workspace}}
+        working-directory: ${{ github.workspace }}
         run: |
-          clang-tidy --dump-config
-          export FILE_LIST=$(find . -type d \( -name clang18 -o -name build \) -prune -false -o -name '*.cc' -o -name '*.hpp' -o -name '*.h')
-          echo $FILE_LIST
-          clang18/bin/run-clang-tidy \
-            -p ${{github.workspace}}/build \
-            -warnings-as-errors='*,-bugprone-macro-parentheses' \
-            -quiet \
-            -export-fixes=tidy-results-suggested-fixes.txt \
-            $FILE_LIST 2> tidy-results-log.txt
+          "clang-tidy-${CLANG_VERSION}" --dump-config
+          ./scripts/run-clang-tidy.sh src      . ${{ github.workspace }}/build
+          ./scripts/run-clang-tidy.sh examples . ${{ github.workspace }}/build
+          ./scripts/run-clang-tidy.sh tests/csd . ${{ github.workspace }}/build
 
       - name: Show results
         if: always()
         run: |
-          cat tidy-results-log.txt
-          cat tidy-results-suggested-fixes.txt
+          [ -f tidy-results-log.txt ]              && cat tidy-results-log.txt              || true
+          [ -f tidy-results-suggested-fixes.txt ]  && cat tidy-results-suggested-fixes.txt  || true
 
       - name: Publish Report
         if: always()

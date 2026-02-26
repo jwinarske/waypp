@@ -11,6 +11,9 @@ name="$1"
 workdir="${2:-.}"
 file_list="clang-format-files"
 
+# Allow override via env; fall back to clang-format-18.
+CLANG_FORMAT="${CLANG_FORMAT:-clang-format-18}"
+
 cd "$workdir"
 
 find "$name" -type d -name third_party -prune -false -o -name '*.cc' -o -name '*.hpp' -o -name '*.h' > "$file_list"
@@ -18,6 +21,6 @@ find "$name" -type d -name third_party -prune -false -o -name '*.cc' -o -name '*
 echo "Formatting files:"
 cat "$file_list"
 
-which clang-format-19
-clang-format-19 --version
-clang-format-19 -i --files="$file_list"
+which "$CLANG_FORMAT"
+"$CLANG_FORMAT" --version
+"$CLANG_FORMAT" -i --files="$file_list"

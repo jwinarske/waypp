@@ -20,3 +20,26 @@ if (BUILD_WAYPP_STANDALONE)
 else ()
 
 endif ()
+
+#
+# GoogleTest (only when unit tests are requested)
+#
+if (WAYPP_BUILD_UNIT_TESTS)
+    set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+    set(BUILD_GMOCK   OFF CACHE BOOL "" FORCE)
+    add_subdirectory(googletest)
+
+    # Suppress project-level strict flags that break googletest internals.
+    foreach (_gt_target gtest gtest_main)
+        if (TARGET ${_gt_target})
+            target_compile_options(${_gt_target} PRIVATE
+                    -Wno-error
+                    -Wno-sign-conversion
+                    -Wno-conversion
+                    -Wno-undef
+                    -include stdint.h
+            )
+        endif ()
+    endforeach ()
+endif ()
+
