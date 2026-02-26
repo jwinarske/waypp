@@ -52,9 +52,7 @@ Registrar::Registrar(wl_display* wl_display,
 #if HAS_WAYLAND_PROTOCOL_XDG_DECORATION_UNSTABLE_V1
       ,
       {zxdg_decoration_manager_v1_interface.name,
-       handle_interface_zxdg_decoration},
-      {zxdg_toplevel_decoration_v1_interface.name,
-       handle_interface_zxdg_toplevel_decoration}
+       handle_interface_zxdg_decoration}
 #endif
 #if HAS_WAYLAND_PROTOCOL_PRESENTATION_TIME
       ,
@@ -109,6 +107,11 @@ Registrar::Registrar(wl_display* wl_display,
       ,
       {zwp_primary_selection_device_manager_v1_interface.name,
        handle_interface_zwp_primary_selection_device_manager_v1}
+#endif
+#if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
+      ,
+      {wp_cursor_shape_manager_v1_interface.name,
+       handle_interface_cursor_shape_manager}
 #endif
   };
 
@@ -168,19 +171,19 @@ Registrar::~Registrar() {
   }
 
 #if HAS_WAYLAND_PROTOCOL_XDG_DECORATION_UNSTABLE_V1
-  if (zxdg_toplevel_decoration_v1_) {
-    LOG_TRACE(
-        "[Registrar] "
-        "zxdg_toplevel_decoration_v1_destroy(zxdg_toplevel_decoration_v1_)");
-    zxdg_toplevel_decoration_v1_destroy(zxdg_toplevel_decoration_v1_);
-  }
-#endif
-#if HAS_WAYLAND_PROTOCOL_XDG_DECORATION_UNSTABLE_V1
   if (zxdg_decoration_manager_v1_) {
     LOG_TRACE(
         "[Registrar] "
         "zxdg_decoration_manager_v1_destroy(zxdg_decoration_manager_v1_)");
     zxdg_decoration_manager_v1_destroy(zxdg_decoration_manager_v1_);
+  }
+#endif
+#if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
+  if (wp_cursor_shape_manager_) {
+    LOG_TRACE(
+        "[Registrar] "
+        "wp_cursor_shape_manager_v1_destroy(wp_cursor_shape_manager_)");
+    wp_cursor_shape_manager_v1_destroy(wp_cursor_shape_manager_);
   }
 #endif
 #if HAS_WAYLAND_PROTOCOL_TEARING_CONTROL_V1
@@ -688,20 +691,6 @@ void Registrar::handle_interface_zxdg_decoration(Registrar* r,
       zxdg_decoration_manager_v1_get_version(r->zxdg_decoration_manager_v1_));
 }
 
-void Registrar::handle_interface_zxdg_toplevel_decoration(
-    Registrar* r,
-    wl_registry* registry,
-    const uint32_t name,
-    const char* interface,
-    const uint32_t version) {
-  r->zxdg_toplevel_decoration_v1_ = static_cast<zxdg_toplevel_decoration_v1*>(
-      wl_registry_bind(registry, name, &zxdg_toplevel_decoration_v1_interface,
-                       std::min(kXdgDecorationManagerMinVersion, version)));
-  LOG_DEBUG(
-      "{}: {}", interface,
-      zxdg_toplevel_decoration_v1_get_version(r->zxdg_toplevel_decoration_v1_));
-}
-
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_XDG_OUTPUT_UNSTABLE_V1
@@ -927,6 +916,23 @@ void Registrar::handle_interface_zwp_primary_selection_device_manager_v1(
   LOG_DEBUG("{}: {}", interface,
             zwp_primary_selection_device_manager_v1_get_version(
                 r->zwp_primary_selection_device_manager_v1_));
+}
+
+#endif
+
+#if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
+
+void Registrar::handle_interface_cursor_shape_manager(Registrar* r,
+                                                      wl_registry* registry,
+                                                      const uint32_t name,
+                                                      const char* interface,
+                                                      const uint32_t version) {
+  r->wp_cursor_shape_manager_ = static_cast<wp_cursor_shape_manager_v1*>(
+      wl_registry_bind(registry, name, &wp_cursor_shape_manager_v1_interface,
+                       std::min(kCursorShapeManagerMinVersion, version)));
+  LOG_DEBUG(
+      "{}: {}", interface,
+      wp_cursor_shape_manager_v1_get_version(r->wp_cursor_shape_manager_));
 }
 
 #endif

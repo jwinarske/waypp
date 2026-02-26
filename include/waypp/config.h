@@ -40,6 +40,7 @@ static constexpr uint32_t kTearingControlManagerMinVersion = UINT32_C(1);
 static constexpr uint32_t kFractionalScaleManagerMinVersion = UINT32_C(1);
 static constexpr uint32_t kWestonCaptureV1MinVersion = UINT32_C(1);
 static constexpr uint32_t kIdleInhibitManagerV1MinVersion = UINT32_C(1);
+static constexpr uint32_t kCursorShapeManagerMinVersion = UINT32_C(1);
 
 static constexpr uint32_t kPointerGesturesV1MinVersion = UINT32_C(3);
 static constexpr uint32_t kPointerConstraintsV1MinVersion = UINT32_C(1);
