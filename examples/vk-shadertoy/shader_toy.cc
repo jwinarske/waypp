@@ -34,8 +34,6 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 ShaderToy::ShaderToy() = default;
 
-ShaderToy::~ShaderToy() = default;
-
 int ShaderToy::init(const int width,
                     const int height,
                     wl_display* wl_display,
@@ -45,13 +43,13 @@ int ShaderToy::init(const int width,
                     const bool debug,
                     const bool reload_shaders,
                     const VkPresentModeKHR present_mode) {
+  os_window_ = {};
+
   dev_index_ = dev_index;
   use_gpu_idx_ = use_gpu_idx;
   os_window_.enable_debug = debug;
   os_window_.reload_shaders_on_resize = reload_shaders;
   os_window_.present_mode = present_mode;
-
-  os_window_ = {};
 
   os_window_.app_data.iResolution[0] = width;
   os_window_.app_data.iResolution[1] = height;
@@ -146,19 +144,35 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
   auto retval = VK_ERROR_NONE;
   if (!load_once) {
     render_data->buffers[BUFFER_VERTICES] = (struct vk_buffer){
+        .format = VK_FORMAT_UNDEFINED,
         .size = sizeof render_data->objects.vertices,
         .usage = static_cast<VkBufferUsageFlagBits>(
             VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
             VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+        .stage = VK_SHADER_STAGE_VERTEX_BIT,
+        .make_view = false,
         .host_visible = false,
+        .sharing_queues = nullptr,
+        .sharing_queue_count = 0,
+        .buffer = VK_NULL_HANDLE,
+        .buffer_mem = VK_NULL_HANDLE,
+        .view = VK_NULL_HANDLE,
     };
 
     render_data->buffers[BUFFER_INDICES] = (struct vk_buffer){
+        .format = VK_FORMAT_UNDEFINED,
         .size = sizeof render_data->objects.indices,
         .usage = static_cast<VkBufferUsageFlagBits>(
             VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
             VK_BUFFER_USAGE_TRANSFER_DST_BIT),
+        .stage = VK_SHADER_STAGE_VERTEX_BIT,
+        .make_view = false,
         .host_visible = false,
+        .sharing_queues = nullptr,
+        .sharing_queue_count = 0,
+        .buffer = VK_NULL_HANDLE,
+        .buffer_mem = VK_NULL_HANDLE,
+        .view = VK_NULL_HANDLE,
     };
 
     retval = create_buffers(phy_dev, dev, render_data->buffers, 2);
@@ -231,16 +245,19 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
     render_data->shaders[SHADER_MAIN_VERTEX] = (struct vk_shader){
         .spirv_file = "shaders/spv/main.vert.spv",
         .stage = VK_SHADER_STAGE_VERTEX_BIT,
+        .shader = VK_NULL_HANDLE,
     };
     render_data->shaders[SHADER_MAIN_FRAGMENT] = (struct vk_shader){
         .spirv_file = "shaders/spv/main.frag.spv",
         .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+        .shader = VK_NULL_HANDLE,
     };
-    char txt[OFFSCREEN_BUFFERS][255] = {0};
+    char txt[OFFSCREEN_BUFFERS][255] = {{0}};
     for (uint32_t i = 0; i < OFFSCREEN_BUFFERS * 2; i += 2) {
       render_data->shaders[i + 2] = (struct vk_shader){
           .spirv_file = "shaders/spv/buf.vert.spv",
           .stage = VK_SHADER_STAGE_VERTEX_BIT,
+          .shader = VK_NULL_HANDLE,
       };
       if (i > 0) {
         sprintf(txt[i / 2], "shaders/spv/buf%d.frag.spv", i / 2);
@@ -250,6 +267,7 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
       render_data->shaders[i + 2 + 1] = (struct vk_shader){
           .spirv_file = txt[i / 2],
           .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+          .shader = VK_NULL_HANDLE,
       };
     }
 #ifdef YARIV_SHADER
@@ -291,7 +309,7 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
     }
 #endif
   }
-  struct VkExtent2D init_size {};
+  struct VkExtent2D init_size{};
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
   init_size.width = resize_size_[0];
   init_size.height = resize_size_[1];
@@ -301,11 +319,15 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
 #endif
   render_data->main_gbuffers = static_cast<vk_graphics_buffers*>(
       malloc(essentials->image_count * sizeof *render_data->main_gbuffers));
-  for (uint32_t i = 0; i < essentials->image_count; ++i)
+  for (uint32_t i = 0; i < essentials->image_count; ++i) {
     render_data->main_gbuffers[i] = (struct vk_graphics_buffers){
         .surface_size = init_size,
         .swapchain_image = essentials->images[i],
+        .color_view = VK_NULL_HANDLE,
+        .depth = {},
+        .framebuffer = VK_NULL_HANDLE,
     };
+  }
 
 #ifdef NO_RESIZE_BUF
   if (!load_once) {
@@ -316,8 +338,14 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
       render_data->buf_obuffers[i] = (struct vk_offscreen_buffers){
 #if defined(CUSTOM_BUF_SIZE) && defined(NO_RESIZE_BUF)
           .surface_size = (struct VkExtent2D)CUSTOM_BUF_SIZE,
+          .color = {},
+          .depth = {},
+          .framebuffer = VK_NULL_HANDLE,
 #else
         .surface_size = init_size,
+        .color = {},
+        .depth = {},
+        .framebuffer = VK_NULL_HANDLE,
 #endif
       };
 #ifdef NO_RESIZE_BUF
@@ -341,7 +369,7 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
   if (!load_once) {
 #endif
     for (uint32_t i = 0; i < OFFSCREEN_BUFFERS; i++) {
-      // 32 bit format RGBA for buffers VK_FORMAT_R32G32B32A32_SFLOAT
+      // 32-bit format RGBA for buffers VK_FORMAT_R32G32B32A32_SFLOAT
       retval = create_offscreen_buffers(
           phy_dev, dev, VK_FORMAT_R32G32B32A32_SFLOAT,
           &render_data->buf_obuffers[i * 2], 2,
@@ -376,7 +404,7 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
 #ifdef NO_RESIZE_BUF
   if (!load_once) {
 #endif
-    for (int i = 0; i < OFFSCREEN_BUFFERS; i++) {
+    for (uint32_t i = 0; i < OFFSCREEN_BUFFERS; i++) {
       /* Layouts */
 
       struct vk_resources resources = {
@@ -392,6 +420,8 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
       };
       render_data->buf_layout[i] = (struct vk_layout){
           .resources = &resources,
+          .set_layout = VK_NULL_HANDLE,
+          .pipeline_layout = VK_NULL_HANDLE,
       };
       uint32_t img_patern[3] = {IMAGE_TEXTURES, OFFSCREEN_BUFFERS, iKeyboard};
       retval = make_graphics_layouts(dev, &render_data->buf_layout[i], 1, true,
@@ -424,6 +454,8 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
               {
                   .sType =
                       VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+                  .pNext = nullptr,
+                  .flags = 0,
                   .vertexBindingDescriptionCount = 1,
                   .pVertexBindingDescriptions = &vertex_binding,
                   .vertexAttributeDescriptionCount = 1,
@@ -433,14 +465,22 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
               {
                   .sType =
                       VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+                  .pNext = nullptr,
+                  .flags = 0,
                   .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
+                  .primitiveRestartEnable = VK_FALSE,
               },
           .tessellation_state =
               {
                   .sType =
                       VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
+                  .pNext = nullptr,
+                  .flags = 0,
+                  .patchControlPoints = 0,
               },
           .thread_count = 1,
+          .pipeline = VK_NULL_HANDLE,
+          .set_pool = VK_NULL_HANDLE,
       };
 
       retval =
@@ -453,6 +493,7 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
       /* Descriptor Set */
       VkDescriptorSetAllocateInfo set_info = {
           .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+          .pNext = nullptr,
           .descriptorPool = render_data->buf_pipeline[i].set_pool,
           .descriptorSetCount = 1,
           .pSetLayouts = &render_data->buf_layout[i].set_layout,
@@ -491,10 +532,12 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
     };
     render_data->main_layout = (struct vk_layout){
         .resources = &resources,
+        .set_layout = VK_NULL_HANDLE,
+        .pipeline_layout = VK_NULL_HANDLE,
     };
-    uint32_t img_patern[3] = {IMAGE_TEXTURES, OFFSCREEN_BUFFERS, iKeyboard};
+    uint32_t img_pattern[3] = {IMAGE_TEXTURES, OFFSCREEN_BUFFERS, iKeyboard};
     retval = make_graphics_layouts(dev, &render_data->main_layout, 1, true,
-                                   img_patern, 3);
+                                   img_pattern, 3);
     if (!vk_error_is_success(&retval)) {
       vk_error_printf(&retval,
                       "Could not create descriptor set or pipeline layouts\n");
@@ -522,6 +565,8 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
             {
                 .sType =
                     VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = 0,
                 .vertexBindingDescriptionCount = 1,
                 .pVertexBindingDescriptions = &vertex_binding,
                 .vertexAttributeDescriptionCount = 1,
@@ -531,14 +576,22 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
             {
                 .sType =
                     VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = 0,
                 .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
+                .primitiveRestartEnable = VK_FALSE,
             },
         .tessellation_state =
             {
                 .sType =
                     VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = 0,
+                .patchControlPoints = 0,
             },
         .thread_count = 1,
+        .pipeline = VK_NULL_HANDLE,
+        .set_pool = VK_NULL_HANDLE,
     };
 
     retval =
@@ -551,6 +604,7 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
     /* Descriptor Set */
     VkDescriptorSetAllocateInfo set_info = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .pNext = nullptr,
         .descriptorPool = render_data->main_pipeline.set_pool,
         .descriptorSetCount = 1,
         .pSetLayouts = &render_data->main_layout.set_layout,
@@ -586,7 +640,7 @@ void ShaderToy::free_render_data(struct vk_device* dev,
   free_buffers(dev, render_data->buffers, 2);
   free_shaders(dev, render_data->shaders, 2 + OFFSCREEN_BUFFERS * 2);
 
-  for (int i = 0; i < OFFSCREEN_BUFFERS; i++) {
+  for (uint32_t i = 0; i < OFFSCREEN_BUFFERS; i++) {
     free_offscreen_buffers(dev, &render_data->buf_obuffers[i * 2], 2,
                            render_data->buf_render_pass[i]);
   }
@@ -666,7 +720,7 @@ void ShaderToy::render_loop_init(vk_physical_device* phy_dev,
 #ifdef NO_RESIZE_BUF
   if (!once) {
 #endif
-    for (int i = 0; i < OFFSCREEN_BUFFERS * 2; i++) {
+    for (uint32_t i = 0; i < OFFSCREEN_BUFFERS * 2; i++) {
       retval = transition_images(
           dev, &essentials_, &render_data_.buf_obuffers[i].color, 1,
           VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -681,8 +735,10 @@ void ShaderToy::render_loop_init(vk_physical_device* phy_dev,
   }
 #endif
   if (!once) {
-    VkSemaphoreCreateInfo sem_info = {
+    constexpr VkSemaphoreCreateInfo sem_info = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
     };
     VkResult vk_res =
         d.vkCreateSemaphore(dev->device, &sem_info, nullptr, &wait_buf_sem_);
@@ -706,6 +762,8 @@ void ShaderToy::render_loop_init(vk_physical_device* phy_dev,
 
     VkFenceCreateInfo fence_info = {
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
     };
     vk_res =
         d.vkCreateFence(dev->device, &fence_info, nullptr, &offscreen_fence_);
@@ -756,7 +814,7 @@ bool ShaderToy::on_window_resize(struct vk_physical_device* phy_dev,
 
 #ifndef NO_RESIZE_BUF
   free_pipelines(dev, render_data->buf_pipeline, OFFSCREEN_BUFFERS);
-  for (int i = 0; i < OFFSCREEN_BUFFERS; i++) {
+  for (uint32_t i = 0; i < OFFSCREEN_BUFFERS; i++) {
     free_offscreen_buffers(dev, &render_data->buf_obuffers[i * 2], 2,
                            render_data->buf_render_pass[i]);
   }
@@ -855,7 +913,7 @@ void ShaderToy::update_push_constants_window_size(app_os_window* os_window) {
       static_cast<float>(os_window->app_data.iResolution[1]);
 }
 
-#define sign(x) ((x > 0) ? 1 : ((x < 0) ? -1 : 0))
+#define sign(x) (((x) > 0) ? 1 : (((x) < 0) ? -1 : 0))
 
 void ShaderToy::update_push_constants_local_size(const float width,
                                                  const float height) {
@@ -899,7 +957,7 @@ bool ShaderToy::render_loop_buf(struct vk_physical_device* /* phy_dev */,
                                 int render_index,
                                 int buffer_index,
                                 struct app_data_struct* /* app_data */) {
-  vk_error retval = VK_ERROR_NONE;
+  auto retval = VK_ERROR_NONE;
   VkResult res;
 
   if ((!essentials->first_render) && (buffer_index == 0)) {
@@ -919,8 +977,11 @@ bool ShaderToy::render_loop_buf(struct vk_physical_device* /* phy_dev */,
           .surface_size.height);
 #endif
   d.vkResetCommandBuffer(cmd_buffer, 0);
-  VkCommandBufferBeginInfo begin_info = {
+  constexpr VkCommandBufferBeginInfo begin_info = {
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+      .pNext = nullptr,
+      .flags = 0,
+      .pInheritanceInfo = nullptr,
   };
   res = d.vkBeginCommandBuffer(cmd_buffer, &begin_info);
   vk_error_set_vkresult(&retval, res);
@@ -931,6 +992,7 @@ bool ShaderToy::render_loop_buf(struct vk_physical_device* /* phy_dev */,
   };
   VkImageMemoryBarrier image_barrier = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .pNext = nullptr,
       .srcAccessMask = VK_ACCESS_MEMORY_READ_BIT,
       .dstAccessMask = VK_ACCESS_MEMORY_WRITE_BIT,
       .oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -959,8 +1021,9 @@ bool ShaderToy::render_loop_buf(struct vk_physical_device* /* phy_dev */,
               .float32 = {0.0, 0.0, 0.0, 0.0},
           },
   };
-  VkRenderPassBeginInfo pass_info = {
+  const VkRenderPassBeginInfo pass_info = {
       .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+      .pNext = nullptr,
       .renderPass = render_data->buf_render_pass[buffer_index],
       .framebuffer = render_data->buf_obuffers[render_index + buffer_index * 2]
                          .framebuffer,
@@ -984,13 +1047,13 @@ bool ShaderToy::render_loop_buf(struct vk_physical_device* /* phy_dev */,
                       render_data->buf_pipeline[buffer_index].pipeline);
 
   int render_index_t[OFFSCREEN_BUFFERS];
-  for (int i = 0; i < OFFSCREEN_BUFFERS; i++) {
-    if (i < buffer_index) {
-      render_index_t[i] = render_index + i * 2;
+  for (uint32_t i = 0; i < OFFSCREEN_BUFFERS; i++) {
+    if (static_cast<int>(i) < buffer_index) {
+      render_index_t[i] = render_index + static_cast<int>(i) * 2;
     } else {
-      render_index_t[i] = render_index - 1 + i * 2;
-      if (render_index_t[i] < i * 2)
-        render_index_t[i] = 1 + i * 2;
+      render_index_t[i] = render_index - 1 + static_cast<int>(i) * 2;
+      if (render_index_t[i] < static_cast<int>(i) * 2)
+        render_index_t[i] = 1 + static_cast<int>(i) * 2;
     }
   }
 
@@ -1022,28 +1085,40 @@ bool ShaderToy::render_loop_buf(struct vk_physical_device* /* phy_dev */,
   VkWriteDescriptorSet set_write[3] = {
       {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .pNext = nullptr,
           .dstSet = render_data->buf_desc_set[buffer_index],
           .dstBinding = 0,
+          .dstArrayElement = 0,
           .descriptorCount = IMAGE_TEXTURES,
           .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
           .pImageInfo = &set_write_image_info[0],
+          .pBufferInfo = nullptr,
+          .pTexelBufferView = nullptr,
       },
       {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .pNext = nullptr,
           .dstSet = render_data->buf_desc_set[buffer_index],
           .dstBinding = IMAGE_TEXTURES,
+          .dstArrayElement = 0,
           .descriptorCount = OFFSCREEN_BUFFERS,
           .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
           .pImageInfo = &set_write_image_info[IMAGE_TEXTURES],
+          .pBufferInfo = nullptr,
+          .pTexelBufferView = nullptr,
       },
       {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .pNext = nullptr,
           .dstSet = render_data->buf_desc_set[buffer_index],
           .dstBinding = IMAGE_TEXTURES + OFFSCREEN_BUFFERS,
+          .dstArrayElement = 0,
           .descriptorCount = iKeyboard,
           .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
           .pImageInfo =
               &set_write_image_info[IMAGE_TEXTURES + OFFSCREEN_BUFFERS],
+          .pBufferInfo = nullptr,
+          .pTexelBufferView = nullptr,
       },
   };
   d.vkUpdateDescriptorSets(dev->device, 3, set_write, 0, nullptr);
@@ -1095,6 +1170,7 @@ bool ShaderToy::render_loop_buf(struct vk_physical_device* /* phy_dev */,
 
   image_barrier = (VkImageMemoryBarrier){
       .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .pNext = nullptr,
       .srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT,
       .dstAccessMask = VK_ACCESS_MEMORY_READ_BIT,
       .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -1134,10 +1210,10 @@ bool ShaderToy::render_loop_draw(vk_physical_device* phy_dev,
   if (!update_iKeyboard_texture(phy_dev, dev, &essentials_, &render_data_))
     return false;
 
-  for (int i = 0; i < OFFSCREEN_BUFFERS; i++) {
+  for (uint32_t i = 0; i < OFFSCREEN_BUFFERS; i++) {
     if (!render_loop_buf(phy_dev, dev, &essentials_, &render_data_,
-                         offscreen_cmd_buffer_[i], render_index, i,
-                         &os_window->app_data)) {
+                         offscreen_cmd_buffer_[i], render_index,
+                         static_cast<int>(i), &os_window->app_data)) {
       spdlog::error("Error on rendering buffers");
       return false;
     }
@@ -1158,6 +1234,7 @@ bool ShaderToy::render_loop_draw(vk_physical_device* phy_dev,
           VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT};
       VkSubmitInfo submit_info = {
           .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+          .pNext = nullptr,
           .waitSemaphoreCount = first_submission_ ? UINT32_C(0) : UINT32_C(1),
           .pWaitSemaphores = &wait_main_sem_,
           .pWaitDstStageMask = wait_sem_stages,
@@ -1187,6 +1264,7 @@ bool ShaderToy::render_loop_draw(vk_physical_device* phy_dev,
           VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT};
       VkSubmitInfo submit_info = {
           .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+          .pNext = nullptr,
           .waitSemaphoreCount = 1,
           .pWaitSemaphores = &wait_buf_sem_,
           .pWaitDstStageMask = wait_sem_stages,
@@ -1238,6 +1316,7 @@ bool ShaderToy::render_loop_draw(vk_physical_device* phy_dev,
   };
   VkRenderPassBeginInfo pass_info = {
       .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+      .pNext = nullptr,
       .renderPass = render_data_.main_render_pass,
       .framebuffer = render_data_.main_gbuffers[image_index].framebuffer,
       .renderArea =
@@ -1292,28 +1371,40 @@ bool ShaderToy::render_loop_draw(vk_physical_device* phy_dev,
   VkWriteDescriptorSet set_write[3] = {
       {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .pNext = nullptr,
           .dstSet = render_data_.main_desc_set,
           .dstBinding = 0,
+          .dstArrayElement = 0,
           .descriptorCount = IMAGE_TEXTURES,
           .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
           .pImageInfo = &set_write_image_info[0],
+          .pBufferInfo = nullptr,
+          .pTexelBufferView = nullptr,
       },
       {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .pNext = nullptr,
           .dstSet = render_data_.main_desc_set,
           .dstBinding = IMAGE_TEXTURES,
+          .dstArrayElement = 0,
           .descriptorCount = OFFSCREEN_BUFFERS,
           .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
           .pImageInfo = &set_write_image_info[IMAGE_TEXTURES],
+          .pBufferInfo = nullptr,
+          .pTexelBufferView = nullptr,
       },
       {
           .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .pNext = nullptr,
           .dstSet = render_data_.main_desc_set,
           .dstBinding = IMAGE_TEXTURES + OFFSCREEN_BUFFERS,
+          .dstArrayElement = 0,
           .descriptorCount = iKeyboard,
           .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
           .pImageInfo =
               &set_write_image_info[IMAGE_TEXTURES + OFFSCREEN_BUFFERS],
+          .pBufferInfo = nullptr,
+          .pTexelBufferView = nullptr,
       },
   };
   d.vkUpdateDescriptorSets(dev->device, 3, set_write, 0, nullptr);
@@ -1738,8 +1829,8 @@ void ShaderToy::write_bmp(const uint32_t w,
   const auto f = fopen(ss.str().c_str(), "wb");
   fwrite(bmp_file_header, 1, 14, f);
   fwrite(bmp_info_header, 1, 108, f);
-  for (int i = 0; i < h; i++) {
-    fwrite(img + (w * (h - static_cast<uint32_t>(i) - 1) * 4), 4, w, f);
+  for (uint32_t i = 0; i < h; i++) {
+    fwrite(img + (w * (h - i - 1) * 4), 4, w, f);
   }
 
   free(img);

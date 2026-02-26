@@ -22,7 +22,9 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include <atomic>
 #include <csignal>
+#include <stdexcept>
 
 #include <GLES2/gl2.h>
 #include <linux/input.h>
@@ -33,9 +35,13 @@
 
 #include "logging/logging.h"
 
-static volatile bool running = true;
+static std::atomic<bool> running{true};
 
-volatile bool scene_initialized = false;
+/// One-shot flag: set to true after the GL scene is initialised on the first
+/// draw_frame call. std::atomic ensures visibility across any scheduling
+/// boundary without UB, even though draw_frame is always called from the
+/// same thread.
+static std::atomic<bool> scene_initialized{false};
 
 static constexpr int kResizeMargin = 12;
 
@@ -60,29 +66,37 @@ std::array<EGLint, 13> kLocalEglConfigAttribs = {{
     // clang-format on
 }};
 
-struct Configuration {
-  int width;
-  int height;
-  bool fullscreen;
-  int maximized;
-  bool fullscreen_ratio;
-  bool tearing;
-  bool toggled_tearing;
-  int delay;
-  bool opaque;
-  int buffer_bpp;
-  bool vertical_bar;
-  int interval;
-} config;
+/// All mutable state that was previously scattered across file-scope globals.
+struct EglApp {
+  struct Configuration {
+    int width;
+    int height;
+    bool fullscreen;
+    int maximized;
+    bool fullscreen_ratio;
+    bool tearing;
+    bool toggled_tearing;
+    int delay;
+    bool opaque;
+    int buffer_bpp;
+    bool vertical_bar;
+    int interval;
+  } config{};
 
-struct {
-  GLint rotation_uniform;
-  GLuint pos;
-  GLuint col;
-} gl;
+  struct GlState {
+    GLint rotation_uniform{};
+    GLuint pos{};
+    GLuint col{};
+  } gl{};
 
-std::shared_ptr<XdgTopLevel> toplevel_;
-Seat* seat_{};
+  // Benchmark counters
+  uint32_t frames{};
+  uint32_t initial_frame_time{};
+  uint32_t benchmark_time{};
+
+  std::shared_ptr<XdgTopLevel> toplevel_;
+  Seat* seat_{};
+};
 
 /**
  * @brief Signal handler function to handle signals.
@@ -97,7 +111,7 @@ Seat* seat_{};
  */
 void handle_signal(const int signal) {
   if (signal == SIGINT) {
-    running = false;
+    running.store(false, std::memory_order_relaxed);
   }
 }
 
@@ -117,7 +131,7 @@ GLuint load_shader(const GLchar* shaderSrc, const GLenum type) {
     if (len > 1) {
       auto buf = std::make_unique<char[]>(static_cast<size_t>(len));
       glGetShaderInfoLog(shader, len, nullptr, buf.get());
-      std::string res{buf.get(), static_cast<size_t>(len)};
+      const std::string res{buf.get(), static_cast<size_t>(len)};
       buf.reset();
       spdlog::error("[gl shader] {}", res.c_str());
       exit(EXIT_FAILURE);
@@ -128,7 +142,7 @@ GLuint load_shader(const GLchar* shaderSrc, const GLenum type) {
   return shader;
 }
 
-void initialize_scene(Window* window) {
+void initialize_scene(Window* window, EglApp& app) {
   static constexpr GLchar vert_shader_text[] =
       "uniform mat4 rotation;\n"
       "attribute vec4 pos;\n"
@@ -170,14 +184,14 @@ void initialize_scene(Window* window) {
 
   glUseProgram(program);
 
-  gl.pos = 0;
-  gl.col = 1;
+  app.gl.pos = 0;
+  app.gl.col = 1;
 
-  glBindAttribLocation(program, gl.pos, "pos");
-  glBindAttribLocation(program, gl.col, "color");
+  glBindAttribLocation(program, app.gl.pos, "pos");
+  glBindAttribLocation(program, app.gl.col, "color");
   glLinkProgram(program);
 
-  gl.rotation_uniform = glGetUniformLocation(program, "rotation");
+  app.gl.rotation_uniform = glGetUniformLocation(program, "rotation");
 }
 
 enum weston_matrix_transform_type {
@@ -199,7 +213,7 @@ struct weston_matrix {
  */
 
 void weston_matrix_init(weston_matrix* matrix) {
-  static const weston_matrix identity = {
+  static constexpr weston_matrix identity = {
       .d = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1},
       .type = 0,
   };
@@ -242,27 +256,25 @@ void weston_matrix_rotate_xy(weston_matrix* matrix, float cos, float sin) {
   weston_matrix_multiply(matrix, &translate);
 }
 
-uint32_t frames;
-uint32_t initial_frame_time;
-uint32_t benchmark_time;
-
-static void draw_triangle(Window* window, EGLint buffer_age) {
+static void draw_triangle(Window* window,
+                          const EGLint buffer_age,
+                          const EglApp& app) {
   static constexpr GLfloat verts[3][2] = {{-0.5, -0.5}, {0.5, -0.5}, {0, 0.5}};
   static constexpr GLfloat colors[3][3] = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
-  glVertexAttribPointer(gl.pos, 2, GL_FLOAT, GL_FALSE, 0, verts);
-  glVertexAttribPointer(gl.col, 3, GL_FLOAT, GL_FALSE, 0, colors);
-  glEnableVertexAttribArray(gl.pos);
-  glEnableVertexAttribArray(gl.col);
+  glVertexAttribPointer(app.gl.pos, 2, GL_FLOAT, GL_FALSE, 0, verts);
+  glVertexAttribPointer(app.gl.col, 3, GL_FLOAT, GL_FALSE, 0, colors);
+  glEnableVertexAttribArray(app.gl.pos);
+  glEnableVertexAttribArray(app.gl.col);
 
   glDrawArrays(GL_TRIANGLES, 0, 3);
 
-  glDisableVertexAttribArray(gl.pos);
-  glDisableVertexAttribArray(gl.col);
+  glDisableVertexAttribArray(app.gl.pos);
+  glDisableVertexAttribArray(app.gl.col);
 
-  usleep(static_cast<__useconds_t>(config.delay));
+  usleep(static_cast<__useconds_t>(app.config.delay));
 
-  if (config.opaque || config.fullscreen) {
+  if (app.config.opaque || app.config.fullscreen) {
     window->opaque_region_add(0, 0, window->get_max_width(),
                               window->get_max_height());
   } else {
@@ -291,11 +303,13 @@ static void draw_triangle(Window* window, EGLint buffer_age) {
  * @param time The current time in milliseconds.
  */
 static void draw_frame(void* userdata, uint32_t /* time */) {
-  const auto window = static_cast<Window*>(userdata);
+  auto& app = *static_cast<EglApp*>(userdata);
+  // XdgTopLevel inherits Window; cast to base so draw helpers receive Window*.
+  const auto window = static_cast<Window*>(app.toplevel_.get());
 
-  if (!scene_initialized) {
-    initialize_scene(window);
-    scene_initialized = true;
+  if (!scene_initialized.load(std::memory_order_acquire)) {
+    initialize_scene(window, app);
+    scene_initialized.store(true, std::memory_order_release);
   }
 
   GLfloat angle;
@@ -306,21 +320,21 @@ static void draw_frame(void* userdata, uint32_t /* time */) {
   timeval tv{};
   gettimeofday(&tv, nullptr);
   const auto time = static_cast<uint32_t>(tv.tv_sec * 1000 + tv.tv_usec / 1000);
-  if (frames == 0) {
-    initial_frame_time = time;
-    benchmark_time = time;
+  if (app.frames == 0) {
+    app.initial_frame_time = time;
+    app.benchmark_time = time;
   }
-  if (time - benchmark_time > (benchmark_interval * 1000)) {
-    printf("%d frames in %d seconds: %f fps\n", frames, benchmark_interval,
-           static_cast<float>(frames) / benchmark_interval);
-    benchmark_time = time;
-    frames = 0;
+  if (time - app.benchmark_time > (benchmark_interval * 1000)) {
+    printf("%d frames in %d seconds: %f fps\n", app.frames, benchmark_interval,
+           static_cast<float>(app.frames) / benchmark_interval);
+    app.benchmark_time = time;
+    app.frames = 0;
   }
 
-  if (config.vertical_bar) {
+  if (app.config.vertical_bar) {
     angle = 0;
   } else {
-    angle = static_cast<GLfloat>(((time - initial_frame_time) / speed_div) %
+    angle = static_cast<GLfloat>(((time - app.initial_frame_time) / speed_div) %
                                  360 * M_PI / 180.0);
   }
   weston_matrix rotation{};
@@ -366,23 +380,29 @@ static void draw_frame(void* userdata, uint32_t /* time */) {
 
   glViewport(0, 0, window->get_width(), window->get_height());
 
-  glUniformMatrix4fv(gl.rotation_uniform, 1, GL_FALSE, (GLfloat*)rotation.d);
+  // LOW-7 fix: use static_cast instead of C-style cast.
+  // rotation.d is already float[16]; no cast is needed at all, but
+  // static_cast makes the intent explicit and is checked by the compiler.
+  glUniformMatrix4fv(app.gl.rotation_uniform, 1, GL_FALSE,
+                     static_cast<const GLfloat*>(rotation.d));
 
-  if (config.opaque || config.fullscreen)
+  if (app.config.opaque || app.config.fullscreen)
     glClearColor(0.0, 0.0, 0.0, 1);
   else
     glClearColor(0.0, 0.0, 0.0, 0.5);
   glClear(GL_COLOR_BUFFER_BIT);
 
-  draw_triangle(window, buffer_age);
+  draw_triangle(window, buffer_age, app);
 
-  frames++;
+  app.frames++;
 }
 
 class Observer final : public SeatObserver,
                        public KeyboardObserver,
                        public PointerObserver {
  public:
+  explicit Observer(EglApp& app) : app_(app) {}
+
   void notify_seat_capabilities(Seat* seat,
                                 wl_seat* /* seat */,
                                 uint32_t /* caps */) override {
@@ -469,7 +489,7 @@ class Observer final : public SeatObserver,
                              double sx,
                              double sy) override {
     spdlog::info("Pointer: time: {}, x: {}, y: {}", time, sx, sy);
-    if (toplevel_->is_resizing()) {
+    if (app_.toplevel_->is_resizing()) {
       spdlog::info("Resizing: x: {}, y: {}", sx, sy);
     }
   }
@@ -483,9 +503,10 @@ class Observer final : public SeatObserver,
     spdlog::info("Pointer Button: pointer: {}, time: {}, button: {}, state: {}",
                  serial, time, button, state);
     if (button == BTN_LEFT && state == WL_POINTER_BUTTON_STATE_PRESSED) {
-      auto edge = toplevel_->check_edge_resize(pointer->get_xy());
-      if (edge != XDG_TOPLEVEL_RESIZE_EDGE_NONE) {
-        toplevel_->resize(seat_->get_seat(), serial, edge);
+      if (const auto edge =
+              app_.toplevel_->check_edge_resize(pointer->get_xy());
+          edge != XDG_TOPLEVEL_RESIZE_EDGE_NONE) {
+        app_.toplevel_->resize(app_.seat_->get_seat(), serial, edge);
       }
     }
   }
@@ -524,6 +545,9 @@ class Observer final : public SeatObserver,
     spdlog::info("Pointer Axis Discrete: axis: {}, discrete: {}", axis,
                  discrete);
   }
+
+ private:
+  EglApp& app_;
 };
 
 /**
@@ -531,7 +555,7 @@ class Observer final : public SeatObserver,
  *
  * This function initializes the surface manager and creates a surface with the
  * specified dimensions and type. It sets up a signal handler for SIGINT
- * (Ctrl+C) to stop the program, and then enters a loop to handle surface
+ * (Ctrl+C) to stop the program and then enters a loop to handle surface
  * events.
  *
  * @param argc The number of command line arguments.
@@ -543,8 +567,8 @@ int main(const int argc, char** argv) {
 
   auto display = wl_display_connect(nullptr);
   if (!display) {
-    spdlog::critical("Unable to connect to Wayland socket.");
-    exit(EXIT_FAILURE);
+    spdlog::critical("Unable to connect to Wayland display socket.");
+    return EXIT_FAILURE;
   }
 
   std::signal(SIGINT, handle_signal);
@@ -564,11 +588,11 @@ int main(const int argc, char** argv) {
             ("v,vertical-bar", "Draw a moving vertical bar instead of a triangle")
             ("i,interval", "Set eglSwapInterval to interval", cxxopts::value<int>()->default_value("1"))
             ("b,non-blocking", "Don't sync to compositor redraw (eglSwapInterval 0)");
-
   // clang-format on
   const auto result = options.parse(argc, argv);
 
-  config = {
+  EglApp app;
+  app.config = {
       .width = result["width"].as<int>(),
       .height = result["height"].as<int>(),
       .fullscreen = result["fullscreen"].as<bool>(),
@@ -584,48 +608,59 @@ int main(const int argc, char** argv) {
   };
 
   if (result["tearing"].as<bool>()) {
-    config.tearing = true;
-    config.toggled_tearing = true;
+    app.config.tearing = true;
+    app.config.toggled_tearing = true;
   }
 
   if (result["non-blocking"].as<bool>()) {
-    config.interval = 0;
+    app.config.interval = 0;
   }
 
   /// Control EGL_ALPHA_SIZE value
-  if (config.opaque || config.buffer_bpp == 16) {
+  if (app.config.opaque || app.config.buffer_bpp == 16) {
     kLocalEglConfigAttribs[9] = 0;
   }
 
-  auto wm = std::make_shared<XdgWindowManager>(display);
-  const auto observer = std::make_unique<Observer>();
-  if (wm->get_seat().has_value()) {
-    seat_ = wm->get_seat().value();
-    seat_->register_observer(observer.get());
+  try {
+    auto wm = std::make_shared<XdgWindowManager>(display);
+    const auto observer = std::make_unique<Observer>(app);
+    if (wm->get_seat().has_value()) {
+      app.seat_ = wm->get_seat().value();
+      app.seat_->register_observer(observer.get());
+    }
+
+    Egl::config egl_config{};
+    egl_config.context_attribs_size = kLocalEglContextAttribs.size();
+    egl_config.context_attribs = kLocalEglContextAttribs.data();
+    egl_config.config_attribs_size = kLocalEglConfigAttribs.size();
+    egl_config.config_attribs = kLocalEglConfigAttribs.data();
+    egl_config.buffer_bpp = app.config.buffer_bpp;
+    egl_config.swap_interval = app.config.interval;
+    egl_config.type = Egl::OPENGL_ES_API;
+
+    app.toplevel_ = wm->create_top_level(
+        "simple-egl", "org.freedesktop.gitlab.jwinarske.waypp.simple_egl",
+        app.config.width, app.config.height, kResizeMargin, 0, 0,
+        app.config.fullscreen, app.config.maximized,
+        app.config.fullscreen_ratio, app.config.tearing, draw_frame,
+        &egl_config);
+
+    // Pass &app as user_data, so draw_frame can reach all app states without
+    // relying on file-scope globals.
+    app.toplevel_->start_frame_callbacks(&app);
+
+    while (running.load(std::memory_order_acquire) &&
+           app.toplevel_->is_valid() && wm->display_dispatch() != -1) {
+    }
+
+    app.toplevel_.reset();
+    wm.reset();
+  } catch (const std::runtime_error& e) {
+    spdlog::critical("Fatal error: {}", e.what());
+    wl_display_flush(display);
+    wl_display_disconnect(display);
+    return EXIT_FAILURE;
   }
-
-  Egl::config egl_config{};
-  egl_config.context_attribs_size = kLocalEglContextAttribs.size();
-  egl_config.context_attribs = kLocalEglContextAttribs.data();
-  egl_config.config_attribs_size = kLocalEglConfigAttribs.size();
-  egl_config.config_attribs = kLocalEglConfigAttribs.data();
-  egl_config.buffer_bpp = config.buffer_bpp;
-  egl_config.swap_interval = config.interval;
-  egl_config.type = Egl::OPENGL_ES_API;
-
-  toplevel_ = wm->create_top_level(
-      "simple-egl", "org.freedesktop.gitlab.jwinarske.waypp.simple_egl",
-      config.width, config.height, kResizeMargin, 0, 0, config.fullscreen,
-      config.maximized, config.fullscreen_ratio, config.tearing, draw_frame,
-      &egl_config);
-
-  toplevel_->start_frame_callbacks();
-
-  while (running && toplevel_->is_valid() && wm->display_dispatch() != -1) {
-  }
-
-  toplevel_.reset();
-  wm.reset();
 
   wl_display_flush(display);
   wl_display_disconnect(display);

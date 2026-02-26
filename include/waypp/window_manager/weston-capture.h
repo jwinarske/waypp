@@ -1,9 +1,9 @@
 
 #pragma once
 
-#include <list>
-
+#include <algorithm>
 #include <cstdint>
+#include <vector>
 
 #include <waypp/waypp.h>
 
@@ -53,7 +53,9 @@ class WestonCapture {
   }
 
   void unregister_observer(WestonCaptureObserver* observer) {
-    observers_.remove(observer);
+    observers_.erase(
+        std::remove(observers_.begin(), observers_.end(), observer),
+        observers_.end());
   }
 
   [[nodiscard]] void* get_user_data() const { return user_data_; }
@@ -67,7 +69,7 @@ class WestonCapture {
   void* user_data_;
 
   weston_capture_source_v1* weston_capture_source_v1_;
-  std::list<WestonCaptureObserver*> observers_{};
+  std::vector<WestonCaptureObserver*> observers_{};
 
   /**
    * pixel format for a buffer

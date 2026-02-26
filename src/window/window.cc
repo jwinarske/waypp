@@ -17,6 +17,7 @@
 #include "waypp/window/window.h"
 
 #include <wayland-egl.h>
+#include <algorithm>
 
 #include "logging/logging.h"
 
@@ -30,7 +31,7 @@ Window::Window(std::shared_ptr<WindowManager> wm,
                const bool fullscreen,
                const bool maximized,
                const bool fullscreen_ratio,
-               bool tearing,
+               const bool tearing,
                Egl::config* egl_config)
     : wm_(std::move(wm)),
       outputs_(wm_->get_outputs()),
@@ -53,19 +54,23 @@ Window::Window(std::shared_ptr<WindowManager> wm,
       }),
       needs_buffer_geometry_update_(false) {
   wl_surface_ = wl_compositor_create_surface(wm_->get_compositor());
+  if (!wl_surface_) {
+    throw std::runtime_error("failed to create Wayland surface");
+  }
   wl_surface_add_listener(wl_surface_, &surface_listener_, this);
 
   if (buffer_count) {
     if (!wm_->shm_has_format(static_cast<wl_shm_format>(buffer_format))) {
-      LOG_CRITICAL("{} is not supported.",
-                   WindowManager::shm_format_to_text(
-                       static_cast<wl_shm_format>(buffer_format)));
-      abort();
+      throw std::runtime_error(std::string("SHM format not supported: ") +
+                               WindowManager::shm_format_to_text(
+                                   static_cast<wl_shm_format>(buffer_format)));
     }
     buffers_.reserve(static_cast<unsigned long>(buffer_count));
     for (int i = 0; i < buffer_count_; i++) {
       auto buffer = std::make_unique<Buffer>(wm_->get_shm());
-      buffer->create_shm_buffer(width, height, buffer_format_);
+      if (buffer->create_shm_buffer(width, height, buffer_format_) < 0) {
+        throw std::runtime_error("failed to create SHM buffer");
+      }
       buffers_.push_back(std::move(buffer));
     }
   }
@@ -88,6 +93,9 @@ Window::Window(std::shared_ptr<WindowManager> wm,
   if (wm_->get_viewporter()) {
 #if HAS_WAYLAND_PROTOCOL_VIEWPORTER
     viewport_ = wp_viewporter_get_viewport(wm_->get_viewporter(), wl_surface_);
+    if (!viewport_) {
+      LOG_WARN("failed to get Wayland viewport");
+    }
 #endif
   }
 
@@ -95,8 +103,12 @@ Window::Window(std::shared_ptr<WindowManager> wm,
   if (wm_->get_fractional_scale_manager()) {
     fractional_scale_ = wp_fractional_scale_manager_v1_get_fractional_scale(
         wm_->get_fractional_scale_manager(), wl_surface_);
-    wp_fractional_scale_v1_add_listener(fractional_scale_,
-                                        &fractional_scale_listener_, this);
+    if (fractional_scale_) {
+      wp_fractional_scale_v1_add_listener(fractional_scale_,
+                                          &fractional_scale_listener_, this);
+    } else {
+      LOG_WARN("failed to get Wayland fractional scale");
+    }
   }
 #endif
 
@@ -104,14 +116,18 @@ Window::Window(std::shared_ptr<WindowManager> wm,
   if (wm_->get_tearing_control_manager()) {
     tearing_control_ = wp_tearing_control_manager_v1_get_tearing_control(
         wm_->get_tearing_control_manager(), wl_surface_);
-    if (tearing) {
-      DLOG_DEBUG("[Surface] Set Presentation Hint: ASYNC");
-      wp_tearing_control_v1_set_presentation_hint(
-          tearing_control_, WP_TEARING_CONTROL_V1_PRESENTATION_HINT_ASYNC);
+    if (tearing_control_) {
+      if (tearing) {
+        DLOG_DEBUG("[Surface] Set Presentation Hint: ASYNC");
+        wp_tearing_control_v1_set_presentation_hint(
+            tearing_control_, WP_TEARING_CONTROL_V1_PRESENTATION_HINT_ASYNC);
+      } else {
+        DLOG_DEBUG("[Surface] Set Presentation Hint: VSYNC");
+        wp_tearing_control_v1_set_presentation_hint(
+            tearing_control_, WP_TEARING_CONTROL_V1_PRESENTATION_HINT_VSYNC);
+      }
     } else {
-      DLOG_DEBUG("[Surface] Set Presentation Hint: VSYNC");
-      wp_tearing_control_v1_set_presentation_hint(
-          tearing_control_, WP_TEARING_CONTROL_V1_PRESENTATION_HINT_VSYNC);
+      LOG_WARN("failed to get Wayland tearing control");
     }
   }
 #else
@@ -245,6 +261,11 @@ void Window::update_buffer_geometry() {
     }
   }
 
+  // Keep extents_.window in sync so next_buffer() recreates SHM buffers at
+  // the correct size after a compositor-driven resize (LOW-8 / resize fix).
+  extents_.window.width = new_buffer_size.width;
+  extents_.window.height = new_buffer_size.height;
+
   needs_buffer_geometry_update_ = false;
 }
 
@@ -340,7 +361,7 @@ void Window::handle_frame_callback(void* data,
   }
 
   if (obj->frame_callback_) {
-    obj->frame_callback_(data, time);
+    obj->frame_callback_(obj->user_data_ ? obj->user_data_ : data, time);
   }
 
   if (obj->wl_surface_) {
@@ -355,6 +376,20 @@ void Window::handle_frame_callback(void* data,
       auto feedback = std::make_unique<Feedback>(
           obj->presentation_.wp_presentation, obj->presentation_.clock_id,
           obj->wl_surface_, time);
+
+      // Register a completion hook so the entry is removed from feedback_list
+      // when the compositor sends presented or discarded, preventing unbounded
+      // growth of the list for long-running sessions (LOW-8).
+      Feedback* raw = feedback.get();
+      raw->set_on_done([obj](Feedback* done) {
+        auto& list = obj->presentation_.feedback_list;
+        list.erase(std::remove_if(list.begin(), list.end(),
+                                  [done](const std::unique_ptr<Feedback>& p) {
+                                    return p.get() == done;
+                                  }),
+                   list.end());
+      });
+
       obj->presentation_.feedback_list.push_back(std::move(feedback));
       //            window_create_feedback(window, time);
       //            window_commit_next(window);
@@ -463,7 +498,16 @@ Buffer* Window::next_buffer() const {
   if (!buffer)
     return nullptr;
 
-  if (!buffer->get_wl_buffer()) {
+  // Recreate the SHM buffer if it has never been allocated or if the window
+  // has been resized since the buffer was last created.
+  const bool size_changed = buffer->get_wl_buffer() &&
+                            (buffer->get_width() != extents_.window.width ||
+                             buffer->get_height() != extents_.window.height);
+
+  if (!buffer->get_wl_buffer() || size_changed) {
+    if (size_changed) {
+      buffer->destroy();
+    }
     const auto ret = buffer->create_shm_buffer(
         extents_.window.width, extents_.window.height, buffer_format_);
 
@@ -472,8 +516,7 @@ Buffer* Window::next_buffer() const {
 
     /* paint the padding */
     memset(buffer->get_shm_data(), 0xff,
-           static_cast<size_t>(extents_.window.width) *
-               static_cast<size_t>(extents_.window.height) * 4);
+           static_cast<size_t>(buffer->get_size()));
   }
 
   return buffer;

@@ -16,6 +16,9 @@
 
 #include "waypp/seat/seat.h"
 
+#include <sstream>
+#include <string>
+
 #include "logging/logging.h"
 
 /**
@@ -69,9 +72,14 @@ void Seat::handle_capabilities(void* data, wl_seat* seat, uint32_t caps) {
 
   if (caps & WL_SEAT_CAPABILITY_POINTER && !obj->pointer_) {
     if (!obj->event_mask_.pointer.all) {
-      obj->pointer_ = std::make_unique<Pointer>(
-          wl_seat_get_pointer(seat), obj->wl_compositor_, obj->wl_shm_,
-          obj->disable_cursor_, obj->event_mask_.pointer);
+      auto wl_pointer = wl_seat_get_pointer(seat);
+      if (wl_pointer) {
+        obj->pointer_ = std::make_unique<Pointer>(
+            wl_pointer, obj->wl_compositor_, obj->wl_shm_, obj->disable_cursor_,
+            obj->event_mask_.pointer);
+      } else {
+        LOG_ERROR("failed to get Wayland pointer");
+      }
     }
   } else if (!(caps & WL_SEAT_CAPABILITY_POINTER) && obj->pointer_) {
     obj->pointer_.reset();
@@ -79,8 +87,13 @@ void Seat::handle_capabilities(void* data, wl_seat* seat, uint32_t caps) {
 
   if ((caps & WL_SEAT_CAPABILITY_KEYBOARD) && !obj->keyboard_) {
     if (!obj->event_mask_.keyboard.all) {
-      obj->keyboard_ = std::make_unique<Keyboard>(wl_seat_get_keyboard(seat),
-                                                  obj->event_mask_.keyboard);
+      auto wl_keyboard = wl_seat_get_keyboard(seat);
+      if (wl_keyboard) {
+        obj->keyboard_ =
+            std::make_unique<Keyboard>(wl_keyboard, obj->event_mask_.keyboard);
+      } else {
+        LOG_ERROR("failed to get Wayland keyboard");
+      }
     }
   } else if (!(caps & WL_SEAT_CAPABILITY_KEYBOARD) && obj->keyboard_) {
     obj->keyboard_.reset();
@@ -88,8 +101,12 @@ void Seat::handle_capabilities(void* data, wl_seat* seat, uint32_t caps) {
 
   if ((caps & WL_SEAT_CAPABILITY_TOUCH) && !obj->touch_) {
     if (!obj->event_mask_.touch.all) {
-      obj->touch_ = std::make_unique<Touch>(wl_seat_get_touch(seat),
-                                            obj->event_mask_.touch);
+      auto wl_touch = wl_seat_get_touch(seat);
+      if (wl_touch) {
+        obj->touch_ = std::make_unique<Touch>(wl_touch, obj->event_mask_.touch);
+      } else {
+        LOG_ERROR("failed to get Wayland touch");
+      }
     }
   } else if (!(caps & WL_SEAT_CAPABILITY_TOUCH) && obj->touch_) {
     obj->touch_.reset();
@@ -141,8 +158,7 @@ std::optional<Pointer*> Seat::get_pointer() const {
 }
 
 void Seat::event_mask_print() const {
-  const std::string out;
-  std::stringstream ss(out);
+  std::stringstream ss;
   ss << "Seat Event Mask";
   if (event_mask_.pointer.enabled)
     ss << "\n\tpointer [enabled]";
@@ -207,9 +223,9 @@ void Seat::set_event_mask(const char* ignore_events) {
         keyboard_->set_event_mask(event_mask_.keyboard);
       }
     } else if (event.rfind("touch", 0) == 0) {
-      event_mask_.touch.all = true;
+      event_mask_.touch.enabled = true;
       if (event == "touch") {
-        event_mask_.touch.enabled = true;
+        event_mask_.touch.all = true;
       }
       if (touch_) {
         touch_->set_event_mask(event_mask_.touch);

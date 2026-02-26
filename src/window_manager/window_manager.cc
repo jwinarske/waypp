@@ -46,9 +46,9 @@ WindowManager::WindowManager(wl_display* display,
                 ext_interface_count,
                 ext_interface_data,
                 disable_cursor),
-      wl_display_(display),
-      context_(context),
       outputs_(get_outputs()) {
+  (void)
+      context;  // parameter kept for API compatibility; GMainContext is unused
   DLOG_TRACE("++WindowManager::WindowManager()");
   DLOG_TRACE("--WindowManager::WindowManager()");
 }
@@ -83,16 +83,16 @@ WindowManager::~WindowManager() {
   while (g_main_context_iteration(nullptr, FALSE))
     ;
 
-  while (wl_display_prepare_read(wl_display_) != 0)
-    dispatch_count += wl_display_dispatch_pending(wl_display_);
+  while (wl_display_prepare_read(get_display()) != 0)
+    dispatch_count += wl_display_dispatch_pending(get_display());
 
-  if (wl_display_flush(wl_display_) < 0 && errno != EAGAIN) {
-    wl_display_cancel_read(wl_display_);
+  if (wl_display_flush(get_display()) < 0 && errno != EAGAIN) {
+    wl_display_cancel_read(get_display());
     return -errno;
   }
 
   fds[0] = {
-      .fd = wl_display_get_fd(wl_display_),
+      .fd = wl_display_get_fd(get_display()),
       .events = POLLIN,
       .revents = 0,
   };
@@ -100,19 +100,19 @@ WindowManager::~WindowManager() {
   const int ret = poll(fds, std::size(fds), timeout);
   if (ret > 0) {
     if (fds[0].revents & POLLIN) {
-      wl_display_read_events(wl_display_);
-      dispatch_count += wl_display_dispatch_pending(wl_display_);
+      wl_display_read_events(get_display());
+      dispatch_count += wl_display_dispatch_pending(get_display());
       return dispatch_count;
     }
 
-    wl_display_cancel_read(wl_display_);
+    wl_display_cancel_read(get_display());
     return dispatch_count;
   }
   if (ret == 0) {
-    wl_display_cancel_read(wl_display_);
+    wl_display_cancel_read(get_display());
     return dispatch_count;
   }
-  wl_display_cancel_read(wl_display_);
+  wl_display_cancel_read(get_display());
   return -errno;
 }
 
@@ -128,17 +128,17 @@ int WindowManager::poll_events(int /* timeout */) const {
     observer->notify_task();
   }
 
-  while (wl_display_prepare_read(wl_display_) != 0) {
-    wl_display_dispatch_pending(wl_display_);
+  while (wl_display_prepare_read(get_display()) != 0) {
+    wl_display_dispatch_pending(get_display());
   }
-  wl_display_flush(wl_display_);
+  wl_display_flush(get_display());
 
-  wl_display_read_events(wl_display_);
-  return wl_display_dispatch_pending(wl_display_);
+  wl_display_read_events(get_display());
+  return wl_display_dispatch_pending(get_display());
 }
 
 int WindowManager::display_dispatch() const {
-  return wl_display_dispatch(wl_display_);
+  return wl_display_dispatch(get_display());
 }
 
 wl_output* WindowManager::get_primary_output() const {

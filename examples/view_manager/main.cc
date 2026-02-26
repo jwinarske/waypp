@@ -22,6 +22,7 @@
  */
 
 #include <csignal>
+#include <cstdint>
 
 #include <cxxopts.hpp>
 

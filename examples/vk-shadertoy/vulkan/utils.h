@@ -43,7 +43,7 @@ class VulkanUtils {
 
   VulkanUtils();
 
-  ~VulkanUtils();
+  ~VulkanUtils() = default;
 
   static void exit(VkInstance vk);
 
@@ -89,14 +89,15 @@ class VulkanUtils {
                               const char* ext_names[],
                               uint32_t ext_count);
 
-  static vk_error init(VkInstance* vk, VkDevice const* device = nullptr) {
+  static vk_error init(VkInstance* vk) {
     const char* extension_names[] = {
         VK_KHR_SURFACE_EXTENSION_NAME,
         VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME,
     };
-    VULKAN_HPP_DEFAULT_DISPATCHER.init(*vk, *device);
-    return init_ext(vk, extension_names,
-                    sizeof extension_names / sizeof *extension_names);
+    // Bootstrap the dynamic dispatcher before the instance is created.
+    // init_ext will advance it to instance-level after vkCreateInstance.
+    VULKAN_HPP_DEFAULT_DISPATCHER.init();
+    return init_ext(vk, extension_names, std::size(extension_names));
   }
 
   static vk_error get_dev(vk_physical_device* phy_dev,
@@ -108,8 +109,7 @@ class VulkanUtils {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     };
     return get_dev_ext(phy_dev, dev, qflags, queue_info, queue_info_count,
-                       extension_names,
-                       sizeof extension_names / sizeof *extension_names);
+                       extension_names, std::size(extension_names));
   }
 
   static vk_error setup(vk_physical_device* phy_dev,
@@ -232,7 +232,7 @@ class VulkanUtils {
 
   static void free_offscreen_buffers(vk_device* dev,
                                      vk_offscreen_buffers* offscreen_buffers,
-                                     uint32_t offscreen_buffer_count,
+                                     uint32_t graphics_buffer_count,
                                      VkRenderPass render_pass);
 
   static void get_local_time(my_time_struct* my_time);

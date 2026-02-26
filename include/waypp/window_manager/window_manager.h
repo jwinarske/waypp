@@ -16,6 +16,9 @@
 
 #pragma once
 
+#include <algorithm>
+#include <vector>
+
 #include <EGL/egl.h>
 
 #include "registrar.h"
@@ -42,14 +45,12 @@ class WindowManager : public Registrar {
 
   ~WindowManager();
 
-  [[nodiscard]] wl_display* get_display() const { return wl_display_; }
-
   [[nodiscard]] int poll_events(int timeout) const;
 
   [[maybe_unused]] [[nodiscard]] int dispatch(int timeout) const;
 
   [[nodiscard]] int dispatch_pending() const {
-    return wl_display_dispatch_pending(wl_display_);
+    return wl_display_dispatch_pending(get_display());
   }
 
   [[nodiscard]] int display_dispatch() const;
@@ -61,7 +62,9 @@ class WindowManager : public Registrar {
   }
 
   void unregister_task_observer(WindowManagerObserver* observer) {
-    observers_.remove(observer);
+    observers_.erase(
+        std::remove(observers_.begin(), observers_.end(), observer),
+        observers_.end());
   }
 
   [[nodiscard]] wl_output* get_primary_output() const;
@@ -75,22 +78,7 @@ class WindowManager : public Registrar {
   WindowManager& operator=(const WindowManager&) = delete;
 
  private:
-  wl_display* wl_display_;
-  GMainContext* context_;
-
-  std::list<WindowManagerObserver*> observers_{};
-
-  struct {
-    int width;
-    int height;
-  } buffer_size_{};
+  std::vector<WindowManagerObserver*> observers_{};
 
   const std::map<wl_output*, std::unique_ptr<Output>>& outputs_;
-
-  wl_output_transform buffer_transform_{};
-
-  int32_t buffer_scale_ = 1;
-  double fractional_buffer_scale_ = 1.0;
-
-  struct wl_display* get_display(const char* name);
 };

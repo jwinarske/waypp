@@ -1,6 +1,8 @@
 #pragma once
 
 #include <waypp/waypp.h>
+#include <atomic>
+#include <functional>
 
 #include <time.h>
 
@@ -45,13 +47,22 @@ class Feedback {
 
   ~Feedback();
 
+  /// Called by Window after constructing each Feedback to register a hook
+  /// that removes the entry from presentation_.feedback_list once the
+  /// compositor sends presented or discarded.  The hook is invoked with
+  /// `this` before the Wayland object is destroyed.
+  void set_on_done(std::function<void(Feedback*)> cb) {
+    on_done_ = std::move(cb);
+  }
+
  private:
-  static unsigned sequence_;
+  static std::atomic<unsigned> sequence_;
 
   wp_presentation* wp_presentation_;
   clockid_t clock_id_ = -1;
   struct wp_presentation_feedback* feedback_;
   FeedbackObserver* observer_;
+  std::function<void(Feedback*)> on_done_;
 
   timespec committed_{};
   timespec presented_{};

@@ -16,6 +16,8 @@
 
 #include "waypp/window/xdg_toplevel.h"
 
+#include <stdexcept>
+
 #include "logging/logging.h"
 
 // workaround for Wayland macro not compiling in C++
@@ -57,8 +59,8 @@ XdgTopLevel::XdgTopLevel(
       resize_margin_(resize_margin) {
   const auto xdg_wm_base = wm_->get_xdg_wm_base();
   if (!xdg_wm_base) {
-    LOG_CRITICAL("xdg_wm_base is not available");
-    exit(EXIT_FAILURE);
+    throw std::runtime_error(
+        "xdg_wm_base is not available; cannot create XdgTopLevel");
   }
 
   set_width(width);

@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <list>
+#include <stdexcept>
 
 #include "logging/logging.h"
 #include "waypp/window_manager/registrar.h"
@@ -44,8 +45,9 @@ AglShell::AglShell(struct wl_display* display,
       bound_ok_(false) {
   agl_shell_ = get_agl_shell();
   if (!agl_shell_) {
-    LOG_CRITICAL("{} is required.", agl_shell_interface.name);
-    exit(EXIT_FAILURE);
+    throw std::runtime_error(
+        std::string(agl_shell_interface.name) +
+        " protocol is required but not advertised by the compositor");
   }
 
   agl_shell_add_listener(agl_shell_, &agl_shell_listener_, this);
@@ -57,8 +59,9 @@ AglShell::AglShell(struct wl_display* display,
       continue;
   }
   if (!bound_ok_) {
-    LOG_CRITICAL("agl_shell extension already in use by other shell client.");
-    exit(EXIT_FAILURE);
+    throw std::runtime_error(
+        "agl_shell binding failed: extension already in use by another shell "
+        "client");
   }
 }
 
@@ -88,19 +91,22 @@ void AglShell::activate_app(const std::string& app_id) {
   if (it != pending_app_list_.end()) {
     DLOG_DEBUG("[AGL] pending: {}", app_id);
 
-    wl_output = find_output_by_name(it->second);
+    // Save the output name before erasing — erase() invalidates the iterator.
+    const std::string output_name = it->second;
+    pending_app_list_.erase(it);
+
+    wl_output = find_output_by_name(output_name);
     if (!wl_output) {
       // try with remoting-remote-X which is the streaming
-      wl_output = find_output_by_name("remoting-" + it->second);
+      wl_output = find_output_by_name("remoting-" + output_name);
       if (!wl_output) {
         DLOG_DEBUG("[AGL] Not activating app_id {} at all", app_id);
         return;
       }
     }
-    pending_app_list_.erase(it);
+    DLOG_DEBUG("[AGL] Activating app_id {} on output {}", app_id, output_name);
   }
 
-  DLOG_DEBUG("[AGL] Activating app_id {} on output {}", app_id, it->second);
   agl_shell_activate_app(agl_shell_, app_id.c_str(), wl_output);
   wl_display_flush(get_display());
 }

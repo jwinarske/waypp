@@ -37,7 +37,7 @@ class ShaderToy : public VulkanUtils, public VulkanRender {
  public:
   ShaderToy();
 
-  ~ShaderToy();
+  ~ShaderToy() = default;
 
   int init(int width,
            int height,
@@ -142,12 +142,12 @@ class ShaderToy : public VulkanUtils, public VulkanRender {
   bool use_gpu_idx_{};
 
   VkInstance vk_{};
-  struct vk_physical_device phy_dev_ {};
-  struct vk_device dev_ {};
-  struct vk_swapchain swapchain_ {};
-  struct app_os_window os_window_ {};
+  struct vk_physical_device phy_dev_{};
+  struct vk_device dev_{};
+  struct vk_swapchain swapchain_{};
+  struct app_os_window os_window_{};
 
-  struct vk_render_essentials essentials_ {};
+  struct vk_render_essentials essentials_{};
 
   VkFence offscreen_fence_ = VK_NULL_HANDLE;
   VkQueue offscreen_queue_[OFFSCREEN_BUFFERS] = {VK_NULL_HANDLE};

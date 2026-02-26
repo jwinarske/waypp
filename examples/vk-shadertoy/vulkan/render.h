@@ -37,7 +37,7 @@ class VulkanRender {
  public:
   VulkanRender();
 
-  ~VulkanRender();
+  ~VulkanRender() = default;
 
   static int get_essentials(vk_render_essentials* essentials,
                             vk_physical_device* phy_dev,
@@ -77,12 +77,12 @@ class VulkanRender {
                                     const char* object,
                                     const char* name);
 
-  static vk_error copy_object_end(vk_device* dev,
+  static vk_error copy_object_end(const vk_device* dev,
                                   vk_render_essentials* essentials);
 
   static vk_error copy_buffer(vk_device* dev,
                               vk_render_essentials* essentials,
-                              vk_buffer* to,
+                              const vk_buffer* to,
                               vk_buffer* from,
                               size_t size,
                               const char* name);

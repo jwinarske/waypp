@@ -63,8 +63,8 @@ Egl::Egl(wl_display* display,
   EGLint n;
   ret = eglChooseConfig(dpy_, config_attribs_.data(), configs, count, &n);
   if (n == 0) {
-    DLOG_DEBUG("EGL Config: Check Config Attributes");
-    exit(EXIT_FAILURE);
+    free(configs);
+    throw std::runtime_error("EGL Config: Check Config Attributes");
   }
 
   EGLint red_size;
@@ -81,8 +81,8 @@ Egl::Egl(wl_display* display,
   }
   free(configs);
   if (config_ == nullptr) {
-    LOG_CRITICAL("did not find config with buffer size {}", buffer_bpp_);
-    exit(EXIT_FAILURE);
+    throw std::runtime_error("did not find config with buffer size " +
+                             std::to_string(buffer_bpp_));
   }
 
   context_ =
@@ -116,10 +116,15 @@ Egl::Egl(wl_display* display,
   }
 
   wl_egl_window_ = wl_egl_window_create(wl_surface_, width_, height_);
-  eglMakeCurrent(dpy_, egl_surface_, egl_surface_, context_);
+  if (!wl_egl_window_) {
+    throw std::runtime_error("failed to create Wayland EGL window");
+  }
   egl_surface_ = eglCreateWindowSurface(
       dpy_, config_, reinterpret_cast<EGLNativeWindowType>(wl_egl_window_),
       nullptr);
+  if (egl_surface_ == EGL_NO_SURFACE) {
+    throw std::runtime_error("failed to create EGL window surface");
+  }
   eglMakeCurrent(dpy_, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
   DLOG_TRACE("--Egl::Egl()");
 }

@@ -20,7 +20,7 @@
 
 #include "logging/logging.h"
 
-int Command::is_safe_char(const char c) {
+bool Command::is_safe_char(const char c) {
   return std::isalnum(static_cast<unsigned char>(c)) || c == ' ' || c == '_' ||
          c == '-' || c == '/' || c == '.';
 }
@@ -37,10 +37,17 @@ std::string Command::sanitize_cmd(const std::string& cmd) {
 
 bool Command::Execute(const std::string& cmd, std::string& result) {
   if (cmd.empty()) {
-    spdlog::error("execute: cmd is empty");
+    spdlog::error("[Command] Execute: cmd is empty");
     return false;
   }
   const std::string safe_cmd = sanitize_cmd(cmd);
+  if (safe_cmd.empty()) {
+    spdlog::error(
+        "[Command] Execute: command '{}' reduced to empty string "
+        "after sanitization — refusing to execute",
+        cmd);
+    return false;
+  }
   FILE* fp = popen(safe_cmd.c_str(), "r");
   if (!fp) {
     spdlog::error("[ExecuteCommand] Failed to Execute Command: ({}) {}", errno,

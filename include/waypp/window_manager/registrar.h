@@ -66,6 +66,8 @@ class Registrar {
 
   static const char* shm_format_to_text(wl_shm_format format);
 
+  [[nodiscard]] wl_display* get_display() const { return wl_display_; }
+
   [[nodiscard]] wl_registry* get_registry() const { return wl_registry_; }
 
   [[nodiscard]] wl_compositor* get_compositor() const { return wl_compositor_; }

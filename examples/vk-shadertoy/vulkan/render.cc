@@ -37,8 +37,6 @@ class VulkanUtils;
 
 VulkanRender::VulkanRender() = default;
 
-VulkanRender::~VulkanRender() = default;
-
 int VulkanRender::get_essentials(vk_render_essentials* essentials,
                                  vk_physical_device* phy_dev,
                                  vk_device* dev,
@@ -67,8 +65,10 @@ int VulkanRender::get_essentials(vk_render_essentials* essentials,
   essentials->cmd_buffer = dev->command_pools[presentable_queues[0]].buffers[0];
   free(presentable_queues);
 
-  VkSemaphoreCreateInfo sem_info = {
+  constexpr VkSemaphoreCreateInfo sem_info = {
       .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+      .pNext = nullptr,
+      .flags = 0,
   };
 
   auto res = d.vkCreateSemaphore(dev->device, &sem_info, nullptr,
@@ -89,6 +89,8 @@ int VulkanRender::get_essentials(vk_render_essentials* essentials,
 
   constexpr VkFenceCreateInfo fence_info = {
       .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+      .pNext = nullptr,
+      .flags = 0,
   };
 
   res = d.vkCreateFence(dev->device, &fence_info, nullptr,
@@ -133,7 +135,7 @@ VkResult VulkanRender::start(vk_render_essentials* essentials,
   if (res == VK_SUBOPTIMAL_KHR) {
     spdlog::warn("presentation is suboptimal.");
   } else if (res == VK_ERROR_OUT_OF_DATE_KHR) {
-    // this is not error, this is resize event for AMD hardware
+    // this is not an error, this is a resize event for AMD hardware
     return res;
   } else if (res < 0) {
     vk_error_printf(&retval, "Couldn't acquire image\n");
@@ -154,7 +156,9 @@ VkResult VulkanRender::start(vk_render_essentials* essentials,
   d.vkResetCommandBuffer(essentials->cmd_buffer, 0);
   VkCommandBufferBeginInfo begin_info = {
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+      .pNext = nullptr,
       .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+      .pInheritanceInfo = nullptr,
   };
   res = d.vkBeginCommandBuffer(essentials->cmd_buffer, &begin_info);
   vk_error_set_vkresult(&retval, res);
@@ -166,6 +170,7 @@ VkResult VulkanRender::start(vk_render_essentials* essentials,
 
   const VkImageMemoryBarrier image_barrier = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .pNext = nullptr,
       .srcAccessMask = VK_ACCESS_MEMORY_READ_BIT,
       .dstAccessMask = VK_ACCESS_MEMORY_WRITE_BIT,
       .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
@@ -238,9 +243,11 @@ vk_error VulkanRender::copy_object_start(vk_device* /* dev */,
   auto retval = VK_ERROR_NONE;
 
   d.vkResetCommandBuffer(essentials->cmd_buffer, 0);
-  VkCommandBufferBeginInfo begin_info = {
+  constexpr VkCommandBufferBeginInfo begin_info = {
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+      .pNext = nullptr,
       .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+      .pInheritanceInfo = nullptr,
   };
   const auto res = d.vkBeginCommandBuffer(essentials->cmd_buffer, &begin_info);
   vk_error_set_vkresult(&retval, res);
@@ -253,7 +260,7 @@ vk_error VulkanRender::copy_object_start(vk_device* /* dev */,
   return retval;
 }
 
-vk_error VulkanRender::copy_object_end(vk_device* dev,
+vk_error VulkanRender::copy_object_end(const vk_device* dev,
                                        vk_render_essentials* essentials) {
   auto retval = VK_ERROR_NONE;
 
@@ -268,8 +275,14 @@ vk_error VulkanRender::copy_object_end(vk_device* dev,
 
   const VkSubmitInfo submit_info = {
       .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+      .pNext = nullptr,
+      .waitSemaphoreCount = 0,
+      .pWaitSemaphores = nullptr,
+      .pWaitDstStageMask = nullptr,
       .commandBufferCount = 1,
       .pCommandBuffers = &essentials->cmd_buffer,
+      .signalSemaphoreCount = 0,
+      .pSignalSemaphores = nullptr,
   };
 
   d.vkQueueSubmit(essentials->present_queue, 1, &submit_info,
@@ -283,9 +296,9 @@ vk_error VulkanRender::copy_object_end(vk_device* dev,
 
 vk_error VulkanRender::copy_buffer(vk_device* dev,
                                    vk_render_essentials* essentials,
-                                   vk_buffer* to,
+                                   const vk_buffer* to,
                                    vk_buffer* from,
-                                   size_t size,
+                                   const size_t size,
                                    const char* name) {
   auto retval = VK_ERROR_NONE;
 
@@ -307,9 +320,9 @@ vk_error VulkanRender::copy_buffer(vk_device* dev,
 vk_error VulkanRender::copy_image(vk_device* dev,
                                   vk_render_essentials* essentials,
                                   vk_image* to,
-                                  VkImageLayout to_layout,
+                                  const VkImageLayout to_layout,
                                   vk_image* from,
-                                  VkImageLayout from_layout,
+                                  const VkImageLayout from_layout,
                                   VkImageCopy* region,
                                   const char* name) {
   auto retval = VK_ERROR_NONE;
@@ -327,7 +340,7 @@ vk_error VulkanRender::copy_image(vk_device* dev,
 vk_error VulkanRender::copy_buffer_to_image(vk_device* dev,
                                             vk_render_essentials* essentials,
                                             vk_image* to,
-                                            VkImageLayout to_layout,
+                                            const VkImageLayout to_layout,
                                             vk_buffer* from,
                                             VkBufferImageCopy* region,
                                             const char* name) {
@@ -347,7 +360,7 @@ vk_error VulkanRender::copy_image_to_buffer(vk_device* dev,
                                             vk_render_essentials* essentials,
                                             vk_buffer* to,
                                             vk_image* from,
-                                            VkImageLayout from_layout,
+                                            const VkImageLayout from_layout,
                                             VkBufferImageCopy* region,
                                             const char* name) {
   auto retval = VK_ERROR_NONE;
@@ -365,10 +378,10 @@ vk_error VulkanRender::copy_image_to_buffer(vk_device* dev,
 vk_error VulkanRender::transition_images(vk_device* dev,
                                          vk_render_essentials* essentials,
                                          vk_image* images,
-                                         uint32_t image_count,
-                                         VkImageLayout from,
-                                         VkImageLayout to,
-                                         VkImageAspectFlags aspect,
+                                         const uint32_t image_count,
+                                         const VkImageLayout from,
+                                         const VkImageLayout to,
+                                         const VkImageAspectFlags aspect,
                                          const char* name) {
   auto retval = VK_ERROR_NONE;
 
@@ -526,7 +539,7 @@ vk_error VulkanRender::transition_images_mipmaps(
                            VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0,
                            nullptr, 1, &image_barrier);
 
-    VkImageBlit blit = {0};
+    VkImageBlit blit = {};
     blit.srcOffsets[0] = (struct VkOffset3D){.x = 0, .y = 0, .z = 0};
     blit.srcOffsets[1] =
         (struct VkOffset3D){.x = mipWidth, .y = mipHeight, .z = 1};
@@ -586,8 +599,14 @@ vk_error VulkanRender::transition_images_mipmaps(
 
   VkSubmitInfo submit_info = {
       .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+      .pNext = nullptr,
+      .waitSemaphoreCount = 0,
+      .pWaitSemaphores = nullptr,
+      .pWaitDstStageMask = nullptr,
       .commandBufferCount = 1,
       .pCommandBuffers = &essentials->cmd_buffer,
+      .signalSemaphoreCount = 0,
+      .pSignalSemaphores = nullptr,
   };
 
   d.vkQueueSubmit(essentials->present_queue, 1, &submit_info,
@@ -622,11 +641,17 @@ vk_error VulkanRender::update_texture(struct vk_physical_device* phy_dev,
     return retval;
 
   VkBufferImageCopy image_copy = {
+      .bufferOffset = 0,
+      .bufferRowLength = 0,
+      .bufferImageHeight = 0,
       .imageSubresource =
           {
               .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+              .mipLevel = 0,
+              .baseArrayLayer = 0,
               .layerCount = 1,
           },
+      .imageOffset = {.x = 0, .y = 0, .z = 0},
       .imageExtent =
           {
               .width = image->extent.width,
@@ -672,11 +697,17 @@ vk_error VulkanRender::init_texture(vk_physical_device* phy_dev,
     return retval;
 
   VkBufferImageCopy image_copy = {
+      .bufferOffset = 0,
+      .bufferRowLength = 0,
+      .bufferImageHeight = 0,
       .imageSubresource =
           {
               .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+              .mipLevel = 0,
+              .baseArrayLayer = 0,
               .layerCount = 1,
           },
+      .imageOffset = {.x = 0, .y = 0, .z = 0},
       .imageExtent =
           {
               .width = image->extent.width,
@@ -739,6 +770,7 @@ int VulkanRender::finish(vk_render_essentials* essentials,
 
   const VkImageMemoryBarrier image_barrier = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      .pNext = nullptr,
       .srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT,
       .dstAccessMask = VK_ACCESS_MEMORY_READ_BIT,
       .oldLayout = from_layout,
@@ -776,6 +808,7 @@ int VulkanRender::finish(vk_render_essentials* essentials,
                                              VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT};
   const VkSubmitInfo submit_info = {
       .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+      .pNext = nullptr,
       .waitSemaphoreCount = wait_sem ? UINT32_C(2) : UINT32_C(1),
       .pWaitSemaphores = wait_sems,
       .pWaitDstStageMask = wait_sem_stages,
@@ -789,11 +822,13 @@ int VulkanRender::finish(vk_render_essentials* essentials,
 
   const VkPresentInfoKHR present_info = {
       .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+      .pNext = nullptr,
       .waitSemaphoreCount = 1,
       .pWaitSemaphores = &essentials->sem_pre_submit,
       .swapchainCount = 1,
       .pSwapchains = &swapchain->swapchain,
       .pImageIndices = &image_index,
+      .pResults = nullptr,
   };
   res = d.vkQueuePresentKHR(essentials->present_queue, &present_info);
 

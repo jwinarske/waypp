@@ -17,7 +17,10 @@
 #include "waypp/seat/pointer.h"
 
 #include <algorithm>
+#include <cerrno>
+#include <cstring>
 
+#include <dirent.h>
 #include <wayland-client.h>
 #include <wayland-cursor.h>
 
@@ -48,11 +51,6 @@ Pointer::Pointer(wl_pointer* pointer,
   LOG_DEBUG("Pointer");
   wl_pointer_add_listener(pointer, &pointer_listener_, this);
   wl_surface_cursor_ = wl_compositor_create_surface(wl_compositor);
-
-  event_mask_.enabled = event_mask.enabled;
-  event_mask_.axis = event_mask.axis;
-  event_mask_.buttons = event_mask.buttons;
-  event_mask_.motion = event_mask.motion;
 }
 
 /**
@@ -372,9 +370,11 @@ void Pointer::set_cursor(uint32_t serial,
                          const char* cursor_name,
                          const char* theme_name) {
   if (disable_cursor_) {
-    wl_pointer_set_cursor(wl_pointer_, serial, wl_surface_cursor_, 0, 0);
-    wl_surface_damage(wl_surface_cursor_, 0, 0, 0, 0);
-    wl_surface_commit(wl_surface_cursor_);
+    // Per the Wayland protocol, passing NULL as the surface to
+    // wl_pointer_set_cursor hides the cursor. Committing a zero-damage surface
+    // (the previous approach) is protocol-incorrect and may cause compositor
+    // warnings or undefined cursor behavior.
+    wl_pointer_set_cursor(wl_pointer_, serial, nullptr, 0, 0);
     return;
   }
 
@@ -430,20 +430,48 @@ std::vector<std::string> Pointer::get_available_cursors(
     const char* theme_name) {
   std::string theme = theme_name == nullptr ? get_cursor_theme() : theme_name;
 
-  std::ostringstream ss;
-  ss << "ls -1 /usr/share/icons/" << theme << "/cursors";
+  // Validate the theme name against a strict allowlist:
+  // only alphanumeric characters, hyphens, and underscores are permitted.
+  // This prevents path traversal (e.g. "../") and shell-injection characters
+  // from reaching the filesystem path or any downstream shell invocation.
+  for (const char c : theme) {
+    if (!std::isalnum(static_cast<unsigned char>(c)) && c != '-' && c != '_') {
+      LOG_ERROR(
+          "[Pointer] cursor theme name '{}' contains invalid character "
+          "'{}' — refusing to enumerate cursors",
+          theme, c);
+      return {};
+    }
+  }
 
-  std::string res;
-  Command::Execute(ss.str(), res);
+  if (theme.empty()) {
+    LOG_WARN("[Pointer] cursor theme name is empty — cannot enumerate cursors");
+    return {};
+  }
+
+  // Build the cursors directory path and enumerate it directly with
+  // opendir/readdir, avoiding any shell invocation.
+  const std::string cursors_dir = "/usr/share/icons/" + theme + "/cursors";
+
+  DIR* dir = opendir(cursors_dir.c_str());
+  if (!dir) {
+    LOG_WARN("[Pointer] cannot open cursor directory '{}': {}", cursors_dir,
+             std::strerror(errno));
+    return {};
+  }
 
   std::vector<std::string> cursor_list;
-
-  std::string line;
-  std::istringstream orig_stream(res);
-  while (std::getline(orig_stream, line)) {
-    if (!line.empty())
-      cursor_list.push_back(line);
+  struct dirent* entry;
+  while ((entry = readdir(dir)) != nullptr) {
+    // Skip the "." and ".." pseudo-entries.
+    if (entry->d_name[0] == '.' &&
+        (entry->d_name[1] == '\0' ||
+         (entry->d_name[1] == '.' && entry->d_name[2] == '\0'))) {
+      continue;
+    }
+    cursor_list.emplace_back(entry->d_name);
   }
+  closedir(dir);
 
   std::sort(cursor_list.begin(), cursor_list.end());
 
