@@ -26,7 +26,17 @@
 #include <linux/input.h>
 
 void App::draw_frame(void* data, const uint32_t time) {
-  const auto shader_toy = static_cast<ShaderToy*>(data);
+  const auto app = static_cast<App*>(data);
+  const auto shader_toy = app->shader_toy_.get();
+
+  // Propagate compositor-driven size changes (interactive resize, maximize,
+  // restore) into ShaderToy before rendering the next frame.
+  const int new_w = app->toplevel_->get_width();
+  const int new_h = app->toplevel_->get_height();
+  if (new_w > 0 && new_h > 0) {
+    shader_toy->resize(new_w, new_h);
+  }
+
   shader_toy->draw_frame(time);
 }
 
@@ -60,8 +70,8 @@ App::App(const Configuration& config) : logging_(std::make_unique<Logging>()) {
   /// paint padding
   toplevel_->set_surface_damage(0, 0, config.width, config.height);
 
-  /// start frame callbacks with user_data pointing to shadertoy
-  toplevel_->start_frame_callbacks(shader_toy_.get());
+  /// start frame callbacks with user_data pointing to this App
+  toplevel_->start_frame_callbacks(this);
 }
 
 App::~App() {

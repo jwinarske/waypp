@@ -52,6 +52,19 @@ class ShaderToy : public VulkanUtils, public VulkanRender {
 
   void draw_frame(uint32_t time);
 
+  /// Called when the compositor reports a new surface size (configure event).
+  /// Updates iResolution and arms the resize_event flag so the next
+  /// render_loop_draw() call will rebuild the swapchain at the new size.
+  void resize(const int width, const int height) {
+    if (os_window_.app_data.iResolution[0] == width &&
+        os_window_.app_data.iResolution[1] == height) {
+      return;
+    }
+    os_window_.app_data.iResolution[0] = width;
+    os_window_.app_data.iResolution[1] = height;
+    os_window_.resize_event = true;
+  }
+
   struct app_os_window* get_app_os_window() { return &os_window_; }
 
   void toggle_pause() {

@@ -1203,6 +1203,16 @@ bool ShaderToy::render_loop_draw(vk_physical_device* phy_dev,
                                  vk_device* dev,
                                  vk_swapchain* swapchain,
                                  app_os_window* os_window) {
+  // Handle a pending resize (compositor configure or swapchain out-of-date).
+  if (os_window->resize_event) {
+    os_window->resize_event = false;
+    if (!on_window_resize(phy_dev, dev, &essentials_, swapchain, &render_data_,
+                          os_window)) {
+      spdlog::error("on_window_resize failed");
+      return false;
+    }
+  }
+
   if (!os_window->prepared)
     return true;
   static int render_index = 0;
