@@ -25,8 +25,8 @@ if [ -z "${TARGET_PATH}" ]; then
   exit 1
 fi
 
-if ! command -v run-clang-tidy-19 >/dev/null 2>&1; then
-  echo "run-clang-tidy-19 not found in PATH"
+if ! command -v run-clang-tidy-18 >/dev/null 2>&1; then
+  echo "run-clang-tidy-18 not found in PATH"
   exit 1
 fi
 
@@ -62,7 +62,7 @@ fi
 
 printf '%s\n' "${FILES[@]}"
 
-run-clang-tidy-19 \
+run-clang-tidy-18 \
   -warnings-as-errors='*,-bugprone-macro-parentheses' \
   -export-fixes="${FIX_FILE}" \
   -p "${BUILD_DIR}" \

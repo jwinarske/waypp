@@ -1,6 +1,13 @@
 name: clang-format
 
 on:
+  workflow_call:
+    inputs:
+      clang-version:
+        description: "The version of Clang/LLVM to use"
+        type: string
+        required: false
+        default: "18"
   pull_request:
     types: [ opened, synchronize, reopened, closed ]
 
@@ -8,47 +15,54 @@ jobs:
   format:
     runs-on: ubuntu-24.04
 
+    env:
+      CLANG_VERSION: ${{ inputs.clang-version || '18' }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - name: Install packages
+      - name: Install clang-format
         run: |
-          sudo apt-get -y update
-          sudo apt-get -y install ninja-build libglib2.0-dev \
-          libwayland-dev wayland-protocols libxkbcommon-dev \
-          mesa-common-dev libegl1-mesa-dev libgles2-mesa-dev mesa-utils
-          \
-          wget http://security.ubuntu.com/ubuntu/pool/universe/n/ncurses/libtinfo5_6.3-2ubuntu0.1_amd64.deb
-          sudo apt install ./libtinfo5_6.3-2ubuntu0.1_amd64.deb
-          \
-          mkdir clang18 && cd clang18
-          curl -L -O https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.8/clang+llvm-18.1.8-x86_64-linux-gnu-ubuntu-18.04.tar.xz
-          tar -xJf clang+llvm-18.1.8-x86_64-linux-gnu-ubuntu-18.04.tar.xz --strip-components=1
-          bin/clang-format --version
+          # Disable man-db (massive speed-up!)
+          sudo apt-get remove --purge man-db -yq
 
-      - name: Configure CMake
-        run: |
-          cmake -G Ninja -B ${{github.workspace}}/build \
-          -D CMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} \
-          -D ENABLE_AGL_SHELL_CLIENT=ON \
-          -D WAYPP_BUILD_EXAMPLES=ON \
-          -D ENABLE_LTO=ON \
-          -D CMAKE_EXPORT_COMPILE_COMMANDS=ON
+          # Add LLVM apt signing key
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
+            | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
 
-      - name: Run clang-format
-        working-directory: ${{github.workspace}}
-        run: |
-          export FILE_LIST=$(find . -type d \( -name clang18 -o -name docs -o -name third_party \) -prune -false -o -name '*.cc' -o -name '*.hpp' -o -name '*.h')
-          echo $FILE_LIST
-          clang18/bin/clang-format -n --Werror $FILE_LIST 2> clang-format-results.txt
+          # Add LLVM apt repo
+          RELEASE_NAME=$(lsb_release -sc 2>/dev/null || echo "noble")
+          echo "deb http://apt.llvm.org/${RELEASE_NAME}/ llvm-toolchain-${RELEASE_NAME}-${CLANG_VERSION} main" \
+            | sudo tee /etc/apt/sources.list.d/llvm.list
+
+          sudo apt-get update -yq
+          sudo apt-get install -yq "clang-format-${CLANG_VERSION}"
+
+      - name: Run clang-format check (src)
+        env:
+          CLANG_FORMAT: clang-format-${{ inputs.clang-version || '18' }}
+        working-directory: ${{ github.workspace }}
+        run: ./scripts/clang-format-check.sh src .
+
+      - name: Run clang-format check (include)
+        env:
+          CLANG_FORMAT: clang-format-${{ inputs.clang-version || '18' }}
+        working-directory: ${{ github.workspace }}
+        run: ./scripts/clang-format-check.sh include .
+
+      - name: Run clang-format check (examples)
+        env:
+          CLANG_FORMAT: clang-format-${{ inputs.clang-version || '18' }}
+        working-directory: ${{ github.workspace }}
+        run: ./scripts/clang-format-check.sh examples .
 
       - name: Show results
         if: always()
         run: |
-          cat clang-format-results.txt
+          [ -f clang-format-results.txt ] && cat clang-format-results.txt || true
 
       - name: Publish Report
         if: always()
