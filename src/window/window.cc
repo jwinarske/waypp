@@ -261,6 +261,11 @@ void Window::update_buffer_geometry() {
     }
   }
 
+  // Keep extents_.window in sync so next_buffer() recreates SHM buffers at
+  // the correct size after a compositor-driven resize (LOW-8 / resize fix).
+  extents_.window.width = new_buffer_size.width;
+  extents_.window.height = new_buffer_size.height;
+
   needs_buffer_geometry_update_ = false;
 }
 
@@ -493,7 +498,16 @@ Buffer* Window::next_buffer() const {
   if (!buffer)
     return nullptr;
 
-  if (!buffer->get_wl_buffer()) {
+  // Recreate the SHM buffer if it has never been allocated or if the window
+  // has been resized since the buffer was last created.
+  const bool size_changed = buffer->get_wl_buffer() &&
+                            (buffer->get_width() != extents_.window.width ||
+                             buffer->get_height() != extents_.window.height);
+
+  if (!buffer->get_wl_buffer() || size_changed) {
+    if (size_changed) {
+      buffer->destroy();
+    }
     const auto ret = buffer->create_shm_buffer(
         extents_.window.width, extents_.window.height, buffer_format_);
 

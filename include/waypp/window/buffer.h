@@ -47,6 +47,10 @@ class Buffer {
 
   void set_busy() { busy_ = true; }
 
+  /// Free the underlying SHM mapping and wl_buffer so that create_shm_buffer
+  /// can be called again with new dimensions (e.g., after a window resize).
+  void destroy();
+
   // Disallow copy and assign.
   Buffer(const Buffer&) = delete;
 

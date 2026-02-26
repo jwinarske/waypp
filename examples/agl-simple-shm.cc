@@ -92,9 +92,7 @@ static void paint_pixels(void* image,
       uint32_t v;
 
       /// Squared distance from center
-      int r2 = (x - half_w) * (x - half_w) + y2;
-
-      if (r2 < ir)
+      if (const int r2 = (x - half_w) * (x - half_w) + y2; r2 < ir)
         v = (static_cast<uint32_t>(r2 / 32) + time / 64) * 0x0080401;
       else if (r2 < or_)
         v = (static_cast<uint32_t>(y) + time / 32) * 0x0080401;
@@ -115,6 +113,11 @@ static void paint_pixels(void* image,
 
 void draw_frame(void* data, const uint32_t time) {
   const auto window = static_cast<Window*>(data);
+
+  // Flush any pending geometry update (compositor configure → resize) so that
+  // window->get_width()/get_height() and extents_.window are current before
+  // we pick a buffer and paint into it.
+  window->update_buffer_geometry();
 
   const auto buffer = window->next_buffer();
   if (!buffer) {

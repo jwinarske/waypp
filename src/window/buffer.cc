@@ -41,6 +41,22 @@ Buffer::~Buffer() {
   }
 }
 
+void Buffer::destroy() {
+  if (shm_data_ != nullptr && shm_data_ != MAP_FAILED) {
+    munmap(shm_data_, static_cast<size_t>(size_));
+    shm_data_ = nullptr;
+  }
+  if (buffer_) {
+    DLOG_TRACE("[Buffer] wl_buffer_destroy(buffer_) [resize]");
+    wl_buffer_destroy(buffer_);
+    buffer_ = nullptr;
+  }
+  width_ = 0;
+  height_ = 0;
+  size_ = 0;
+  busy_ = false;
+}
+
 void Buffer::handle_release(void* data, wl_buffer* /* buffer */) {
   const auto obj = static_cast<Buffer*>(data);
   obj->busy_ = false;
