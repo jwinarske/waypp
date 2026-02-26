@@ -20,6 +20,12 @@
 option(ENABLE_EGL "Enable EGL dependency" ON)
 
 #
+# Client-Side Decorations
+#
+option(ENABLE_CSD "Enable built-in client-side decorations (CSD)" ON)
+MESSAGE(STATUS "Client-Side Decorations ${ENABLE_CSD}")
+
+#
 # Link Time Optimization
 #
 option(ENABLE_LTO "Link Time Optimization" OFF)

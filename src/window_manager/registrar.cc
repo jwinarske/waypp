@@ -620,6 +620,12 @@ void Registrar::handle_interface_seat(Registrar* r,
     if (!r->seats_.count(wl_seat)) {
       r->seats_[wl_seat] = std::make_unique<Seat>(
           wl_seat, r->get_shm(), r->get_compositor(), r->disable_cursor_);
+#if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
+      if (r->wp_cursor_shape_manager_) {
+        r->seats_[wl_seat]->set_cursor_shape_manager(
+            r->wp_cursor_shape_manager_);
+      }
+#endif
       LOG_DEBUG("{}: {}", interface, wl_seat_get_version(wl_seat));
     }
   } else {
@@ -933,6 +939,11 @@ void Registrar::handle_interface_cursor_shape_manager(Registrar* r,
   LOG_DEBUG(
       "{}: {}", interface,
       wp_cursor_shape_manager_v1_get_version(r->wp_cursor_shape_manager_));
+
+  // Forward to any seats that were registered before this global appeared.
+  for (auto& [wl_seat, seat] : r->seats_) {
+    seat->set_cursor_shape_manager(r->wp_cursor_shape_manager_);
+  }
 }
 
 #endif

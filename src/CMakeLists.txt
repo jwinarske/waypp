@@ -54,6 +54,15 @@ if (ENABLE_XDG_CLIENT)
             window_manager/xdg_window_manager.cc
     )
 endif ()
+
+if (ENABLE_CSD AND ENABLE_XDG_CLIENT)
+    target_sources(waypp PRIVATE
+            window/csd_frame.cc
+            window/csd_shm_plugin.cc
+    )
+    target_compile_definitions(waypp PUBLIC ENABLE_CSD=1)
+endif ()
+
 if (ENABLE_AGL_SHELL_CLIENT)
     target_sources(waypp PRIVATE window_manager/agl_shell.cc)
 endif ()

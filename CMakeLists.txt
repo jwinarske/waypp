@@ -66,7 +66,7 @@ endif ()
 
 if (WAYPP_BUILD_UNIT_TESTS)
     enable_testing()
-    # add_subdirectory(test)
+    add_subdirectory(tests)
 endif ()
 
 if (NOT CMAKE_CROSSCOMPILING)

@@ -401,7 +401,7 @@ const wl_keyboard_listener Keyboard::keyboard_listener_ = {
  *   1. Sets an atomic flag (lock-free store – async-signal-safe).
  *   2. Writes one byte to the self-pipe to wake the GLib event loop.
  *
- * All observer notification is deferred to repeat_dispatch_cb(), which runs
+ * All observer notifications are deferred to repeat_dispatch_cb(), which runs
  * on the normal event-loop thread via the GLib IO watch.
  */
 void Keyboard::repeat_xkb_v1_key_callback(int /* sig */,
@@ -414,16 +414,17 @@ void Keyboard::repeat_xkb_v1_key_callback(int /* sig */,
   obj->repeat_.pending.store(true, std::memory_order_relaxed);
 
   // Write one byte token.  O_NONBLOCK ensures this never blocks in a signal
-  // handler.  EINTR / EAGAIN are silently ignored; if the pipe is full the
+  // handler.  EINTR / EAGAIN are silently ignored; if the pipe is full, the
   // pending flag is still set and the existing byte will be drained.
   constexpr char token = 1;
-  (void)write(obj->repeat_.pipe_write_fd, &token, 1);
+  const ssize_t n = write(obj->repeat_.pipe_write_fd, &token, 1);
+  static_cast<void>(n);  // intentionally ignored — see the comment above
 }
 
 /**
  * @brief GLib IO watch callback – dispatches key-repeat observer notifications.
  *
- * This function runs on the main event-loop thread (not in signal context) so
+ * This function runs on the main event-loop thread (not in signal context), so
  * it is free to call arbitrary C++: virtual methods, std::list traversal, heap
  * allocation, and logging.
  *

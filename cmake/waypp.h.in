@@ -23,6 +23,10 @@
 #cmakedefine01 ENABLE_EGL
 #endif
 
+#ifndef ENABLE_CSD
+#cmakedefine01 ENABLE_CSD
+#endif
+
 #ifndef ENABLE_XDG_CLIENT
 #cmakedefine01 ENABLE_XDG_CLIENT
 #endif

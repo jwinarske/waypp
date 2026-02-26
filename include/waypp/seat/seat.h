@@ -27,6 +27,7 @@
 #include "keyboard.h"
 #include "pointer.h"
 #include "touch.h"
+#include "waypp/waypp.h"
 
 class Keyboard;
 
@@ -91,6 +92,13 @@ class Seat {
 
   [[nodiscard]] std::optional<Pointer*> get_pointer() const;
 
+#if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
+  /// Forward the cursor-shape manager to the Pointer once both are available.
+  /// Safe to call before or after the Pointer is created; if the Pointer does
+  /// not yet exist, the manager is stored and forwarded when it is constructed.
+  void set_cursor_shape_manager(wp_cursor_shape_manager_v1* manager);
+#endif
+
   void set_event_mask(const char* ignore_events);
 
   // Disallow copy and assign.
@@ -107,6 +115,10 @@ class Seat {
   bool disable_cursor_;
   void* user_data_{};
   event_mask event_mask_{};
+
+#if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
+  wp_cursor_shape_manager_v1* cursor_shape_manager_{};
+#endif
 
   std::vector<SeatObserver*> observers_{};
 

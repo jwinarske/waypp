@@ -54,7 +54,8 @@ class XdgWindowManager : public std::enable_shared_from_this<XdgWindowManager>,
       bool fullscreen_ratio,
       bool tearing,
       const std::function<void(void*, uint32_t)>& frame_callback,
-      Egl::config* egl_config = nullptr);
+      Egl::config* egl_config = nullptr,
+      bool enable_csd = false);
 
   // Disallow copy and assign.
   XdgWindowManager(const XdgWindowManager&) = delete;

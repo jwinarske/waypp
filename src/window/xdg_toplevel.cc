@@ -20,6 +20,11 @@
 
 #include "logging/logging.h"
 
+#if ENABLE_CSD
+#include "waypp/window/csd_frame.h"
+#include "waypp/window_manager/window_manager.h"
+#endif
+
 // workaround for Wayland macro not compiling in C++
 #define WL_ARRAY_FOR_EACH(pos, array, type)                               \
   for ((pos) = (type)(array)->data;                                       \
@@ -40,7 +45,8 @@ XdgTopLevel::XdgTopLevel(
     bool fullscreen_ratio,
     bool tearing,
     const std::function<void(void*, const uint32_t)>& frame_callback,
-    Egl::config* egl_config)
+    Egl::config* egl_config,
+    bool enable_csd)
     : Window(wm,
              title,
              buffer_count,
@@ -96,6 +102,17 @@ XdgTopLevel::XdgTopLevel(
     if (wait_for_configure_)
       continue;
   }
+
+#if ENABLE_CSD
+  if (enable_csd) {
+    csd_frame_ = CsdFrame::create(this, wm_.get(), title_);
+    if (!csd_frame_) {
+      LOG_WARN("[XdgTopLevel] CsdFrame::create() failed — running without CSD");
+    }
+  }
+#else
+  (void)enable_csd;
+#endif
 }
 
 XdgTopLevel::~XdgTopLevel() {
@@ -136,8 +153,26 @@ void XdgTopLevel::handle_xdg_surface_configure(void* data,
     return;
   }
   w->configure_serial_ = serial;
+
+#if ENABLE_CSD
+  // Tell the compositor the exact content geometry so its configure suggestions
+  // remain stable.  With CSD subsurfaces the buffer covers only the content
+  // area; the frame panels live outside via wl_subsurface offsets, so the
+  // window geometry is always (0, 0, content_w, content_h).
+  // Without this call the compositor may include the subsurface area in its
+  // size bookkeeping, causing height drift on horizontal-only resize.
+  xdg_surface_set_window_geometry(xdg_surface, 0, 0, w->get_width(),
+                                  w->get_height());
+#endif
+
   xdg_surface_ack_configure(xdg_surface, serial);
   w->wait_for_configure_ = false;
+
+#if ENABLE_CSD
+  if (w->csd_frame_) {
+    w->csd_frame_->commit();
+  }
+#endif
 }
 
 /**
@@ -164,14 +199,23 @@ void XdgTopLevel::handle_xdg_toplevel_configure(void* data,
   }
 
   const uint32_t* state;
+
+  // Clear all state bits first — the compositor sends the complete current
+  // state set in each configure, so any state absent from this event is gone.
+  std::fill(std::begin(tl->prev_state_), std::end(tl->prev_state_), false);
+  tl->Window::set_fullscreen(false);
+  tl->set_maximized(false);
+
   WL_ARRAY_FOR_EACH(state, states, const uint32_t*) {
-    if (const uint32_t idx = *state - 1; tl->prev_state_[idx] != true) {
+    if (const uint32_t idx = *state - 1; idx < std::size(tl->prev_state_)) {
       tl->prev_state_[idx] = true;
     }
     if (*state == XDG_TOPLEVEL_STATE_FULLSCREEN) {
       tl->Window::set_fullscreen(true);
     } else if (*state == XDG_TOPLEVEL_STATE_MAXIMIZED) {
       tl->set_maximized(true);
+    } else if (*state == XDG_TOPLEVEL_STATE_RESIZING) {
+      tl->set_resizing(true);
     }
   }
 
@@ -184,12 +228,30 @@ void XdgTopLevel::handle_xdg_toplevel_configure(void* data,
   }
 
   tl->set_needs_buffer_geometry_update(true);
+
+#if ENABLE_CSD
+  if (tl->csd_frame_) {
+    // prev_state_ is indexed by (xdg_toplevel_state - 1):
+    //   MAXIMIZED=0, FULLSCREEN=1, RESIZING=2, ACTIVATED=3,
+    //   TILED_LEFT=4, TILED_RIGHT=5, TILED_TOP=6, TILED_BOTTOM=7
+    // Array size is 13 to cover all currently defined state values.
+    const bool active = tl->prev_state_[XDG_TOPLEVEL_STATE_ACTIVATED - 1];
+    const bool fs = tl->prev_state_[XDG_TOPLEVEL_STATE_FULLSCREEN - 1];
+    const bool maximized = tl->prev_state_[XDG_TOPLEVEL_STATE_MAXIMIZED - 1];
+    const bool tiled = tl->prev_state_[XDG_TOPLEVEL_STATE_TILED_LEFT - 1] ||
+                       tl->prev_state_[XDG_TOPLEVEL_STATE_TILED_RIGHT - 1] ||
+                       tl->prev_state_[XDG_TOPLEVEL_STATE_TILED_TOP - 1] ||
+                       tl->prev_state_[XDG_TOPLEVEL_STATE_TILED_BOTTOM - 1];
+    tl->csd_frame_->on_configure(tl->get_width(), tl->get_height(), active, fs,
+                                 maximized, tiled);
+  }
+#endif
 }
 
 /**
  * @brief Handles the close event of a toplevel surface.
  *
- * This function is a callback that is called when the user requests to close
+ * This function is a callback called when the user requests to close
  * the toplevel surface. It sets the `running_` member variable to false, which
  * will cause the main event loop to exit.
  *
@@ -244,8 +306,8 @@ void XdgTopLevel::handle_xdg_toplevel_wm_capabilities(
     void* data,
     struct xdg_toplevel* xdg_toplevel,
     struct wl_array* capabilities) {
-  auto* w = static_cast<XdgTopLevel*>(data);
-  if (w->xdg_toplevel_ != xdg_toplevel) {
+  if (auto* w = static_cast<XdgTopLevel*>(data);
+      w->xdg_toplevel_ != xdg_toplevel) {
     return;
   }
   LOG_DEBUG("WM Capabilities:");
@@ -264,6 +326,7 @@ void XdgTopLevel::handle_xdg_toplevel_wm_capabilities(
       case XDG_TOPLEVEL_WM_CAPABILITIES_MINIMIZE:
         LOG_DEBUG("\tXDG_TOPLEVEL_WM_CAPABILITIES_MINIMIZE");
         break;
+      default:;
     }
   }
 }
@@ -303,3 +366,14 @@ xdg_toplevel_resize_edge XdgTopLevel::check_edge_resize(
   }
   return XDG_TOPLEVEL_RESIZE_EDGE_NONE;
 }
+
+#if ENABLE_CSD
+static constexpr CsdFrameExtents kEmptyExtents{};
+
+const CsdFrameExtents& XdgTopLevel::csd_extents() const {
+  if (csd_frame_) {
+    return csd_frame_->extents();
+  }
+  return kEmptyExtents;
+}
+#endif

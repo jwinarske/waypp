@@ -4,7 +4,7 @@
 #include <atomic>
 #include <functional>
 
-#include <time.h>
+#include <ctime>
 
 class Feedback;
 

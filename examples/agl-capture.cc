@@ -23,6 +23,7 @@
 
 #include <memory>
 
+#include <cstdint>
 #include <cxxopts.hpp>
 
 #include "logging/logging.h"

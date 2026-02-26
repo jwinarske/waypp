@@ -52,6 +52,19 @@ add_sanitizers(simple-shm)
 install(TARGETS simple-shm DESTINATION bin)
 
 #
+# simple-csd — client-side decoration demo (requires ENABLE_CSD + ENABLE_XDG_CLIENT)
+#
+if (ENABLE_CSD AND ENABLE_XDG_CLIENT)
+    add_executable(simple-csd simple-csd.cc)
+
+    target_link_libraries(simple-csd PRIVATE waypp wayland-gen cxxopts::cxxopts toolchain::toolchain)
+
+    add_sanitizers(simple-csd)
+
+    install(TARGETS simple-csd DESTINATION bin)
+endif ()
+
+#
 # presentation-shm
 #
 if (FALSE)
