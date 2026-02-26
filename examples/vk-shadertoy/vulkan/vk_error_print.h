@@ -69,21 +69,21 @@ typedef struct vk_error {
                   */
 } vk_error;
 
-#define VK_ERROR_NONE                        \
-  (struct vk_error) {                        \
-    .error =                                 \
-        {                                    \
-            .type = VK_ERROR_SUCCESS,        \
-            .vkresult = VK_SUCCESS,          \
-            .file = nullptr,                 \
-            .line = 0,                       \
-        },                                   \
-    .sub_error = {                           \
-        .type = VK_ERROR_SUCCESS,            \
-        .vkresult = VK_SUCCESS,              \
-        .file = nullptr,                     \
-        .line = 0,                           \
-    },                                       \
+#define VK_ERROR_NONE                 \
+  (struct vk_error) {                 \
+    .error =                          \
+        {                             \
+            .type = VK_ERROR_SUCCESS, \
+            .vkresult = VK_SUCCESS,   \
+            .file = nullptr,          \
+            .line = 0,                \
+        },                            \
+    .sub_error = {                    \
+        .type = VK_ERROR_SUCCESS,     \
+        .vkresult = VK_SUCCESS,       \
+        .file = nullptr,              \
+        .line = 0,                    \
+    },                                \
   }
 
 #define vk_error_set_vkresult(es, e) \

@@ -1,8 +1,8 @@
 #pragma once
 
+#include <waypp/waypp.h>
 #include <atomic>
 #include <functional>
-#include <waypp/waypp.h>
 
 #include <time.h>
 

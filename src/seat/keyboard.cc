@@ -127,9 +127,10 @@ void Keyboard::handle_keymap(void* data,
         static_cast<char*>(mmap(nullptr, size, prot, flags, fd, 0));
 
     if (keymap_string == MAP_FAILED) {
-      LOG_ERROR("[Keyboard] mmap of keymap fd failed ({}): {} — "
-                "keymap and key state unchanged",
-                errno, std::strerror(errno));
+      LOG_ERROR(
+          "[Keyboard] mmap of keymap fd failed ({}): {} — "
+          "keymap and key state unchanged",
+          errno, std::strerror(errno));
       close(fd);
       return;
     }
@@ -140,8 +141,9 @@ void Keyboard::handle_keymap(void* data,
     munmap(keymap_string, size);
 
     if (!new_keymap) {
-      LOG_ERROR("[Keyboard] xkb_keymap_new_from_string failed — "
-                "keymap and key state unchanged");
+      LOG_ERROR(
+          "[Keyboard] xkb_keymap_new_from_string failed — "
+          "keymap and key state unchanged");
       close(fd);
       return;
     }
@@ -209,7 +211,6 @@ void Keyboard::handle_leave(void* data,
   if (obj->wl_keyboard_ != wl_keyboard) {
     return;
   }
-
 
   DLOG_TRACE("[Keyboard] handle_leave");
 
@@ -336,8 +337,9 @@ void Keyboard::handle_repeat_info(void* data,
       const auto res =
           timer_create(CLOCK_REALTIME, &obj->repeat_.sev, &obj->repeat_.timer);
       if (res != 0) {
-        LOG_ERROR("[Keyboard] timer_create failed ({}): {} — key-repeat disabled",
-                  errno, std::strerror(errno));
+        LOG_ERROR(
+            "[Keyboard] timer_create failed ({}): {} — key-repeat disabled",
+            errno, std::strerror(errno));
         obj->repeat_setup_failed_ = true;
         return;
       }
@@ -349,7 +351,8 @@ void Keyboard::handle_repeat_info(void* data,
       if (sigaction(SIGRTMIN, &obj->repeat_.sa, nullptr) == -1) {
         LOG_ERROR("[Keyboard] sigaction failed ({}): {} — key-repeat disabled",
                   errno, std::strerror(errno));
-        // The timer was created successfully; destroy it before marking invalid.
+        // The timer was created successfully; destroy it before marking
+        // invalid.
         timer_delete(obj->repeat_.timer);
         obj->repeat_.timer = {};
         obj->repeat_setup_failed_ = true;
@@ -360,19 +363,19 @@ void Keyboard::handle_repeat_info(void* data,
       /// repeat_dispatch_cb() runs on the main thread and is free to call
       /// arbitrary C++ (virtual dispatch, std::list iteration, etc.).
       if (obj->repeat_.pipe_read_fd >= 0) {
-        GIOChannel* channel =
-            g_io_channel_unix_new(obj->repeat_.pipe_read_fd);
+        GIOChannel* channel = g_io_channel_unix_new(obj->repeat_.pipe_read_fd);
         // Raw binary I/O – do not interpret the single-byte token.
         g_io_channel_set_encoding(channel, nullptr, nullptr);
         g_io_channel_set_buffered(channel, FALSE);
         // g_io_add_watch_full accepts a GIOFunc directly (no cast needed) and
         // returns a source ID that can be used for cleanup.
-        obj->repeat_.io_watch_id = g_io_add_watch_full(
-            channel, G_PRIORITY_DEFAULT, G_IO_IN,
-            repeat_dispatch_cb, data, nullptr);
+        obj->repeat_.io_watch_id =
+            g_io_add_watch_full(channel, G_PRIORITY_DEFAULT, G_IO_IN,
+                                repeat_dispatch_cb, data, nullptr);
         g_io_channel_unref(channel);
       } else {
-        LOG_ERROR("[Keyboard] self-pipe not available; key-repeat will not work");
+        LOG_ERROR(
+            "[Keyboard] self-pipe not available; key-repeat will not work");
       }
     }
   }
@@ -404,8 +407,7 @@ const wl_keyboard_listener Keyboard::keyboard_listener_ = {
 void Keyboard::repeat_xkb_v1_key_callback(int /* sig */,
                                           siginfo_t* si,
                                           void* /* uc */) {
-  auto* obj =
-      static_cast<Keyboard*>(si->_sifields._rt.si_sigval.sival_ptr);
+  auto* obj = static_cast<Keyboard*>(si->_sifields._rt.si_sigval.sival_ptr);
 
   // Mark a repeat as pending (relaxed store is sufficient – the IO watch read
   // on the other end of the pipe provides the necessary memory ordering).

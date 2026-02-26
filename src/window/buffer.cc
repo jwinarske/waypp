@@ -132,8 +132,10 @@ int Buffer::create_shm_buffer(int width, int height, uint32_t format) {
       bpp = 1;
       break;
     default:
-      LOG_ERROR("[Buffer] unsupported wl_shm_format 0x{:08X} — "
-                "cannot compute stride; buffer not created", format);
+      LOG_ERROR(
+          "[Buffer] unsupported wl_shm_format 0x{:08X} — "
+          "cannot compute stride; buffer not created",
+          format);
       return -1;
   }
 

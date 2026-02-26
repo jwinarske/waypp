@@ -503,7 +503,8 @@ class Observer final : public SeatObserver,
     spdlog::info("Pointer Button: pointer: {}, time: {}, button: {}, state: {}",
                  serial, time, button, state);
     if (button == BTN_LEFT && state == WL_POINTER_BUTTON_STATE_PRESSED) {
-      if (const auto edge = app_.toplevel_->check_edge_resize(pointer->get_xy());
+      if (const auto edge =
+              app_.toplevel_->check_edge_resize(pointer->get_xy());
           edge != XDG_TOPLEVEL_RESIZE_EDGE_NONE) {
         app_.toplevel_->resize(app_.seat_->get_seat(), serial, edge);
       }

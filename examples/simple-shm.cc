@@ -121,7 +121,8 @@ void draw_frame(void* data, const uint32_t time) {
 
   const auto buffer = window->next_buffer();
   if (!buffer) {
-    spdlog::error("[draw_frame] Failed to acquire a buffer — stopping render loop");
+    spdlog::error(
+        "[draw_frame] Failed to acquire a buffer — stopping render loop");
     // Do not call exit(): we are inside a wl_surface_frame callback.
     // Halt the frame-callback chain and signal the run loop to exit cleanly.
     window->stop_frame_callbacks();

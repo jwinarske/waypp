@@ -436,9 +436,10 @@ std::vector<std::string> Pointer::get_available_cursors(
   // from reaching the filesystem path or any downstream shell invocation.
   for (const char c : theme) {
     if (!std::isalnum(static_cast<unsigned char>(c)) && c != '-' && c != '_') {
-      LOG_ERROR("[Pointer] cursor theme name '{}' contains invalid character "
-                "'{}' — refusing to enumerate cursors",
-                theme, c);
+      LOG_ERROR(
+          "[Pointer] cursor theme name '{}' contains invalid character "
+          "'{}' — refusing to enumerate cursors",
+          theme, c);
       return {};
     }
   }
@@ -450,13 +451,12 @@ std::vector<std::string> Pointer::get_available_cursors(
 
   // Build the cursors directory path and enumerate it directly with
   // opendir/readdir, avoiding any shell invocation.
-  const std::string cursors_dir =
-      "/usr/share/icons/" + theme + "/cursors";
+  const std::string cursors_dir = "/usr/share/icons/" + theme + "/cursors";
 
   DIR* dir = opendir(cursors_dir.c_str());
   if (!dir) {
-    LOG_WARN("[Pointer] cannot open cursor directory '{}': {}",
-             cursors_dir, std::strerror(errno));
+    LOG_WARN("[Pointer] cannot open cursor directory '{}': {}", cursors_dir,
+             std::strerror(errno));
     return {};
   }
 

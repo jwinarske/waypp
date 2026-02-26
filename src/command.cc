@@ -42,9 +42,10 @@ bool Command::Execute(const std::string& cmd, std::string& result) {
   }
   const std::string safe_cmd = sanitize_cmd(cmd);
   if (safe_cmd.empty()) {
-    spdlog::error("[Command] Execute: command '{}' reduced to empty string "
-                  "after sanitization — refusing to execute",
-                  cmd);
+    spdlog::error(
+        "[Command] Execute: command '{}' reduced to empty string "
+        "after sanitization — refusing to execute",
+        cmd);
     return false;
   }
   FILE* fp = popen(safe_cmd.c_str(), "r");

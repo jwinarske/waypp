@@ -97,8 +97,7 @@ class VulkanUtils {
     // Bootstrap the dynamic dispatcher before the instance is created.
     // init_ext will advance it to instance-level after vkCreateInstance.
     VULKAN_HPP_DEFAULT_DISPATCHER.init();
-    return init_ext(vk, extension_names,
-                    std::size(extension_names));
+    return init_ext(vk, extension_names, std::size(extension_names));
   }
 
   static vk_error get_dev(vk_physical_device* phy_dev,
@@ -110,8 +109,7 @@ class VulkanUtils {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     };
     return get_dev_ext(phy_dev, dev, qflags, queue_info, queue_info_count,
-                       extension_names,
-                       std::size(extension_names));
+                       extension_names, std::size(extension_names));
   }
 
   static vk_error setup(vk_physical_device* phy_dev,

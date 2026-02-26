@@ -16,8 +16,8 @@
 
 #include "waypp/window/window.h"
 
-#include <algorithm>
 #include <wayland-egl.h>
+#include <algorithm>
 
 #include "logging/logging.h"
 

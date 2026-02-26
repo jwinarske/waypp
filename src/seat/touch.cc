@@ -123,8 +123,8 @@ void Touch::handle_up(void* data,
  * It prints a message indicating that the motion event is being handled.
  *
  * @param data  A pointer to user-defined data.
- * @param wl_touch_obj  A pointer to the wl_touch object associated with the motion
- * event.
+ * @param wl_touch_obj  A pointer to the wl_touch object associated with the
+ * motion event.
  * @param time  The timestamp of the motion event.
  * @param id  The ID of the touchpoint.
  * @param x_w  The x coordinate of the touchpoint, in wl_fixed_t format.
