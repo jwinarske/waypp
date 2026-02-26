@@ -86,10 +86,8 @@ static void paint_pixels(void* image,
     for (auto x = padding; x < width - padding; x++) {
       uint32_t v;
 
-      /* squared distance from center */
-      int r2 = (x - half_width) * (x - half_width) + y2;
-
-      if (r2 < ir)
+      /* squared distance from a center */
+      if (const int r2 = (x - half_width) * (x - half_width) + y2; r2 < ir)
         v = (static_cast<uint32_t>(r2 / 32) + time / 64) * 0x0080401;
       else if (r2 < or_)
         v = (static_cast<uint32_t>(y) + time / 32) * 0x0080401;
@@ -97,7 +95,7 @@ static void paint_pixels(void* image,
         v = (static_cast<uint32_t>(x) + time / 16) * 0x0080401;
       v &= 0x00ffffff;
 
-      /* cross if compositor uses X from XRGB as alpha */
+      /* cross if the compositor uses X from XRGB as alpha */
       if (abs(x - y) > 6 && abs(x + y - height) > 6)
         v |= 0xff000000;
 
@@ -111,10 +109,17 @@ static void paint_pixels(void* image,
 void draw_frame(void* data, const uint32_t time) {
   const auto window = static_cast<Window*>(data);
 
+  // Flush any pending compositor-driven resize so extents_.window is current
+  // before next_buffer() checks dimensions and paint_pixels writes into it.
+  window->update_buffer_geometry();
+
   const auto buffer = window->next_buffer();
   if (!buffer) {
-    spdlog::error("Failed to acquire a buffer");
-    exit(EXIT_FAILURE);
+    spdlog::error("[draw_frame] Failed to acquire a buffer — stopping render loop");
+    window->stop_frame_callbacks();
+    window->close();
+    running = false;
+    return;
   }
 
   paint_pixels(buffer->get_shm_data(), 20, window->get_width(),
