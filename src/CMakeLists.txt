@@ -70,6 +70,7 @@ endif ()
 if (ENABLE_IVI_SHELL_CLIENT)
     target_sources(waypp PRIVATE
             window_manager/ivi_window_manager.cc
+            window/ivi_surface.cc
     )
     target_compile_definitions(waypp PUBLIC ENABLE_IVI_SHELL_CLIENT=1)
 endif ()
