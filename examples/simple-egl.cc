@@ -563,7 +563,7 @@ class Observer final : public SeatObserver,
  * @return An integer representing the exit status of the program.
  */
 int main(const int argc, char** argv) {
-  auto logging = std::make_unique<Logging>();
+  auto log_init = std::make_unique<Logging>();
 
   auto display = wl_display_connect(nullptr);
   if (!display) {

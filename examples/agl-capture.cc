@@ -21,7 +21,9 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include <atomic>
 #include <memory>
+#include <stdexcept>
 
 #include <cstdint>
 #include <cxxopts.hpp>
@@ -40,16 +42,14 @@ struct Configuration {
   bool all;
 };
 
-static volatile bool gRunning = true;
+static std::atomic<bool> gRunning{true};
 
 class App final : public WestonCaptureObserver {
  public:
-  explicit App(const Configuration& config)
-      : logging_(std::make_unique<Logging>()), weston_capture_v1_(nullptr) {
+  explicit App(const Configuration& config) : weston_capture_v1_(nullptr) {
     display_ = wl_display_connect(nullptr);
     if (!display_) {
-      spdlog::critical("Unable to connect to Wayland socket.");
-      exit(EXIT_FAILURE);
+      throw std::runtime_error("Unable to connect to Wayland socket.");
     }
 
     agl_shell_ = std::make_shared<AglShell>(display_, false);
@@ -63,14 +63,15 @@ class App final : public WestonCaptureObserver {
       for (const auto& output : outputs) {
         spdlog::info("Output: {}", output.second->get_name());
       }
-      exit(EXIT_SUCCESS);
+      // Signal the run loop to exit immediately after listing.
+      gRunning.store(false, std::memory_order_relaxed);
+      return;
     }
 
     /// Weston Capture
     weston_capture_v1_ = agl_shell_->get_weston_capture_v1();
     if (!weston_capture_v1_) {
-      spdlog::critical("weston_capture_v1 interface not found.");
-      exit(EXIT_FAILURE);
+      throw std::runtime_error("weston_capture_v1 interface not found.");
     }
 
     /// Source
@@ -96,8 +97,7 @@ class App final : public WestonCaptureObserver {
       }
 
       if (!output) {
-        spdlog::critical("Output not available.");
-        exit(EXIT_FAILURE);
+        throw std::runtime_error("Output not available.");
       }
 
       weston_capture_list_.push_back(std::make_unique<WestonCapture>(
@@ -135,7 +135,7 @@ class App final : public WestonCaptureObserver {
   void notify_weston_capture_complete(
       void* /* user_data */,
       weston_capture_source_v1* /* weston_capture_source_v1 */) override {
-    gRunning = false;
+    gRunning.store(false, std::memory_order_relaxed);
     spdlog::debug("complete");
   }
 
@@ -158,28 +158,31 @@ class App final : public WestonCaptureObserver {
       wl_display_flush(display_);
       wl_display_disconnect(display_);
     }
-  };
+  }
 
   [[nodiscard]] bool run() const {
     /// display_dispatch is blocking
-    return (gRunning && agl_shell_->display_dispatch() != -1);
+    return (gRunning.load(std::memory_order_acquire) &&
+            agl_shell_->display_dispatch() != -1);
   }
 
  private:
   wl_display* display_{};
-  std::unique_ptr<Logging> logging_;
+  std::unique_ptr<Logging> logging_{};
   std::shared_ptr<AglShell> agl_shell_;
   std::list<std::unique_ptr<WestonCapture>> weston_capture_list_;
   weston_capture_v1* weston_capture_v1_{};
 
   struct {
-    uint32_t drm_format;
-    int32_t width;
-    int32_t height;
+    uint32_t drm_format{};
+    int32_t width{};
+    int32_t height{};
   } buffer_{};
 };
 
 int main(const int argc, char** argv) {
+  auto log_init = std::make_unique<Logging>();
+
   cxxopts::Options options("agl-capture", "AGL Output Capture Utility");
   options.add_options()
       // clang-format off
@@ -190,22 +193,26 @@ int main(const int argc, char** argv) {
             ("o,output", "take a screenshot of the output specified by OUTPUT_NAME", cxxopts::value<std::string>())
             ("l,list", "list all the outputs found")
             ("a,all", "take a screenshot of all the outputs found");
-
   // clang-format on
   const auto result = options.parse(argc, argv);
 
-  const App app({
-      .write_back = result["writeback"].as<bool>(),
-      .frame_buffer = result["framebuffer"].as<bool>(),
-      .full_frame_buffer = result["full-framebuffer"].as<bool>(),
-      .blending = result["blending"].as<bool>(),
-      .output =
-          result.count("output") ? result["output"].as<std::string>() : "",
-      .list = result["list"].as<bool>(),
-      .all = result["all"].as<bool>(),
-  });
+  try {
+    const App app({
+        .write_back = result["writeback"].as<bool>(),
+        .frame_buffer = result["framebuffer"].as<bool>(),
+        .full_frame_buffer = result["full-framebuffer"].as<bool>(),
+        .blending = result["blending"].as<bool>(),
+        .output =
+            result.count("output") ? result["output"].as<std::string>() : "",
+        .list = result["list"].as<bool>(),
+        .all = result["all"].as<bool>(),
+    });
 
-  while (app.run()) {
+    while (app.run()) {
+    }
+  } catch (const std::runtime_error& e) {
+    spdlog::critical("Fatal error: {}", e.what());
+    return EXIT_FAILURE;
   }
 
   return EXIT_SUCCESS;

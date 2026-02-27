@@ -43,7 +43,6 @@
 #include <stdexcept>
 
 #include <linux/input.h>
-#include <wayland-client.h>
 #include <cxxopts.hpp>
 
 #include "logging/logging.h"
@@ -83,25 +82,26 @@ void handle_signal(const int signal) {
 // Frame callback — identical to simple-shm
 // ---------------------------------------------------------------------------
 
+static constexpr int kPaintPadding = 20;
+
 static void paint_pixels(void* image,
-                         const int padding,
                          const int width,
                          const int height,
                          const uint32_t time) {
   auto* pixel = static_cast<uint32_t*>(image);
-  const int half_h = padding + (height - padding * 2) / 2;
-  const int half_w = padding + (width - padding * 2) / 2;
+  const int half_h = kPaintPadding + (height - kPaintPadding * 2) / 2;
+  const int half_w = kPaintPadding + (width - kPaintPadding * 2) / 2;
 
   auto or_ = (half_w < half_h ? half_w : half_h) - 8;
   auto ir = or_ - 32;
   or_ *= or_;
   ir *= ir;
 
-  pixel += padding * width;
-  for (auto y = padding; y < height - padding; y++) {
+  pixel += kPaintPadding * width;
+  for (auto y = kPaintPadding; y < height - kPaintPadding; y++) {
     const int y2 = (y - half_h) * (y - half_h);
-    pixel += padding;
-    for (auto x = padding; x < width - padding; x++) {
+    pixel += kPaintPadding;
+    for (auto x = kPaintPadding; x < width - kPaintPadding; x++) {
       uint32_t v;
       if (const int r2 = (x - half_w) * (x - half_w) + y2; r2 < ir)
         v = (static_cast<uint32_t>(r2 / 32) + time / 64) * 0x0080401u;
@@ -114,7 +114,7 @@ static void paint_pixels(void* image,
         v |= 0xFF000000u;
       *pixel++ = v;
     }
-    pixel += padding;
+    pixel += kPaintPadding;
   }
 }
 
@@ -132,7 +132,7 @@ void draw_frame(void* data, const uint32_t time) {
     return;
   }
 
-  paint_pixels(buffer->get_shm_data(), 20, window->get_width(),
+  paint_pixels(buffer->get_shm_data(), window->get_width(),
                window->get_height(), time);
 
   wl_surface_attach(window->get_surface(), buffer->get_wl_buffer(), 0, 0);
@@ -154,8 +154,8 @@ class App final : public PointerObserver,
                   public KeyboardObserver,
                   public SeatObserver {
  public:
-  explicit App(const Configuration& config)
-      : logging_(std::make_unique<Logging>()) {
+  explicit App(const Configuration& config) {
+    logging_ = std::make_unique<Logging>();
     wl_display_ = wl_display_connect(nullptr);
     if (!wl_display_) {
       throw std::runtime_error("Unable to connect to Wayland display socket");
@@ -346,7 +346,7 @@ class App final : public PointerObserver,
 
  private:
   wl_display* wl_display_{};
-  std::unique_ptr<Logging> logging_;
+  std::unique_ptr<Logging> logging_{};
   std::shared_ptr<XdgWindowManager> wm_;
   Seat* seat_{};
   std::shared_ptr<XdgTopLevel> toplevel_;

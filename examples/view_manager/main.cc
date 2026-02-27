@@ -21,6 +21,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include <atomic>
 #include <csignal>
 #include <stdexcept>
 
@@ -29,22 +30,23 @@
 
 #include "app.h"
 
-static volatile bool gRunning = true;
+static std::atomic<bool> gRunning{true};
 
 /**
  * @brief Signal handler function to handle signals.
  *
  * This function is a signal handler for handling signals. It sets the value of
- * keep_running to false, which will stop the program from running. The function
- * does not take any input parameters.
+ * gRunning to false, which will stop the program from running. Uses a relaxed
+ * atomic store which is async-signal-safe and provides correct visibility on
+ * all architectures (unlike volatile).
  *
- * @param signal The signal number. This parameter is not used by the function.
+ * @param signal The signal number.
  *
  * @return void
  */
 void handle_signal(const int signal) {
   if (signal == SIGINT) {
-    gRunning = false;
+    gRunning.store(false, std::memory_order_relaxed);
   }
 }
 
@@ -76,7 +78,7 @@ int main(const int argc, char** argv) {
         .tearing = result["tearing"].as<bool>(),
     });
 
-    while (gRunning && app.run()) {
+    while (gRunning.load(std::memory_order_acquire) && app.run()) {
     }
   } catch (const std::runtime_error& e) {
     spdlog::critical("Fatal error: {}", e.what());

@@ -24,6 +24,7 @@
 #include "app.h"
 
 #include <linux/input.h>
+#include <stdexcept>
 
 void App::draw_frame(void* data, const uint32_t time) {
   const auto app = static_cast<App*>(data);
@@ -40,13 +41,13 @@ void App::draw_frame(void* data, const uint32_t time) {
   shader_toy->draw_frame(time);
 }
 
-App::App(const Configuration& config) : logging_(std::make_unique<Logging>()) {
+App::App(const Configuration& config) {
+  logging_ = std::make_unique<Logging>();
   spdlog::info("{}", kAppTitle);
 
   display_ = wl_display_connect(nullptr);
   if (!display_) {
-    spdlog::critical("Unable to connect to Wayland socket.");
-    exit(EXIT_FAILURE);
+    throw std::runtime_error("Unable to connect to Wayland socket.");
   }
 
   shader_toy_ = std::make_unique<ShaderToy>();

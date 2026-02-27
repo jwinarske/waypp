@@ -1,6 +1,6 @@
 # waypp Reliability Analysis
 
-**Date:** 2026-02-25  
+**Date:** 2026-02-27 (updated; first pass 2026-02-25)  
 **Scope:** `examples/`, `include/`, `src/`
 
 ---
@@ -24,8 +24,8 @@
 | Critical | 4 | 0 |
 | High     | 8 | 0 |
 | Medium   | 9 | 0 |
-| Low      | 9 | 0 |
-| **Total**| **30** | **0** |
+| Low      | 15 | 0 |
+| **Total**| **36** | **0** |
 
 ---
 
@@ -683,28 +683,134 @@ This matches the pattern used in `simple-shm.cc`, `simple-egl.cc`, `simple-ext-p
 
 ---
 
+## Low Severity / Code Quality Issues (2026-02-27 second pass)
+
+### LOW-10 — `volatile bool gRunning` / `running` in `view_manager/main.cc` and `simple-ext-protocol.cc` ✅ FIXED  
+**Files:** `examples/view_manager/main.cc`, `examples/simple-ext-protocol.cc`
+
+**Problem:** Same root cause as HIGH-2/HIGH-3 (first pass). Both files used `static volatile bool` for their SIGINT stop flags — providing no memory-ordering guarantee on multi-core architectures and being formally incorrect for signal-handler / main-thread sharing under the C++ memory model. `simple-ext-protocol.cc`'s `draw_frame` also wrote `running = false` directly without an atomic store.
+
+**Fix applied (2026-02-27):**
+- `#include <atomic>` added to both files.
+- `static volatile bool gRunning = true` / `static volatile bool running = true` → `static std::atomic<bool> gRunning{true}` / `static std::atomic<bool> running{true}`.
+- Signal handlers: bare assignment → `*.store(false, std::memory_order_relaxed)`.
+- `draw_frame` in `simple-ext-protocol.cc`: `running = false` → `running.store(false, std::memory_order_relaxed)`.
+- Run loops: `while (running && …)` → `while (running.load(std::memory_order_acquire) && …)`.
+
+---
+
+### LOW-11 — `exit()` on `wl_display_connect` failure in `simple-ext-protocol.cc` ✅ FIXED  
+**File:** `examples/simple-ext-protocol.cc` — `main()`
+
+**Problem:** `exit(EXIT_FAILURE)` was called immediately after a failed `wl_display_connect`. At that point no Wayland resources had been acquired, but `exit()` still bypasses any RAII objects that may be on the stack above `main` (e.g., `Logging`). The pattern is also inconsistent with every other example (`simple-shm`, `simple-egl`, `agl-simple-shm`) which all use `return EXIT_FAILURE`.
+
+**Fix applied (2026-02-27):**  
+`exit(EXIT_FAILURE)` → `return EXIT_FAILURE` so the call stack unwinds normally and the `Logging` object (and any future stack objects) are destroyed.
+
+---
+
+### LOW-12 — Negative damage dimensions in `simple-ext-protocol.cc` `draw_frame` ✅ FIXED  
+**File:** `examples/simple-ext-protocol.cc` — `draw_frame()`
+
+**Problem:** `wl_surface_damage(surface, 20, 20, get_width() - 40, get_height() - 40)` computed damage width/height without clamping. For any window narrower or shorter than 40 pixels — possible during interactive resize — the subtraction yields a negative integer which is cast to `uint32_t`, producing an enormous damage region (wraps to ~4 billion). This is protocol-incorrect and can cause compositor-side assertion failures.
+
+**Fix applied (2026-02-27):**
+```cpp
+// Before:
+wl_surface_damage(window->get_surface(), 20, 20,
+                  window->get_width() - 40, window->get_height() - 40);
+
+// After:
+const int damage_w = std::max(0, window->get_width() - 40);
+const int damage_h = std::max(0, window->get_height() - 40);
+if (damage_w > 0 && damage_h > 0) {
+    wl_surface_damage(window->get_surface(), 20, 20, damage_w, damage_h);
+}
+```
+`#include <algorithm>` added for `std::max`.
+
+---
+
+### LOW-13 — `resizing_` flag never cleared in `XdgTopLevel::handle_xdg_toplevel_configure` ✅ FIXED  
+**File:** `src/window/xdg_toplevel.cc` — `handle_xdg_toplevel_configure()`
+
+**Problem:** The XDG shell protocol specifies that the compositor sends the *complete* current state set in each `xdg_toplevel::configure` event. `RESIZING` being absent from the states array means the resize interaction has ended. The handler correctly cleared `fullscreen_` and `maximized_` at the top of the function before re-scanning the states array, but omitted `resizing_`. Once a resize started, `resizing_` would remain permanently `true` for the lifetime of the toplevel, even after the interactive resize completed. Any code branching on `is_resizing()` (e.g., pointer-motion logging in `simple-egl.cc`) would observe a stale value.
+
+**Fix applied (2026-02-27):**  
+Added `tl->set_resizing(false);` alongside the existing `set_fullscreen(false)` and `set_maximized(false)` resets at the top of the state-clear block:
+```cpp
+// Clear all state bits first
+std::fill(std::begin(tl->prev_state_), std::end(tl->prev_state_), false);
+tl->Window::set_fullscreen(false);
+tl->set_maximized(false);
+tl->set_resizing(false);  // ← added; set back to true below if still present
+```
+
+---
+
+### LOW-14 — `ViewManagerWayland::poll_events()` and `toggle_fullscreen()` access `views_[0]` without empty-check ✅ FIXED  
+**File:** `examples/view_manager/view_manager_wayland.cc`
+
+**Problem:** Both `poll_events()` and `toggle_fullscreen()` called `views_[0]` / `views_.front()` unconditionally. If `create_view()` had not yet been called (or returned early), `views_` would be empty and either call would be undefined behaviour (out-of-bounds vector access). Similarly, `notify_pointer_button` accessed `views_.front()` and `seat_` without null/empty checks — if `seat_` was `nullptr` (no seat advertised by compositor) `seat_->get_seat()` would crash.
+
+**Fix applied (2026-02-27):**
+- `poll_events()`: added `if (views_.empty()) return false;` guard before `views_[0]` access.
+- `toggle_fullscreen()`: wrapped body in `if (!views_.empty())`.
+- `notify_pointer_button()`: combined `!views_.empty() && seat_` check into the existing `button == BTN_LEFT` condition, so the resize path only runs when both a view and a valid seat exist.
+- `notify_keyboard_xkb_v1_key()`: added null check on the `keyboard->get_user_data()` cast result before calling `quit()`/`toggle_fullscreen()` on it.
+
+---
+
+### LOW-15 — `SPDLOG_ACTIVE_LEVEL` redefined when `spdlog/spdlog.h` included before `logging.h` ✅ FIXED  
+**File:** `include/waypp/logging/logging.h`
+
+**Problem:** `logging.h` unconditionally `#define`d `SPDLOG_ACTIVE_LEVEL` before including any spdlog headers. If a translation unit included `spdlog/spdlog.h` (or any header that pulls it in transitively) *before* `logging.h`, `SPDLOG_ACTIVE_LEVEL` was already defined by spdlog's own `common.h` and the redefinition produced a `-Werror` diagnostic:
+```
+error: 'SPDLOG_ACTIVE_LEVEL' redefined [-Werror]
+```
+This was observed in the `view_manager/main.cc` build (`view-manager` target) where `spdlog/spdlog.h` was included first.
+
+**Fix applied (2026-02-27):**  
+Wrapped both `#define SPDLOG_ACTIVE_LEVEL …` lines with `#ifndef SPDLOG_ACTIVE_LEVEL` guards so the macro is only defined if not already set by the including translation unit or a previously-included header:
+```cpp
+// Before:
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE   // unconditional — redefinition error
+
+// After:
+#ifndef SPDLOG_ACTIVE_LEVEL
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE   // only defined if not already set
+#endif
+```
+Applied to both the debug (`SPDLOG_LEVEL_TRACE`) and release (`SPDLOG_LEVEL_OFF`) branches.
+
+---
+
 ## Per-File Findings
 
 | File | Issues |
 |------|--------|
 | `src/seat/keyboard.cc` | CRIT-1, CRIT-2, CRIT-4, HIGH-1, HIGH-5 |
-| `src/seat/pointer.cc` | HIGH-7, HIGH-8 (via `agl_shell`), MED-8, MED-9, LOW-3 |
+| `src/seat/pointer.cc` | HIGH-7, MED-8, MED-9, LOW-3 |
 | `src/seat/touch.cc` | LOW-5 |
 | `src/seat/seat.cc` | MED-7, LOW-2 |
 | `src/window/egl.cc` | HIGH-4 |
 | `src/window/buffer.cc` | MED-4 |
 | `src/window/feedback.cc` | MED-3, LOW-8 |
 | `src/window/window.cc` | MED-6, LOW-8 |
-| `src/window/xdg_toplevel.cc` | CRIT-3 |
+| `src/window/xdg_toplevel.cc` | CRIT-3, LOW-13 |
 | `src/window_manager/agl_shell.cc` | CRIT-3, HIGH-8 |
 | `src/window_manager/output.cc` | MED-1, MED-2 |
 | `src/window_manager/registrar.cc` | (clean, good error handling) |
 | `src/window_manager/xdg_window_manager.cc` | CRIT-3 |
 | `src/window_manager/window_manager.cc` | LOW-4 |
 | `src/command.cc` | HIGH-6, LOW-1 |
+| `include/waypp/logging/logging.h` | LOW-15 |
 | `examples/simple-shm.cc` | CRIT-3, HIGH-2, MED-5 |
 | `examples/simple-egl.cc` | CRIT-3, HIGH-2, HIGH-3, LOW-6, LOW-7 |
 | `examples/agl-simple-shm.cc` | CRIT-3, HIGH-2, MED-5, LOW-9 |
+| `examples/simple-ext-protocol.cc` | LOW-10, LOW-11, LOW-12 |
+| `examples/view_manager/main.cc` | LOW-10 |
+| `examples/view_manager/view_manager_wayland.cc` | LOW-14 |
 
 ---
 
@@ -720,9 +826,8 @@ The following patterns are well-implemented and should be maintained:
 - **`[[nodiscard]]` on getters**: Public API headers consistently apply `[[nodiscard]]` to query methods, helping catch silently-ignored return values.
 - **No raw `new`/`delete`**: Heap allocations exclusively use `std::make_unique`/`std::make_shared`, eliminating double-free and leak risk from that source.
 - **Copy/assignment disabled on resource-owning classes**: `Keyboard`, `Pointer`, `Touch`, `Window`, `Buffer`, and `Egl` all declare `= delete` for copy constructor and copy assignment operator.
-
-
-
+- **Atomic stop flags**: All example run loops and signal handlers now use `std::atomic<bool>` with appropriate `memory_order_acquire`/`memory_order_relaxed` semantics.
+- **Damage clamping**: SHM frame callbacks clamp damage rectangles to non-negative dimensions before calling `wl_surface_damage`.
 
 
 
