@@ -42,6 +42,17 @@ class Output {
 
   [[nodiscard]] const std::string& get_name() const { return output_.name; }
 
+  [[nodiscard]] int get_width() const { return output_.mode.width; }
+
+  [[nodiscard]] int get_height() const { return output_.mode.height; }
+
+  [[nodiscard]] double get_refresh_rate() const {
+    // refresh is stored in mHz (millihertz); convert to Hz.
+    return output_.mode.refresh / 1000.0;
+  }
+
+  [[nodiscard]] wl_output* get_wl_output() const { return wl_output_; }
+
   void print();
 
   static std::string transform_to_string(wl_output_transform transform);
