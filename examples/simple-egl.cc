@@ -629,14 +629,14 @@ int main(const int argc, char** argv) {
       app.seat_->register_observer(observer.get());
     }
 
-    Egl::config egl_config{};
+    waypp::Egl::config egl_config{};
     egl_config.context_attribs_size = kLocalEglContextAttribs.size();
     egl_config.context_attribs = kLocalEglContextAttribs.data();
     egl_config.config_attribs_size = kLocalEglConfigAttribs.size();
     egl_config.config_attribs = kLocalEglConfigAttribs.data();
     egl_config.buffer_bpp = app.config.buffer_bpp;
     egl_config.swap_interval = app.config.interval;
-    egl_config.type = Egl::OPENGL_ES_API;
+    egl_config.type = waypp::Egl::OPENGL_ES_API;
 
     app.toplevel_ = wm->create_top_level(
         "simple-egl", "org.freedesktop.gitlab.jwinarske.waypp.simple_egl",
