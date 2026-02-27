@@ -37,41 +37,34 @@
 
 class App;
 
-/// Use std::atomic<bool> — volatile provides no memory-ordering guarantee for
-/// signal-handler / main-thread sharing (the same class of bug as
-/// HIGH-2/HIGH-3).
 static std::atomic<bool> running{true};
 static std::atomic<bool> scene_initialized{false};
 
 static constexpr int kResizeMargin = 12;
 
-/// EGL Context Attribute configuration
 std::array<EGLint, 7> kEglContextAttribs1 = {{
     // clang-format off
-                EGL_CONTEXT_MAJOR_VERSION, 3,
-                EGL_CONTEXT_MINOR_VERSION, 3,
-                EGL_CONTEXT_OPENGL_PROFILE_MASK,
-                EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,
-                EGL_NONE,
+    EGL_CONTEXT_MAJOR_VERSION, 3,
+    EGL_CONTEXT_MINOR_VERSION, 3,
+    EGL_CONTEXT_OPENGL_PROFILE_MASK,
+    EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,
+    EGL_NONE,
     // clang-format on
 }};
 
-/// EGL Configuration Attributes
 std::array<EGLint, 21> kEglConfigAttribs1 = {{
     // clang-format off
-                EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-                EGL_CONFORMANT, EGL_OPENGL_BIT,
-                EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
-                EGL_COLOR_BUFFER_TYPE, EGL_RGB_BUFFER,
-                EGL_RED_SIZE, 8,
-                EGL_GREEN_SIZE, 8,
-                EGL_BLUE_SIZE, 8,
-                EGL_ALPHA_SIZE, 8,
-                EGL_DEPTH_SIZE, 24,
-                EGL_STENCIL_SIZE, 8,
-                //EGL_SAMPLE_BUFFERS, 1,
-                //EGL_SAMPLES, 4, // 4x MSAA
-                EGL_NONE,
+    EGL_SURFACE_TYPE,       EGL_WINDOW_BIT,
+    EGL_CONFORMANT,         EGL_OPENGL_BIT,
+    EGL_RENDERABLE_TYPE,    EGL_OPENGL_BIT,
+    EGL_COLOR_BUFFER_TYPE,  EGL_RGB_BUFFER,
+    EGL_RED_SIZE,   8,
+    EGL_GREEN_SIZE, 8,
+    EGL_BLUE_SIZE,  8,
+    EGL_ALPHA_SIZE, 8,
+    EGL_DEPTH_SIZE, 24,
+    EGL_STENCIL_SIZE, 8,
+    EGL_NONE,
     // clang-format on
 }};
 
@@ -85,30 +78,67 @@ struct Configuration {
   int delay;
   bool opaque;
   int interval;
-  /// Fraction of window resolution to render the shader at (0.0 < s <= 1.0).
-  /// Values < 1.0 reduce fragment-shader loads significantly; e.g., 0.5 renders
-  /// at quarter the pixel count (half width × half height).
   float render_scale;
+  /// Samples traced per frame (1 = max fps; higher = less noise per frame).
+  int samples_per_frame;
+  /// Maximum path-tracing bounce depth (lower = faster).
+  int max_bounce;
+  /// EMA blend weight for temporal accumulation (0.0–1.0).
+  /// Higher = more responsive to motion, more noise.
+  /// Lower  = smoother, more ghosting on fast motion.
+  float ema_weight;
 } config;
 
-/// All GL context states — kept as a plain struct, so lifetime is explicit.
+// ---------------------------------------------------------------------------
+// GL context state — three-pass pipeline:
+//   Pass 1: ray-trace → tex_new   (FBO: fbo_trace)
+//   Pass 2: accumulate → tex_accum_write, reading tex_accum_read + tex_new
+//           (ping-pong between two accumulation textures)
+//   Pass 3: display tex_accum_read → default framebuffer
+// ---------------------------------------------------------------------------
 struct Context {
-  GLuint shader_program{};
+  // Geometry
   GLuint VAO{};
-  int render_width{};
-  int render_height{};
-  /// Cached uniform locations — obtained once at init, used every frame.
-  /// glGetUniformLocation() causes an implicit GPU pipeline flush on many
-  /// drivers; calling it per-frame is a significant-hidden bottleneck.
+  GLuint VBO{};       // tracked so we can delete it on resize/teardown
+  GLuint quad_VAO{};  // accumulation / display quad (no tex coords needed)
+  GLuint quad_VBO{};
+
+  // Ray-trace pass
+  GLuint fbo_trace{};
+  GLuint tex_new{};  // RGBA16F — output of the ray-trace pass
+  GLuint prog_trace{};
+
+  // Accumulation pass (ping-pong)
+  GLuint fbo_accum[2]{};
+  GLuint tex_accum[2]{};
+  GLuint prog_accum{};
+  int accum_write{0};
+
+  // Display pass
+  GLuint prog_display{};
+
+  // Uniform locations — trace pass
   GLint loc_iTime{-1};
   GLint loc_iResolution{-1};
   GLint loc_iMouse{-1};
-  /// Wall-clock time at the first frame — used for monotonically increasing
-  /// iTime.
+  GLint loc_iSamplesPerFrame{-1};
+  GLint loc_iMaxBounce{-1};
+
+  // Uniform locations — accumulation pass
+  GLint loc_accum_newFrame{-1};
+  GLint loc_accum_accumTex{-1};
+  GLint loc_accum_blendWeight{-1};
+
+  // Uniform locations — display pass
+  GLint loc_display_accumTex{-1};
+
+  int render_width{};
+  int render_height{};
+
+  // Timing / FPS
   std::chrono::steady_clock::time_point start_time{};
-  /// FPS tracking
-  uint32_t frame_count{};
   std::chrono::steady_clock::time_point fps_epoch{};
+  uint32_t frame_count{};
 } ctx;
 
 void handle_signal(const int signal) {
@@ -117,158 +147,224 @@ void handle_signal(const int signal) {
   }
 }
 
-/// Load and compile a GLSL shader. Throws std::runtime_error on failure
-/// instead of calling exit(), so RAII cleanup runs normally (fixes the
-/// exit()-in-non-constructor pattern from the CRIT-3 family of bugs).
-GLuint load_shader(const GLchar* shader_source, const GLenum shader_type) {
-  const GLuint shader = glCreateShader(shader_type);
-  if (shader == 0)
+// ---------------------------------------------------------------------------
+// Shader helpers
+// ---------------------------------------------------------------------------
+static GLuint compile_shader(const GLchar* src, GLenum type) {
+  GLuint sh = glCreateShader(type);
+  if (!sh)
     throw std::runtime_error("glCreateShader returned 0");
-
-  glShaderSource(shader, 1, &shader_source, nullptr);
-  glCompileShader(shader);
-
-  GLint compiled = 0;
-  glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
-  if (!compiled) {
+  glShaderSource(sh, 1, &src, nullptr);
+  glCompileShader(sh);
+  GLint ok = 0;
+  glGetShaderiv(sh, GL_COMPILE_STATUS, &ok);
+  if (!ok) {
     GLint len = 0;
-    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len);
+    glGetShaderiv(sh, GL_INFO_LOG_LENGTH, &len);
     std::string log;
     if (len > 1) {
-      const auto buf = std::make_unique<char[]>(static_cast<size_t>(len));
-      glGetShaderInfoLog(shader, len, nullptr, buf.get());
+      auto buf = std::make_unique<char[]>(static_cast<size_t>(len));
+      glGetShaderInfoLog(sh, len, nullptr, buf.get());
       log.assign(buf.get(), static_cast<size_t>(len));
     }
-    glDeleteShader(shader);
-    throw std::runtime_error("[gl shader] compile failed: " + log);
+    glDeleteShader(sh);
+    throw std::runtime_error("[gl] compile failed: " + log);
   }
-  return shader;
+  return sh;
 }
 
-void initialize_scene(Window* window) {
-  /// Full-screen quad covering NDC [-1,1].
-  constexpr float quad_vertices[] = {
-      -1.0f, -1.0f, 0.0f, 0.0f,  -1.0f, 1.0f,
-      0.0f,  1.0f,  1.0f, -1.0f, 1.0f,  0.0f,
+static GLuint link_program(const GLchar* vert_src, const GLchar* frag_src) {
+  GLuint vs = compile_shader(vert_src, GL_VERTEX_SHADER);
+  GLuint fs = compile_shader(frag_src, GL_FRAGMENT_SHADER);
+  GLuint prog = glCreateProgram();
+  glAttachShader(prog, vs);
+  glAttachShader(prog, fs);
+  glLinkProgram(prog);
+  glDeleteShader(vs);
+  glDeleteShader(fs);
+  GLint ok = 0;
+  glGetProgramiv(prog, GL_LINK_STATUS, &ok);
+  if (!ok) {
+    GLint len = 0;
+    glGetProgramiv(prog, GL_INFO_LOG_LENGTH, &len);
+    std::string log;
+    if (len > 1) {
+      auto buf = std::make_unique<char[]>(static_cast<size_t>(len));
+      glGetProgramInfoLog(prog, len, nullptr, buf.get());
+      log.assign(buf.get(), static_cast<size_t>(len));
+    }
+    glDeleteProgram(prog);
+    throw std::runtime_error("[gl] link failed: " + log);
+  }
+  return prog;
+}
 
-      1.0f,  -1.0f, 1.0f, 0.0f,  -1.0f, 1.0f,
-      0.0f,  1.0f,  1.0f, 1.0f,  1.0f,  1.0f,
-  };
+// ---------------------------------------------------------------------------
+// Create / resize the off-screen textures and FBOs.
+// Called on first init and whenever the window size changes.
+// ---------------------------------------------------------------------------
+static void create_framebuffers(int w, int h) {
+  // ── ray-trace output texture ─────────────────────────────────────────
+  if (ctx.fbo_trace)
+    glDeleteFramebuffers(1, &ctx.fbo_trace);
+  if (ctx.tex_new)
+    glDeleteTextures(1, &ctx.tex_new);
 
+  glGenTextures(1, &ctx.tex_new);
+  glBindTexture(GL_TEXTURE_2D, ctx.tex_new);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0, GL_RGBA, GL_FLOAT,
+               nullptr);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+  glGenFramebuffers(1, &ctx.fbo_trace);
+  glBindFramebuffer(GL_FRAMEBUFFER, ctx.fbo_trace);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                         ctx.tex_new, 0);
+
+  // ── ping-pong accumulation textures ─────────────────────────────────
+  glDeleteFramebuffers(2, ctx.fbo_accum);
+  glDeleteTextures(2, ctx.tex_accum);
+
+  glGenTextures(2, ctx.tex_accum);
+  glGenFramebuffers(2, ctx.fbo_accum);
+  for (int i = 0; i < 2; ++i) {
+    glBindTexture(GL_TEXTURE_2D, ctx.tex_accum[i]);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0, GL_RGBA, GL_FLOAT,
+                 nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindFramebuffer(GL_FRAMEBUFFER, ctx.fbo_accum[i]);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                           ctx.tex_accum[i], 0);
+    // Clear to black so frame 1 doesn't blend against uninitialized GPU memory.
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+  }
+
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glBindTexture(GL_TEXTURE_2D, 0);
+
+  // Reset accumulation ping-pong state.
+  ctx.accum_write = 0;
+}
+
+// ---------------------------------------------------------------------------
+// First-time setup: geometry, shaders, FBOs.
+// ---------------------------------------------------------------------------
+static void initialize_scene(const Window* window) {
   window->make_current();
 
+  // ── full-screen quad (position + tex-coord) — for trace + display ───
+  constexpr float quad_full[] = {
+      -1.f, -1.f, 0.f, 0.f, -1.f, 1.f, 0.f, 1.f, 1.f, -1.f, 1.f, 0.f,
+      1.f,  -1.f, 1.f, 0.f, -1.f, 1.f, 0.f, 1.f, 1.f, 1.f,  1.f, 1.f,
+  };
   glGenVertexArrays(1, &ctx.VAO);
+  glGenBuffers(1, &ctx.VBO);
   glBindVertexArray(ctx.VAO);
-
-  GLuint VBO = 0;
-  glGenBuffers(1, &VBO);
-  glBindBuffer(GL_ARRAY_BUFFER, VBO);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices), quad_vertices,
-               GL_STATIC_DRAW);
-
+  glBindBuffer(GL_ARRAY_BUFFER, ctx.VBO);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(quad_full), quad_full, GL_STATIC_DRAW);
   glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float),
                         reinterpret_cast<void*>(0));
   glEnableVertexAttribArray(0);
-
   glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float),
                         reinterpret_cast<void*>(2 * sizeof(float)));
   glEnableVertexAttribArray(1);
-
   glBindVertexArray(0);
-  // VBO remains bound to the VAO; it is not separately tracked.
 
-  ctx.render_width = static_cast<int>(static_cast<float>(window->get_width()) *
-                                      config.render_scale);
-  ctx.render_height = static_cast<int>(
-      static_cast<float>(window->get_height()) * config.render_scale);
-  // Ensure at least 1×1.
-  ctx.render_width = std::max(1, ctx.render_width);
-  ctx.render_height = std::max(1, ctx.render_height);
+  // ── accumulation quad (position only) ───────────────────────────────
+  constexpr float quad_pos[] = {
+      -1.f, -1.f, -1.f, 1.f, 1.f, -1.f, 1.f, -1.f, -1.f, 1.f, 1.f, 1.f,
+  };
+  glGenVertexArrays(1, &ctx.quad_VAO);
+  glGenBuffers(1, &ctx.quad_VBO);
+  glBindVertexArray(ctx.quad_VAO);
+  glBindBuffer(GL_ARRAY_BUFFER, ctx.quad_VBO);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(quad_pos), quad_pos, GL_STATIC_DRAW);
+  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float),
+                        reinterpret_cast<void*>(0));
+  glEnableVertexAttribArray(0);
+  glBindVertexArray(0);
 
-  // Compile and link the shader program.
-  const auto vertex_shader =
-      load_shader(vertex_shader_source, GL_VERTEX_SHADER);
-  const auto fragment_shader =
-      load_shader(fragment_shader_source, GL_FRAGMENT_SHADER);
+  // ── render resolution ────────────────────────────────────────────────
+  ctx.render_width =
+      std::max(1, static_cast<int>(static_cast<float>(window->get_width()) *
+                                   config.render_scale));
+  ctx.render_height =
+      std::max(1, static_cast<int>(static_cast<float>(window->get_height()) *
+                                   config.render_scale));
 
-  ctx.shader_program = glCreateProgram();
-  glAttachShader(ctx.shader_program, vertex_shader);
-  glAttachShader(ctx.shader_program, fragment_shader);
-  glLinkProgram(ctx.shader_program);
+  // ── shaders ──────────────────────────────────────────────────────────
+  ctx.prog_trace = link_program(vertex_shader_source, fragment_shader_source);
+  ctx.prog_accum = link_program(accum_vertex_source, accum_fragment_source);
+  ctx.prog_display =
+      link_program(display_vertex_source, display_fragment_source);
 
-  GLint linked = 0;
-  glGetProgramiv(ctx.shader_program, GL_LINK_STATUS, &linked);
-  if (!linked) {
-    GLint len = 0;
-    glGetProgramiv(ctx.shader_program, GL_INFO_LOG_LENGTH, &len);
-    std::string log;
-    if (len > 1) {
-      const auto buf = std::make_unique<char[]>(static_cast<size_t>(len));
-      glGetProgramInfoLog(ctx.shader_program, len, nullptr, buf.get());
-      log.assign(buf.get(), static_cast<size_t>(len));
-    }
-    glDeleteShader(vertex_shader);
-    glDeleteShader(fragment_shader);
-    throw std::runtime_error("[gl] link failed: " + log);
-  }
+  // Cache uniform locations — trace pass
+  ctx.loc_iTime = glGetUniformLocation(ctx.prog_trace, "iTime");
+  ctx.loc_iResolution = glGetUniformLocation(ctx.prog_trace, "iResolution");
+  ctx.loc_iMouse = glGetUniformLocation(ctx.prog_trace, "iMouse");
+  ctx.loc_iSamplesPerFrame =
+      glGetUniformLocation(ctx.prog_trace, "iSamplesPerFrame");
+  ctx.loc_iMaxBounce = glGetUniformLocation(ctx.prog_trace, "iMaxBounce");
 
-  glDeleteShader(vertex_shader);
-  glDeleteShader(fragment_shader);
+  // Cache uniform locations — accumulation pass
+  ctx.loc_accum_newFrame = glGetUniformLocation(ctx.prog_accum, "iNewFrame");
+  ctx.loc_accum_accumTex = glGetUniformLocation(ctx.prog_accum, "iAccumTex");
+  ctx.loc_accum_blendWeight =
+      glGetUniformLocation(ctx.prog_accum, "iBlendWeight");
 
-  glUseProgram(ctx.shader_program);
+  // Cache uniform locations — display pass
+  ctx.loc_display_accumTex =
+      glGetUniformLocation(ctx.prog_display, "iAccumTex");
 
-  // Cache uniform locations once — avoids the per-frame GPU stall caused by
-  // calling glGetUniformLocation() inside the render loop.
-  ctx.loc_iTime = glGetUniformLocation(ctx.shader_program, "iTime");
-  ctx.loc_iResolution = glGetUniformLocation(ctx.shader_program, "iResolution");
-  ctx.loc_iMouse = glGetUniformLocation(ctx.shader_program, "iMouse");
+  // Bind texture units statically
+  glUseProgram(ctx.prog_accum);
+  glUniform1i(ctx.loc_accum_newFrame, 0);  // GL_TEXTURE0
+  glUniform1i(ctx.loc_accum_accumTex, 1);  // GL_TEXTURE1
 
-  const glm::vec2 screen(static_cast<float>(ctx.render_width),
-                         static_cast<float>(ctx.render_height));
-  if (ctx.loc_iResolution >= 0)
-    glUniform2fv(ctx.loc_iResolution, 1, &screen[0]);
+  glUseProgram(ctx.prog_display);
+  glUniform1i(ctx.loc_display_accumTex, 0);  // GL_TEXTURE0
+
+  // ── FBOs ─────────────────────────────────────────────────────────────
+  create_framebuffers(ctx.render_width, ctx.render_height);
+
+  // Set iResolution once (resize_scene updates it)
+  glUseProgram(ctx.prog_trace);
+  glUniform2f(ctx.loc_iResolution, static_cast<float>(ctx.render_width),
+              static_cast<float>(ctx.render_height));
+  glUniform1i(ctx.loc_iSamplesPerFrame, config.samples_per_frame);
+  glUniform1i(ctx.loc_iMaxBounce, config.max_bounce);
 
   ctx.start_time = std::chrono::steady_clock::now();
   ctx.fps_epoch = ctx.start_time;
   ctx.frame_count = 0;
 }
 
-/**
- * @brief Handles a window resize by updating the render dimensions and the
- *        iResolution uniform. The viewport is also updated in draw_frame.
- */
 static void resize_scene(Window* window) {
-  ctx.render_width = static_cast<int>(static_cast<float>(window->get_width()) *
-                                      config.render_scale);
-  ctx.render_height = static_cast<int>(
-      static_cast<float>(window->get_height()) * config.render_scale);
-  ctx.render_width = std::max(1, ctx.render_width);
-  ctx.render_height = std::max(1, ctx.render_height);
+  ctx.render_width =
+      std::max(1, static_cast<int>(static_cast<float>(window->get_width()) *
+                                   config.render_scale));
+  ctx.render_height =
+      std::max(1, static_cast<int>(static_cast<float>(window->get_height()) *
+                                   config.render_scale));
 
-  DLOG_DEBUG("[gl-shadertoy] resize_scene {}x{}", ctx.render_width,
+  DLOG_DEBUG("[gl-shadertoy] resize {}x{}", ctx.render_width,
              ctx.render_height);
 
-  glUseProgram(ctx.shader_program);
-  const glm::vec2 screen(static_cast<float>(ctx.render_width),
-                         static_cast<float>(ctx.render_height));
-  if (ctx.loc_iResolution >= 0)
-    glUniform2fv(ctx.loc_iResolution, 1, &screen[0]);
+  create_framebuffers(ctx.render_width, ctx.render_height);
+
+  glUseProgram(ctx.prog_trace);
+  glUniform2f(ctx.loc_iResolution, static_cast<float>(ctx.render_width),
+              static_cast<float>(ctx.render_height));
 }
 
-/**
- * @brief Per-frame render callback.
- *
- * Performance notes:
- *  - iTime is a smooth float elapsed seconds — no integer truncation.
- *  - Uniform locations are cached; no glGetUniformLocation per frame.
- *  - The off-screen FBO pass has been removed; the shader renders directly
- *    to the default framebuffer, halving GPU memory bandwidth per frame.
- *  - swap_interval=0 (--non-blocking flag) removes vsync cap entirely.
- *  - render_scale < 1.0 (--render-scale flag) reduces fragment workload.
- */
+// ---------------------------------------------------------------------------
+// Per-frame callback — three-pass pipeline.
+// ---------------------------------------------------------------------------
 static void draw_frame(void* userdata, uint32_t /* time */) {
   const auto window = static_cast<Window*>(userdata);
-
   window->update_buffer_geometry();
 
   if (!scene_initialized.load(std::memory_order_acquire)) {
@@ -276,47 +372,68 @@ static void draw_frame(void* userdata, uint32_t /* time */) {
     scene_initialized.store(true, std::memory_order_release);
   }
 
-  // Detect resize and update size-dependent state.
-  const int target_w =
+  // Detect resize
+  const int tw =
       std::max(1, static_cast<int>(static_cast<float>(window->get_width()) *
                                    config.render_scale));
-  const int target_h =
+  const int th =
       std::max(1, static_cast<int>(static_cast<float>(window->get_height()) *
                                    config.render_scale));
-  if (target_w != ctx.render_width || target_h != ctx.render_height) {
+  if (tw != ctx.render_width || th != ctx.render_height) {
     resize_scene(window);
   }
 
-  // Smooth elapsed time in seconds — no integer cast that quantises to
-  // 1-second steps (was the original iTime bug causing jerky animation).
   const float elapsed = std::chrono::duration<float>(
                             std::chrono::steady_clock::now() - ctx.start_time)
                             .count();
 
-  // Render directly to the default framebuffer.
-  // The previous code bound an off-screen FBO, cleared it, then immediately
-  // unbound it and re-drew with the same shader to the default framebuffer —
-  // doubling GPU work without producing any visible difference.
+  // ── Pass 1: ray-trace → tex_new ─────────────────────────────────────
+  glBindFramebuffer(GL_FRAMEBUFFER, ctx.fbo_trace);
   glViewport(0, 0, ctx.render_width, ctx.render_height);
-  glUseProgram(ctx.shader_program);
+  glUseProgram(ctx.prog_trace);
+  glUniform1f(ctx.loc_iTime, elapsed);
+  glBindVertexArray(ctx.VAO);
+  glDrawArrays(GL_TRIANGLES, 0, 6);
 
-  if (ctx.loc_iTime >= 0)
-    glUniform1f(ctx.loc_iTime, elapsed);
+  // ── Pass 2: accumulate ───────────────────────────────────────────────
+  // Read from tex_accum[1-accum_write], write to fbo_accum[accum_write]
+  const int accum_read = 1 - ctx.accum_write;
+  glBindFramebuffer(GL_FRAMEBUFFER, ctx.fbo_accum[ctx.accum_write]);
+  glViewport(0, 0, ctx.render_width, ctx.render_height);
+  glUseProgram(ctx.prog_accum);
+  // Fixed EMA weight — keeps animated scenes sharp without ghosting.
+  glUniform1f(ctx.loc_accum_blendWeight, config.ema_weight);
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, ctx.tex_new);
+  glActiveTexture(GL_TEXTURE1);
+  glBindTexture(GL_TEXTURE_2D, ctx.tex_accum[accum_read]);
+  glBindVertexArray(ctx.quad_VAO);
+  glDrawArrays(GL_TRIANGLES, 0, 6);
 
+  // ── Pass 3: display ──────────────────────────────────────────────────
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glViewport(0, 0, window->get_width(), window->get_height());
+  glUseProgram(ctx.prog_display);
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, ctx.tex_accum[ctx.accum_write]);
   glBindVertexArray(ctx.VAO);
   glDrawArrays(GL_TRIANGLES, 0, 6);
 
   window->swap_buffers();
 
-  // FPS counter — printed every 5 seconds.
+  // Advance ping-pong
+  ctx.accum_write = accum_read;
+
+  // FPS counter — every 5 s
   ++ctx.frame_count;
   const auto now = std::chrono::steady_clock::now();
-  const float fps_elapsed =
-      std::chrono::duration<float>(now - ctx.fps_epoch).count();
-  if (fps_elapsed >= 5.0f) {
-    spdlog::info("[gl-shadertoy] {:.1f} FPS  (render {}x{})",
-                 static_cast<float>(ctx.frame_count) / fps_elapsed,
-                 ctx.render_width, ctx.render_height);
+  if (const float fps_dt =
+          std::chrono::duration<float>(now - ctx.fps_epoch).count();
+      fps_dt >= 5.0f) {
+    spdlog::info(
+        "[gl-shadertoy] {:.1f} FPS  render={}x{}  samples={}  bounces={}",
+        static_cast<float>(ctx.frame_count) / fps_dt, ctx.render_width,
+        ctx.render_height, config.samples_per_frame, config.max_bounce);
     ctx.frame_count = 0;
     ctx.fps_epoch = now;
   }
@@ -485,24 +602,35 @@ int main(int argc, char** argv) {
   cxxopts::Options options("gl-shadertoy", "OpenGL Shadertoy");
   options.add_options()
       // clang-format off
-            ("w,width",        "Set width",                    cxxopts::value<int>()->default_value("250"))
-            ("h,height",       "Set height",                   cxxopts::value<int>()->default_value("250"))
-            ("f,fullscreen",   "Run in fullscreen mode")
-            ("m,maximized",    "Run in maximized mode")
-            ("r,fullscreen-ratio", "Use fixed width/height ratio when run in fullscreen mode")
-            ("t,tearing",      "Enable tearing via the tearing_control protocol")
-            ("d,delay",        "Buffer swap delay in microseconds", cxxopts::value<int>()->default_value("0"))
-            ("o,opaque",       "Create an opaque surface")
-            ("i,interval",     "Set eglSwapInterval to interval",   cxxopts::value<int>()->default_value("1"))
-            ("b,non-blocking", "Don't sync to compositor redraw (eglSwapInterval 0; removes vsync cap)")
-            ("s,render-scale", "Render at this fraction of window resolution (0.0 < s <= 1.0; "
-                               "e.g. 0.5 = quarter pixel count)",
-                               cxxopts::value<float>()->default_value("1.0"));
+      ("w,width",        "Set width",        cxxopts::value<int>()->default_value("250"))
+      ("h,height",       "Set height",       cxxopts::value<int>()->default_value("250"))
+      ("f,fullscreen",   "Run in fullscreen mode")
+      ("m,maximized",    "Run in maximized mode")
+      ("r,fullscreen-ratio", "Use fixed width/height ratio when run in fullscreen mode")
+      ("t,tearing",      "Enable tearing via the tearing_control protocol")
+      ("d,delay",        "Buffer swap delay in microseconds",
+                         cxxopts::value<int>()->default_value("0"))
+      ("o,opaque",       "Create an opaque surface")
+      ("i,interval",     "Set eglSwapInterval",
+                         cxxopts::value<int>()->default_value("1"))
+      ("b,non-blocking", "eglSwapInterval 0 — removes vsync cap")
+      ("s,render-scale", "Render fraction of window resolution (0.1-1.0)",
+                         cxxopts::value<float>()->default_value("1.0"))
+      ("n,samples",      "Path-trace samples per frame (default 16 = original quality)",
+                         cxxopts::value<int>()->default_value("16"))
+      ("B,bounces",      "Maximum ray bounce depth (default 32 = original quality)",
+                         cxxopts::value<int>()->default_value("32"))
+      ("e,ema-weight",   "Temporal EMA blend weight 0.0-1.0 (1.0=no blending, default for animated scenes)",
+                         cxxopts::value<float>()->default_value("1.0"));
   // clang-format on
   const auto result = options.parse(argc, argv);
 
   const float render_scale =
       std::max(0.1f, std::min(1.0f, result["render-scale"].as<float>()));
+  const int samples = std::max(1, std::min(64, result["samples"].as<int>()));
+  const int bounces = std::max(1, std::min(64, result["bounces"].as<int>()));
+  const float ema_weight =
+      std::max(0.01f, std::min(1.0f, result["ema-weight"].as<float>()));
 
   config = {
       .width = result["width"].as<int>(),
@@ -516,7 +644,16 @@ int main(int argc, char** argv) {
       .interval =
           result["non-blocking"].as<bool>() ? 0 : result["interval"].as<int>(),
       .render_scale = render_scale,
+      .samples_per_frame = samples,
+      .max_bounce = bounces,
+      .ema_weight = ema_weight,
   };
+
+  spdlog::info(
+      "[gl-shadertoy] samples/frame={} bounces={} scale={:.2f} ema={:.2f} "
+      "interval={}",
+      config.samples_per_frame, config.max_bounce, config.render_scale,
+      config.ema_weight, config.interval);
 
   if (config.opaque) {
     kEglConfigAttribs1[15] = 0;
