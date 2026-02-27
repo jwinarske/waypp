@@ -67,6 +67,13 @@ if (ENABLE_AGL_SHELL_CLIENT)
     target_sources(waypp PRIVATE window_manager/agl_shell.cc)
 endif ()
 
+if (ENABLE_IVI_SHELL_CLIENT)
+    target_sources(waypp PRIVATE
+            window_manager/ivi_window_manager.cc
+    )
+    target_compile_definitions(waypp PUBLIC ENABLE_IVI_SHELL_CLIENT=1)
+endif ()
+
 target_compile_definitions(waypp PUBLIC
         MESA_EGL_NO_X11_HEADERS
         WL_EGL_PLATFORM
