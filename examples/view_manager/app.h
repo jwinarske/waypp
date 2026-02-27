@@ -45,7 +45,7 @@ class App {
   void toggle_fullscreen() const;
 
  private:
-  std::unique_ptr<Logging> logging_;
+  std::unique_ptr<Logging> logging_{};
   std::unique_ptr<ViewManagerWayland> view_manager_wayland_;
 };
 

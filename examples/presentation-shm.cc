@@ -270,7 +270,7 @@ int main(const int argc, char** argv) {
   // clang-format on
   auto result = options.parse(argc, argv);
 
-  auto logging = std::make_unique<Logging>();
+  auto log_init = std::make_unique<Logging>();
   auto ctx = std::make_unique<Context>();
 
   ctx->config = {

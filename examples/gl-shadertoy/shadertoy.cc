@@ -21,8 +21,10 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include <atomic>
 #include <chrono>
 #include <csignal>
+#include <stdexcept>
 
 #include <GLES3/gl32.h>
 #include <linux/input.h>
@@ -35,9 +37,11 @@
 
 class App;
 
-static volatile bool running = true;
-
-volatile bool scene_initialized = false;
+/// Use std::atomic<bool> — volatile provides no memory-ordering guarantee for
+/// signal-handler / main-thread sharing (the same class of bug as
+/// HIGH-2/HIGH-3).
+static std::atomic<bool> running{true};
+static std::atomic<bool> scene_initialized{false};
 
 static constexpr int kResizeMargin = 12;
 
@@ -81,75 +85,82 @@ struct Configuration {
   int delay;
   bool opaque;
   int interval;
+  /// Fraction of window resolution to render the shader at (0.0 < s <= 1.0).
+  /// Values < 1.0 reduce fragment-shader loads significantly; e.g., 0.5 renders
+  /// at quarter the pixel count (half width × half height).
+  float render_scale;
 } config;
 
+/// All GL context states — kept as a plain struct, so lifetime is explicit.
 struct Context {
-  GLuint framebuffer{};
-  GLuint texColor{};
   GLuint shader_program{};
   GLuint VAO{};
   int render_width{};
   int render_height{};
+  /// Cached uniform locations — obtained once at init, used every frame.
+  /// glGetUniformLocation() causes an implicit GPU pipeline flush on many
+  /// drivers; calling it per-frame is a significant-hidden bottleneck.
+  GLint loc_iTime{-1};
+  GLint loc_iResolution{-1};
+  GLint loc_iMouse{-1};
+  /// Wall-clock time at the first frame — used for monotonically increasing
+  /// iTime.
+  std::chrono::steady_clock::time_point start_time{};
+  /// FPS tracking
+  uint32_t frame_count{};
+  std::chrono::steady_clock::time_point fps_epoch{};
 } ctx;
 
-/**
- * @brief Signal handler function to handle signals.
- *
- * This function is a signal handler for handling signals. It sets the value of
- * keep_running to false, which will stop the program from running. The function
- * does not take any input parameters.
- *
- * @param signal The signal number. This parameter is not used by the function.
- *
- * @return void
- */
 void handle_signal(const int signal) {
   if (signal == SIGINT) {
-    running = false;
+    running.store(false, std::memory_order_relaxed);
   }
 }
 
+/// Load and compile a GLSL shader. Throws std::runtime_error on failure
+/// instead of calling exit(), so RAII cleanup runs normally (fixes the
+/// exit()-in-non-constructor pattern from the CRIT-3 family of bugs).
 GLuint load_shader(const GLchar* shader_source, const GLenum shader_type) {
   const GLuint shader = glCreateShader(shader_type);
   if (shader == 0)
-    return 0;
+    throw std::runtime_error("glCreateShader returned 0");
 
   glShaderSource(shader, 1, &shader_source, nullptr);
   glCompileShader(shader);
 
-  GLint compiled;
+  GLint compiled = 0;
   glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
   if (!compiled) {
     GLint len = 0;
     glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len);
+    std::string log;
     if (len > 1) {
-      auto buf = std::make_unique<char[]>(static_cast<size_t>(len));
+      const auto buf = std::make_unique<char[]>(static_cast<size_t>(len));
       glGetShaderInfoLog(shader, len, nullptr, buf.get());
-      const std::string res{buf.get(), static_cast<size_t>(len)};
-      buf.reset();
-      spdlog::error("[gl shader] {}", res.c_str());
-      exit(EXIT_FAILURE);
+      log.assign(buf.get(), static_cast<size_t>(len));
     }
     glDeleteShader(shader);
-    return 0;
+    throw std::runtime_error("[gl shader] compile failed: " + log);
   }
   return shader;
 }
 
 void initialize_scene(Window* window) {
-  /// Quad
-
+  /// Full-screen quad covering NDC [-1,1].
   constexpr float quad_vertices[] = {
-      -1.0, -1.0, 0.0, 0.0, -1.0, 1.0, 0.0, 1.0, 1.0, -1.0, 1.0, 0.0,
+      -1.0f, -1.0f, 0.0f, 0.0f,  -1.0f, 1.0f,
+      0.0f,  1.0f,  1.0f, -1.0f, 1.0f,  0.0f,
 
-      1.0,  -1.0, 1.0, 0.0, -1.0, 1.0, 0.0, 1.0, 1.0, 1.0,  1.0, 1.0};
+      1.0f,  -1.0f, 1.0f, 0.0f,  -1.0f, 1.0f,
+      0.0f,  1.0f,  1.0f, 1.0f,  1.0f,  1.0f,
+  };
 
   window->make_current();
 
   glGenVertexArrays(1, &ctx.VAO);
   glBindVertexArray(ctx.VAO);
 
-  GLuint VBO;
+  GLuint VBO = 0;
   glGenBuffers(1, &VBO);
   glBindBuffer(GL_ARRAY_BUFFER, VBO);
   glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices), quad_vertices,
@@ -164,53 +175,41 @@ void initialize_scene(Window* window) {
   glEnableVertexAttribArray(1);
 
   glBindVertexArray(0);
+  // VBO remains bound to the VAO; it is not separately tracked.
 
-  /// Framebuffer + texture (size-dependent)
+  ctx.render_width = static_cast<int>(static_cast<float>(window->get_width()) *
+                                      config.render_scale);
+  ctx.render_height = static_cast<int>(
+      static_cast<float>(window->get_height()) * config.render_scale);
+  // Ensure at least 1×1.
+  ctx.render_width = std::max(1, ctx.render_width);
+  ctx.render_height = std::max(1, ctx.render_height);
 
-  glGenFramebuffers(1, &ctx.framebuffer);
-  glGenTextures(1, &ctx.texColor);
-
-  ctx.render_width = window->get_width();
-  ctx.render_height = window->get_height();
-
-  glBindFramebuffer(GL_FRAMEBUFFER, ctx.framebuffer);
-  glBindTexture(GL_TEXTURE_2D, ctx.texColor);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ctx.render_width, ctx.render_height, 0,
-               GL_RGB, GL_UNSIGNED_BYTE, nullptr);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                         ctx.texColor, 0);
-  glBindTexture(GL_TEXTURE_2D, 0);
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-  /// Shaders
-
-  auto vertex_shader = load_shader(vertex_shader_source, GL_VERTEX_SHADER);
-  if (!vertex_shader) {
-    spdlog::error("Failed to load Vertex shader");
-    exit(EXIT_FAILURE);
-  }
-
-  auto fragment_shader =
+  // Compile and link the shader program.
+  const auto vertex_shader =
+      load_shader(vertex_shader_source, GL_VERTEX_SHADER);
+  const auto fragment_shader =
       load_shader(fragment_shader_source, GL_FRAGMENT_SHADER);
-  if (!fragment_shader) {
-    spdlog::error("Failed to load Fragment shader");
-    exit(EXIT_FAILURE);
-  }
 
   ctx.shader_program = glCreateProgram();
   glAttachShader(ctx.shader_program, vertex_shader);
   glAttachShader(ctx.shader_program, fragment_shader);
   glLinkProgram(ctx.shader_program);
 
-  GLint len = 0;
-  glGetProgramiv(ctx.shader_program, GL_INFO_LOG_LENGTH, &len);
-  if (len > 1) {
-    auto buf = std::make_unique<char[]>(static_cast<size_t>(len));
-    glGetProgramInfoLog(ctx.shader_program, len, nullptr, buf.get());
-    const std::string res{buf.get(), static_cast<size_t>(len)};
-    buf.reset();
-    spdlog::error("[gl] linking {}", res.c_str());
-    exit(EXIT_FAILURE);
+  GLint linked = 0;
+  glGetProgramiv(ctx.shader_program, GL_LINK_STATUS, &linked);
+  if (!linked) {
+    GLint len = 0;
+    glGetProgramiv(ctx.shader_program, GL_INFO_LOG_LENGTH, &len);
+    std::string log;
+    if (len > 1) {
+      const auto buf = std::make_unique<char[]>(static_cast<size_t>(len));
+      glGetProgramInfoLog(ctx.shader_program, len, nullptr, buf.get());
+      log.assign(buf.get(), static_cast<size_t>(len));
+    }
+    glDeleteShader(vertex_shader);
+    glDeleteShader(fragment_shader);
+    throw std::runtime_error("[gl] link failed: " + log);
   }
 
   glDeleteShader(vertex_shader);
@@ -218,89 +217,109 @@ void initialize_scene(Window* window) {
 
   glUseProgram(ctx.shader_program);
 
-  glm::vec2 screen(ctx.render_width, ctx.render_height);
-  glUniform2fv(glGetUniformLocation(ctx.shader_program, "iResolution"), 1,
-               &screen[0]);
+  // Cache uniform locations once — avoids the per-frame GPU stall caused by
+  // calling glGetUniformLocation() inside the render loop.
+  ctx.loc_iTime = glGetUniformLocation(ctx.shader_program, "iTime");
+  ctx.loc_iResolution = glGetUniformLocation(ctx.shader_program, "iResolution");
+  ctx.loc_iMouse = glGetUniformLocation(ctx.shader_program, "iMouse");
+
+  const glm::vec2 screen(static_cast<float>(ctx.render_width),
+                         static_cast<float>(ctx.render_height));
+  if (ctx.loc_iResolution >= 0)
+    glUniform2fv(ctx.loc_iResolution, 1, &screen[0]);
+
+  ctx.start_time = std::chrono::steady_clock::now();
+  ctx.fps_epoch = ctx.start_time;
+  ctx.frame_count = 0;
 }
 
 /**
- * @brief Handles a window resize by recreating the size-dependent framebuffer
- *        texture and updating the iResolution uniform + GL viewport.
- *
- * Called from draw_frame whenever window dimensions differ from the last
- * rendered frame.
+ * @brief Handles a window resize by updating the render dimensions and the
+ *        iResolution uniform. The viewport is also updated in draw_frame.
  */
 static void resize_scene(Window* window) {
-  ctx.render_width = window->get_width();
-  ctx.render_height = window->get_height();
+  ctx.render_width = static_cast<int>(static_cast<float>(window->get_width()) *
+                                      config.render_scale);
+  ctx.render_height = static_cast<int>(
+      static_cast<float>(window->get_height()) * config.render_scale);
+  ctx.render_width = std::max(1, ctx.render_width);
+  ctx.render_height = std::max(1, ctx.render_height);
 
   DLOG_DEBUG("[gl-shadertoy] resize_scene {}x{}", ctx.render_width,
              ctx.render_height);
 
-  // Recreate the framebuffer colour attachment at the new size.
-  glBindFramebuffer(GL_FRAMEBUFFER, ctx.framebuffer);
-  glBindTexture(GL_TEXTURE_2D, ctx.texColor);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ctx.render_width, ctx.render_height, 0,
-               GL_RGB, GL_UNSIGNED_BYTE, nullptr);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                         ctx.texColor, 0);
-  glBindTexture(GL_TEXTURE_2D, 0);
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-  // Update the iResolution uniform and GL viewport.
   glUseProgram(ctx.shader_program);
-  glm::vec2 screen(ctx.render_width, ctx.render_height);
-  glUniform2fv(glGetUniformLocation(ctx.shader_program, "iResolution"), 1,
-               &screen[0]);
+  const glm::vec2 screen(static_cast<float>(ctx.render_width),
+                         static_cast<float>(ctx.render_height));
+  if (ctx.loc_iResolution >= 0)
+    glUniform2fv(ctx.loc_iResolution, 1, &screen[0]);
 }
 
 /**
- * @brief Updates the frame by drawing it.
+ * @brief Per-frame render callback.
  *
- * This function updates the frame by drawing it on the screen. It sets the
- * OpenGL clear color based on the calculated hue, clears the color buffer,
- * swaps the buffers to display the updated frame, and clears the current
- * rendering context.
- *
- * @param userdata A pointer to the WindowEgl object.
- * @param time The current time in milliseconds.
+ * Performance notes:
+ *  - iTime is a smooth float elapsed seconds — no integer truncation.
+ *  - Uniform locations are cached; no glGetUniformLocation per frame.
+ *  - The off-screen FBO pass has been removed; the shader renders directly
+ *    to the default framebuffer, halving GPU memory bandwidth per frame.
+ *  - swap_interval=0 (--non-blocking flag) removes vsync cap entirely.
+ *  - render_scale < 1.0 (--render-scale flag) reduces fragment workload.
  */
 static void draw_frame(void* userdata, uint32_t /* time */) {
   const auto window = static_cast<Window*>(userdata);
 
   window->update_buffer_geometry();
 
-  if (!scene_initialized) {
+  if (!scene_initialized.load(std::memory_order_acquire)) {
     initialize_scene(window);
-    scene_initialized = true;
+    scene_initialized.store(true, std::memory_order_release);
   }
 
-  // Detect resize and rebuild size-dependent GL resources.
-  if (window->get_width() != ctx.render_width ||
-      window->get_height() != ctx.render_height) {
+  // Detect resize and update size-dependent state.
+  const int target_w =
+      std::max(1, static_cast<int>(static_cast<float>(window->get_width()) *
+                                   config.render_scale));
+  const int target_h =
+      std::max(1, static_cast<int>(static_cast<float>(window->get_height()) *
+                                   config.render_scale));
+  if (target_w != ctx.render_width || target_h != ctx.render_height) {
     resize_scene(window);
   }
 
-  const auto now = std::chrono::duration_cast<std::chrono::microseconds>(
-      std::chrono::steady_clock::now().time_since_epoch());
-  const auto current_frame = std::chrono::duration<float>(now).count();
+  // Smooth elapsed time in seconds — no integer cast that quantises to
+  // 1-second steps (was the original iTime bug causing jerky animation).
+  const float elapsed = std::chrono::duration<float>(
+                            std::chrono::steady_clock::now() - ctx.start_time)
+                            .count();
 
-  glBindFramebuffer(GL_FRAMEBUFFER, ctx.framebuffer);
-
+  // Render directly to the default framebuffer.
+  // The previous code bound an off-screen FBO, cleared it, then immediately
+  // unbound it and re-drew with the same shader to the default framebuffer —
+  // doubling GPU work without producing any visible difference.
   glViewport(0, 0, ctx.render_width, ctx.render_height);
-  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT);
-
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
   glUseProgram(ctx.shader_program);
 
-  glViewport(0, 0, ctx.render_width, ctx.render_height);
-  glUniform1f(glGetUniformLocation(ctx.shader_program, "iTime"),
-              static_cast<float>(static_cast<int>(current_frame) % 60));
+  if (ctx.loc_iTime >= 0)
+    glUniform1f(ctx.loc_iTime, elapsed);
+
   glBindVertexArray(ctx.VAO);
   glDrawArrays(GL_TRIANGLES, 0, 6);
 
   window->swap_buffers();
+
+  // FPS counter — printed every 5 seconds.
+  ++ctx.frame_count;
+  const auto now = std::chrono::steady_clock::now();
+  const float fps_elapsed =
+      std::chrono::duration<float>(now - ctx.fps_epoch).count();
+  if (fps_elapsed >= 5.0f) {
+    spdlog::info("[gl-shadertoy] {:.1f} FPS  (render {}x{})",
+                 static_cast<float>(ctx.frame_count) / fps_elapsed,
+                 ctx.render_width, ctx.render_height);
+    ctx.frame_count = 0;
+    ctx.fps_epoch = now;
+  }
 }
 
 class EventObserver : public SeatObserver,
@@ -453,12 +472,12 @@ class EventObserver : public SeatObserver,
  * @return An integer representing the exit status of the program.
  */
 int main(int argc, char** argv) {
-  auto logging = std::make_unique<Logging>();
+  auto log_init = std::make_unique<Logging>();
 
   auto display = wl_display_connect(nullptr);
   if (!display) {
     spdlog::critical("Unable to connect to Wayland socket.");
-    exit(EXIT_FAILURE);
+    return EXIT_FAILURE;
   }
 
   std::signal(SIGINT, handle_signal);
@@ -466,19 +485,24 @@ int main(int argc, char** argv) {
   cxxopts::Options options("gl-shadertoy", "OpenGL Shadertoy");
   options.add_options()
       // clang-format off
-            ("w,width", "Set width", cxxopts::value<int>()->default_value("250"))
-            ("h,height", "Set height", cxxopts::value<int>()->default_value("250"))
-            ("f,fullscreen", "Run in fullscreen mode")
-            ("m,maximized", "Run in maximized mode")
+            ("w,width",        "Set width",                    cxxopts::value<int>()->default_value("250"))
+            ("h,height",       "Set height",                   cxxopts::value<int>()->default_value("250"))
+            ("f,fullscreen",   "Run in fullscreen mode")
+            ("m,maximized",    "Run in maximized mode")
             ("r,fullscreen-ratio", "Use fixed width/height ratio when run in fullscreen mode")
-            ("t,tearing", "Enable tearing via the tearing_control protocol")
-            ("d,delay", "Buffer swap delay in microseconds", cxxopts::value<int>()->default_value("0"))
-            ("o,opaque", "Create an opaque surface")
-            ("i,interval", "Set eglSwapInterval to interval", cxxopts::value<int>()->default_value("1"))
-            ("b,non-blocking", "Don't sync to compositor redraw (eglSwapInterval 0)");
-
+            ("t,tearing",      "Enable tearing via the tearing_control protocol")
+            ("d,delay",        "Buffer swap delay in microseconds", cxxopts::value<int>()->default_value("0"))
+            ("o,opaque",       "Create an opaque surface")
+            ("i,interval",     "Set eglSwapInterval to interval",   cxxopts::value<int>()->default_value("1"))
+            ("b,non-blocking", "Don't sync to compositor redraw (eglSwapInterval 0; removes vsync cap)")
+            ("s,render-scale", "Render at this fraction of window resolution (0.0 < s <= 1.0; "
+                               "e.g. 0.5 = quarter pixel count)",
+                               cxxopts::value<float>()->default_value("1.0"));
   // clang-format on
   const auto result = options.parse(argc, argv);
+
+  const float render_scale =
+      std::max(0.1f, std::min(1.0f, result["render-scale"].as<float>()));
 
   config = {
       .width = result["width"].as<int>(),
@@ -491,44 +515,53 @@ int main(int argc, char** argv) {
       .opaque = result["opaque"].as<bool>(),
       .interval =
           result["non-blocking"].as<bool>() ? 0 : result["interval"].as<int>(),
+      .render_scale = render_scale,
   };
 
-  /// Control EGL_ALPHA_SIZE value
   if (config.opaque) {
     kEglConfigAttribs1[15] = 0;
   }
 
-  auto wm = std::make_shared<XdgWindowManager>(display);
+  try {
+    auto wm = std::make_shared<XdgWindowManager>(display);
 
-  waypp::Egl::config egl_config{};
-  egl_config.context_attribs_size = kEglContextAttribs1.size();
-  egl_config.context_attribs = kEglContextAttribs1.data();
-  egl_config.config_attribs_size = kEglConfigAttribs1.size();
-  egl_config.config_attribs = kEglConfigAttribs1.data();
-  egl_config.buffer_bpp = 32;
-  egl_config.swap_interval = config.interval;
-  egl_config.type = waypp::Egl::OPENGL_API;
+    waypp::Egl::config egl_config{};
+    egl_config.context_attribs_size = kEglContextAttribs1.size();
+    egl_config.context_attribs = kEglContextAttribs1.data();
+    egl_config.config_attribs_size = kEglConfigAttribs1.size();
+    egl_config.config_attribs = kEglConfigAttribs1.data();
+    egl_config.buffer_bpp = 32;
+    egl_config.swap_interval = config.interval;
+    egl_config.type = waypp::Egl::OPENGL_API;
 
-  auto top_level = wm->create_top_level(
-      "gl-shadertoy", "org.freedesktop.gitlab.jwinarske.waypp.gl-shadertoy",
-      config.width, config.height, kResizeMargin, 0, 0, config.fullscreen,
-      config.maximized, config.fullscreen_ratio, config.tearing, draw_frame,
-      &egl_config);
+    auto top_level = wm->create_top_level(
+        "gl-shadertoy", "org.freedesktop.gitlab.jwinarske.waypp.gl-shadertoy",
+        config.width, config.height, kResizeMargin, 0, 0, config.fullscreen,
+        config.maximized, config.fullscreen_ratio, config.tearing, draw_frame,
+        &egl_config);
 
-  Seat* seat = nullptr;
-  const auto event_observer =
-      std::make_unique<EventObserver>(top_level.get(), &seat);
-  if (const auto seat_opt = wm->get_seat(); seat_opt.has_value()) {
-    seat_opt.value()->register_observer(event_observer.get());
+    Seat* seat = nullptr;
+    const auto event_observer =
+        std::make_unique<EventObserver>(top_level.get(), &seat);
+    if (const auto seat_opt = wm->get_seat(); seat_opt.has_value()) {
+      seat_opt.value()->register_observer(event_observer.get());
+    }
+
+    top_level->start_frame_callbacks();
+
+    while (running.load(std::memory_order_acquire) && top_level->is_valid() &&
+           wm->display_dispatch() != -1) {
+    }
+
+    top_level.reset();
+    wm.reset();
+  } catch (const std::runtime_error& e) {
+    spdlog::critical("Fatal error: {}", e.what());
+    wl_display_flush(display);
+    wl_display_disconnect(display);
+    return EXIT_FAILURE;
   }
 
-  top_level->start_frame_callbacks();
-
-  while (running && top_level->is_valid() && wm->display_dispatch() != -1) {
-  }
-
-  top_level.reset();
-  wm.reset();
   wl_display_flush(display);
   wl_display_disconnect(display);
 

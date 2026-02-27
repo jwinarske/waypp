@@ -57,7 +57,7 @@ class App : public SeatObserver,
  private:
   static constexpr int kResizeMargin = 12;
   struct wl_display* display_;
-  std::unique_ptr<Logging> logging_;
+  std::unique_ptr<Logging> logging_{};
   std::shared_ptr<XdgWindowManager> wm_;
   std::unique_ptr<ShaderToy> shader_toy_;
   std::shared_ptr<XdgTopLevel> toplevel_;

@@ -207,6 +207,7 @@ void XdgTopLevel::handle_xdg_toplevel_configure(void* data,
   std::fill(std::begin(tl->prev_state_), std::end(tl->prev_state_), false);
   tl->Window::set_fullscreen(false);
   tl->set_maximized(false);
+  tl->set_resizing(false);  // cleared here; set back to true if still present
 
   WL_ARRAY_FOR_EACH(state, states, const uint32_t*) {
     if (const uint32_t idx = *state - 1; idx < std::size(tl->prev_state_)) {

@@ -150,8 +150,8 @@ class App final : public PointerObserver,
                   public KeyboardObserver,
                   public SeatObserver {
  public:
-  explicit App(const Configuration& config)
-      : logging_(std::make_unique<Logging>()), gen_(rd_()) {
+  explicit App(const Configuration& config) : gen_(rd_()) {
+    logging_ = std::make_unique<Logging>();
     wl_display_ = wl_display_connect(nullptr);
     if (!wl_display_) {
       throw std::runtime_error("Unable to connect to Wayland display socket");
@@ -342,13 +342,13 @@ class App final : public PointerObserver,
   }
 
  private:
-  wl_display* wl_display_;
-  std::unique_ptr<Logging> logging_;
+  std::random_device rd_;
+  std::mt19937 gen_;
+  wl_display* wl_display_{};
+  std::unique_ptr<Logging> logging_{};
   std::shared_ptr<XdgWindowManager> wm_;
   Seat* seat_{};
   std::shared_ptr<XdgTopLevel> toplevel_;
-  std::random_device rd_;
-  std::mt19937 gen_;
 };
 
 int main(const int argc, char** argv) {

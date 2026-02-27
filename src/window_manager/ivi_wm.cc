@@ -205,81 +205,86 @@ void IviWm::commit() {
 
 // ── Compositor-pushed event handlers ─────────────────────────────────────
 
-void IviWm::handle_surface_visibility(void* /*data*/,
-                                      ivi_wm* /*wm*/,
-                                      const uint32_t surface_id,
-                                      const int32_t visibility) {
+void IviWm::handle_surface_visibility(
+    void* /*data*/,
+    ivi_wm* /*wm*/,
+    [[maybe_unused]] const uint32_t surface_id,
+    [[maybe_unused]] const int32_t visibility) {
   DLOG_DEBUG("[IviWm] surface_visibility surface_id={} visibility={}",
              surface_id, visibility);
 }
 
 void IviWm::handle_layer_visibility(void* /*data*/,
                                     ivi_wm* /*wm*/,
-                                    const uint32_t layer_id,
-                                    const int32_t visibility) {
+                                    [[maybe_unused]] const uint32_t layer_id,
+                                    [[maybe_unused]] const int32_t visibility) {
   DLOG_DEBUG("[IviWm] layer_visibility layer_id={} visibility={}", layer_id,
              visibility);
 }
 
 void IviWm::handle_surface_opacity(void* /*data*/,
                                    ivi_wm* /*wm*/,
-                                   const uint32_t surface_id,
-                                   const wl_fixed_t opacity) {
+                                   [[maybe_unused]] const uint32_t surface_id,
+                                   [[maybe_unused]] const wl_fixed_t opacity) {
   DLOG_DEBUG("[IviWm] surface_opacity surface_id={} opacity={}", surface_id,
              wl_fixed_to_double(opacity));
 }
 
 void IviWm::handle_layer_opacity(void* /*data*/,
                                  ivi_wm* /*wm*/,
-                                 const uint32_t layer_id,
-                                 const wl_fixed_t opacity) {
+                                 [[maybe_unused]] const uint32_t layer_id,
+                                 [[maybe_unused]] const wl_fixed_t opacity) {
   DLOG_DEBUG("[IviWm] layer_opacity layer_id={} opacity={}", layer_id,
              wl_fixed_to_double(opacity));
 }
 
-void IviWm::handle_surface_source_rectangle(void* /*data*/,
-                                            ivi_wm* /*wm*/,
-                                            const uint32_t surface_id,
-                                            const int32_t x,
-                                            const int32_t y,
-                                            const int32_t width,
-                                            const int32_t height) {
+void IviWm::handle_surface_source_rectangle(
+    void* /*data*/,
+    ivi_wm* /*wm*/,
+    [[maybe_unused]] const uint32_t surface_id,
+    [[maybe_unused]] const int32_t x,
+    [[maybe_unused]] const int32_t y,
+    [[maybe_unused]] const int32_t width,
+    [[maybe_unused]] const int32_t height) {
   DLOG_DEBUG(
       "[IviWm] surface_source_rectangle surface_id={} x={} y={} w={} h={}",
       surface_id, x, y, width, height);
 }
 
-void IviWm::handle_layer_source_rectangle(void* /*data*/,
-                                          ivi_wm* /*wm*/,
-                                          const uint32_t layer_id,
-                                          const int32_t x,
-                                          const int32_t y,
-                                          const int32_t width,
-                                          const int32_t height) {
+void IviWm::handle_layer_source_rectangle(
+    void* /*data*/,
+    ivi_wm* /*wm*/,
+    [[maybe_unused]] const uint32_t layer_id,
+    [[maybe_unused]] const int32_t x,
+    [[maybe_unused]] const int32_t y,
+    [[maybe_unused]] const int32_t width,
+    [[maybe_unused]] const int32_t height) {
   DLOG_DEBUG("[IviWm] layer_source_rectangle layer_id={} x={} y={} w={} h={}",
              layer_id, x, y, width, height);
 }
 
-void IviWm::handle_surface_destination_rectangle(void* /*data*/,
-                                                 ivi_wm* /*wm*/,
-                                                 const uint32_t surface_id,
-                                                 const int32_t x,
-                                                 const int32_t y,
-                                                 const int32_t width,
-                                                 const int32_t height) {
+void IviWm::handle_surface_destination_rectangle(
+    void* /*data*/,
+    ivi_wm* /*wm*/,
+    [[maybe_unused]] const uint32_t surface_id,
+    [[maybe_unused]] const int32_t x,
+    [[maybe_unused]] const int32_t y,
+    [[maybe_unused]] const int32_t width,
+    [[maybe_unused]] const int32_t height) {
   DLOG_DEBUG(
       "[IviWm] surface_destination_rectangle surface_id={} x={} y={} w={} "
       "h={}",
       surface_id, x, y, width, height);
 }
 
-void IviWm::handle_layer_destination_rectangle(void* /*data*/,
-                                               ivi_wm* /*wm*/,
-                                               const uint32_t layer_id,
-                                               const int32_t x,
-                                               const int32_t y,
-                                               const int32_t width,
-                                               const int32_t height) {
+void IviWm::handle_layer_destination_rectangle(
+    void* /*data*/,
+    ivi_wm* /*wm*/,
+    [[maybe_unused]] const uint32_t layer_id,
+    [[maybe_unused]] const int32_t x,
+    [[maybe_unused]] const int32_t y,
+    [[maybe_unused]] const int32_t width,
+    [[maybe_unused]] const int32_t height) {
   DLOG_DEBUG(
       "[IviWm] layer_destination_rectangle layer_id={} x={} y={} w={} h={}",
       layer_id, x, y, width, height);
@@ -287,25 +292,26 @@ void IviWm::handle_layer_destination_rectangle(void* /*data*/,
 
 void IviWm::handle_surface_created(void* /*data*/,
                                    ivi_wm* /*wm*/,
-                                   const uint32_t surface_id) {
+                                   [[maybe_unused]] const uint32_t surface_id) {
   DLOG_DEBUG("[IviWm] surface_created surface_id={}", surface_id);
 }
 
 void IviWm::handle_layer_created(void* /*data*/,
                                  ivi_wm* /*wm*/,
-                                 const uint32_t layer_id) {
+                                 [[maybe_unused]] const uint32_t layer_id) {
   DLOG_DEBUG("[IviWm] layer_created layer_id={}", layer_id);
 }
 
-void IviWm::handle_surface_destroyed(void* /*data*/,
-                                     ivi_wm* /*wm*/,
-                                     const uint32_t surface_id) {
+void IviWm::handle_surface_destroyed(
+    void* /*data*/,
+    ivi_wm* /*wm*/,
+    [[maybe_unused]] const uint32_t surface_id) {
   DLOG_DEBUG("[IviWm] surface_destroyed surface_id={}", surface_id);
 }
 
 void IviWm::handle_layer_destroyed(void* /*data*/,
                                    ivi_wm* /*wm*/,
-                                   const uint32_t layer_id) {
+                                   [[maybe_unused]] const uint32_t layer_id) {
   DLOG_DEBUG("[IviWm] layer_destroyed layer_id={}", layer_id);
 }
 
@@ -329,26 +335,27 @@ void IviWm::handle_layer_error(void* /*data*/,
 
 void IviWm::handle_surface_size(void* /*data*/,
                                 ivi_wm* /*wm*/,
-                                const uint32_t surface_id,
-                                const int32_t width,
-                                const int32_t height) {
+                                [[maybe_unused]] const uint32_t surface_id,
+                                [[maybe_unused]] const int32_t width,
+                                [[maybe_unused]] const int32_t height) {
   DLOG_DEBUG("[IviWm] surface_size surface_id={} size={}x{}", surface_id, width,
              height);
 }
 
 void IviWm::handle_surface_stats(void* /*data*/,
                                  ivi_wm* /*wm*/,
-                                 const uint32_t surface_id,
-                                 const uint32_t frame_count,
-                                 const uint32_t pid) {
+                                 [[maybe_unused]] const uint32_t surface_id,
+                                 [[maybe_unused]] const uint32_t frame_count,
+                                 [[maybe_unused]] const uint32_t pid) {
   DLOG_DEBUG("[IviWm] surface_stats surface_id={} frame_count={} pid={}",
              surface_id, frame_count, pid);
 }
 
-void IviWm::handle_layer_surface_added(void* /*data*/,
-                                       ivi_wm* /*wm*/,
-                                       const uint32_t layer_id,
-                                       const uint32_t surface_id) {
+void IviWm::handle_layer_surface_added(
+    void* /*data*/,
+    ivi_wm* /*wm*/,
+    [[maybe_unused]] const uint32_t layer_id,
+    [[maybe_unused]] const uint32_t surface_id) {
   DLOG_DEBUG("[IviWm] layer_surface_added layer_id={} surface_id={}", layer_id,
              surface_id);
 }

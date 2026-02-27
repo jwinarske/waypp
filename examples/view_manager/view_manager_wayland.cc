@@ -78,6 +78,9 @@ uint32_t ViewManagerWayland::create_view(const char* app_title,
 
 bool ViewManagerWayland::poll_events() {
   /// display_dispatch is blocking
+  if (views_.empty()) {
+    return false;
+  }
   return (views_[0]->is_valid() && wm_->display_dispatch() != -1);
 }
 
@@ -90,7 +93,9 @@ void ViewManagerWayland::quit() {
 }
 
 void ViewManagerWayland::toggle_fullscreen() {
-  views_[0]->toggle_fullscreen();
+  if (!views_.empty()) {
+    views_[0]->toggle_fullscreen();
+  }
 }
 
 void ViewManagerWayland::notify_seat_capabilities(Seat* seat,
@@ -138,8 +143,11 @@ void ViewManagerWayland::notify_keyboard_xkb_v1_key(
     int xdg_key_symbol_count,
     const xkb_keysym_t* xdg_key_symbols) {
   if (xdg_key_symbol_count && state == KeyState::KEY_STATE_PRESS) {
-    auto view_manager =
+    auto* view_manager =
         static_cast<ViewManagerWayland*>(keyboard->get_user_data());
+    if (!view_manager) {
+      return;
+    }
 
     switch (xdg_key_symbols[0]) {
       case XKB_KEY_Escape:
@@ -150,6 +158,7 @@ void ViewManagerWayland::notify_keyboard_xkb_v1_key(
         spdlog::info("Toggle fullscreen");
         view_manager->toggle_fullscreen();
         break;
+      default:;
     }
   }
 }
@@ -180,9 +189,11 @@ void ViewManagerWayland::notify_pointer_button(Pointer* pointer,
                                                uint32_t /* time */,
                                                uint32_t button,
                                                uint32_t state) {
-  if (button == BTN_LEFT && state == WL_POINTER_BUTTON_STATE_PRESSED) {
-    uint32_t edge = views_.front()->check_edge_resize(pointer->get_xy());
-    if (edge != XDG_TOPLEVEL_RESIZE_EDGE_NONE) {
+  if (button == BTN_LEFT && state == WL_POINTER_BUTTON_STATE_PRESSED &&
+      !views_.empty() && seat_) {
+    if (const uint32_t edge =
+            views_.front()->check_edge_resize(pointer->get_xy());
+        edge != XDG_TOPLEVEL_RESIZE_EDGE_NONE) {
       views_.front()->resize(seat_->get_seat(), serial, edge);
     }
   }

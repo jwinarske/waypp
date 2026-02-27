@@ -23,7 +23,9 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include <algorithm>
 #include <array>
+#include <atomic>
 #include <csignal>
 #include <cstdint>
 
@@ -44,7 +46,7 @@ struct Configuration {
 
 static constexpr int kResizeMargin = 12;
 
-static volatile bool running = true;
+static std::atomic<bool> running{true};
 
 /**
  * @brief Signal handler function to handle signals.
@@ -59,7 +61,7 @@ static volatile bool running = true;
  */
 void handle_signal(const int signal) {
   if (signal == SIGINT) {
-    running = false;
+    running.store(false, std::memory_order_relaxed);
   }
 }
 
@@ -119,7 +121,7 @@ void draw_frame(void* data, const uint32_t time) {
         "[draw_frame] Failed to acquire a buffer — stopping render loop");
     window->stop_frame_callbacks();
     window->close();
-    running = false;
+    running.store(false, std::memory_order_relaxed);
     return;
   }
 
@@ -127,8 +129,11 @@ void draw_frame(void* data, const uint32_t time) {
                window->get_height(), time);
 
   wl_surface_attach(window->get_surface(), buffer->get_wl_buffer(), 0, 0);
-  wl_surface_damage(window->get_surface(), 20, 20, window->get_width() - 40,
-                    window->get_height() - 40);
+  const int damage_w = std::max(0, window->get_width() - 40);
+  const int damage_h = std::max(0, window->get_height() - 40);
+  if (damage_w > 0 && damage_h > 0) {
+    wl_surface_damage(window->get_surface(), 20, 20, damage_w, damage_h);
+  }
 
   buffer->set_busy();
 }
@@ -155,12 +160,12 @@ static constexpr std::array<Registrar::RegistrarCallback, 1> ext_interfaces{{{
 }}};
 
 int main(const int argc, char** argv) {
-  auto logging = std::make_unique<Logging>();
+  auto log_init = std::make_unique<Logging>();
 
   auto display = wl_display_connect(nullptr);
   if (!display) {
     spdlog::critical("Unable to connect to Wayland socket.");
-    exit(EXIT_FAILURE);
+    return EXIT_FAILURE;
   }
 
   std::signal(SIGINT, handle_signal);
@@ -202,7 +207,8 @@ int main(const int argc, char** argv) {
   top_level->update_buffer_geometry();
   top_level->start_frame_callbacks();
 
-  while (running && top_level->is_valid() && wm->display_dispatch() != -1) {
+  while (running.load(std::memory_order_acquire) && top_level->is_valid() &&
+         wm->display_dispatch() != -1) {
   }
 
   top_level.reset();

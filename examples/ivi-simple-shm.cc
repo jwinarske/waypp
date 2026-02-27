@@ -137,8 +137,8 @@ class App final : public PointerObserver,
                   public KeyboardObserver,
                   public SeatObserver {
  public:
-  explicit App(const Configuration& config)
-      : logging_(std::make_unique<Logging>()), gen_(rd_()) {
+  explicit App(const Configuration& config) : gen_(rd_()) {
+    logging_ = std::make_unique<Logging>();
     wl_display_ = wl_display_connect(nullptr);
     if (!wl_display_) {
       throw std::runtime_error("Unable to connect to Wayland display socket");
@@ -334,15 +334,14 @@ class App final : public PointerObserver,
   }
 
  private:
+  std::random_device rd_;
+  std::mt19937 gen_;
   wl_display* wl_display_{};
-  std::unique_ptr<Logging> logging_;
+  std::unique_ptr<Logging> logging_{};
   std::shared_ptr<IviWindowManager> wm_;
   std::unique_ptr<IviWm> ivi_wm_;
   Seat* seat_{};
   std::shared_ptr<IviSurface> surface_;
-
-  std::random_device rd_;
-  std::mt19937 gen_;
 };
 
 // ── Entry point ────────────────────────────────────────────────────────────
