@@ -92,6 +92,8 @@ class Seat {
 
   [[nodiscard]] std::optional<Pointer*> get_pointer() const;
 
+  [[nodiscard]] std::optional<Touch*> get_touch() const;
+
 #if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
   /// Forward the cursor-shape manager to the Pointer once both are available.
   /// Safe to call before or after the Pointer is created; if the Pointer does

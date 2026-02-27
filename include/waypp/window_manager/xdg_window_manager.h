@@ -20,7 +20,9 @@
 #include <cstdint>
 #include <functional>
 
+#if ENABLE_EGL
 #include "waypp/window/egl.h"
+#endif
 #include "window_manager.h"
 
 class XdgTopLevel;
@@ -54,7 +56,9 @@ class XdgWindowManager : public std::enable_shared_from_this<XdgWindowManager>,
       bool fullscreen_ratio,
       bool tearing,
       const std::function<void(void*, uint32_t)>& frame_callback,
+#if ENABLE_EGL
       Egl::config* egl_config = nullptr,
+#endif
       bool enable_csd = false);
 
   // Disallow copy and assign.

@@ -159,6 +159,13 @@ std::optional<Pointer*> Seat::get_pointer() const {
   return {};
 }
 
+std::optional<Touch*> Seat::get_touch() const {
+  if (touch_) {
+    return touch_.get();
+  }
+  return {};
+}
+
 #if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
 void Seat::set_cursor_shape_manager(wp_cursor_shape_manager_v1* manager) {
   cursor_shape_manager_ = manager;
