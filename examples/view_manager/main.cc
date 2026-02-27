@@ -22,8 +22,9 @@
  */
 
 #include <csignal>
-#include <cstdint>
+#include <stdexcept>
 
+#include <cstdint>
 #include <cxxopts.hpp>
 
 #include "app.h"
@@ -64,17 +65,22 @@ int main(const int argc, char** argv) {
 
   const auto result = options.parse(argc, argv);
 
-  App app({
-      .width = result["width"].as<int>(),
-      .height = result["height"].as<int>(),
-      .disable_cursor = result["disable-cursor"].as<bool>(),
-      .fullscreen = result["fullscreen"].as<bool>(),
-      .maximized = result["maximized"].as<bool>(),
-      .fullscreen_ratio = result["fullscreen-ratio"].as<bool>(),
-      .tearing = result["tearing"].as<bool>(),
-  });
+  try {
+    const App app({
+        .width = result["width"].as<int>(),
+        .height = result["height"].as<int>(),
+        .disable_cursor = result["disable-cursor"].as<bool>(),
+        .fullscreen = result["fullscreen"].as<bool>(),
+        .maximized = result["maximized"].as<bool>(),
+        .fullscreen_ratio = result["fullscreen-ratio"].as<bool>(),
+        .tearing = result["tearing"].as<bool>(),
+    });
 
-  while (gRunning && app.run()) {
+    while (gRunning && app.run()) {
+    }
+  } catch (const std::runtime_error& e) {
+    spdlog::critical("Fatal error: {}", e.what());
+    return EXIT_FAILURE;
   }
 
   return EXIT_SUCCESS;
