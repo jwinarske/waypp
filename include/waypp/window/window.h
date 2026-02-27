@@ -27,11 +27,13 @@
 #include "egl.h"
 #include "feedback.h"
 #include "waypp/window/buffer.h"
-#include "waypp/window_manager/xdg_window_manager.h"
+#include "waypp/window_manager/window_manager.h"
 
 class Buffer;
 
+namespace waypp {
 class Egl;
+}
 
 class FeedbackObserver;
 
@@ -70,7 +72,7 @@ class Window {
          bool maximized,
          bool fullscreen_ratio,
          bool tearing,
-         Egl::config* egl_config);
+         waypp::Egl::config* egl_config);
 
   ~Window();
 
@@ -206,7 +208,7 @@ class Window {
   void* user_data_{};
 
 #if ENABLE_EGL
-  std::unique_ptr<Egl> egl_;
+  std::unique_ptr<waypp::Egl> egl_;
 #endif
 
   std::vector<std::unique_ptr<Buffer>> buffers_;

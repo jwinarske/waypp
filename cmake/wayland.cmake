@@ -97,7 +97,9 @@ endif ()
 
 if (ENABLE_IVI_SHELL_CLIENT)
     add_protocol(${PROJECT_SOURCE_DIR}/third_party/weston/protocol/ivi-application.xml)
+    message(STATUS "IVI Application ....... ${HAS_WAYLAND_PROTOCOL_IVI_APPLICATION}")
     add_protocol(${PROJECT_SOURCE_DIR}/third_party/weston/protocol/ivi-wm.xml)
+    message(STATUS "IVI WM ................ ${HAS_WAYLAND_PROTOCOL_IVI_WM}")
 endif ()
 
 add_protocol(${PROJECT_SOURCE_DIR}/third_party/weston/protocol/weston-output-capture.xml)

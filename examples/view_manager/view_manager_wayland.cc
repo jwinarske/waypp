@@ -24,6 +24,7 @@
 #include "view_manager_wayland.h"
 
 #include <memory>
+#include <stdexcept>
 
 #include <linux/input.h>
 
@@ -34,8 +35,7 @@ ViewManagerWayland::ViewManagerWayland(
     const ViewManager::Configuration& config) {
   display_ = wl_display_connect(nullptr);
   if (!display_) {
-    spdlog::critical("Unable to connect to Wayland socket.");
-    exit(EXIT_FAILURE);
+    throw std::runtime_error("Unable to connect to Wayland display socket");
   }
 
   wm_ = std::make_shared<XdgWindowManager>(display_, config.disable_cursor);
@@ -97,12 +97,10 @@ void ViewManagerWayland::notify_seat_capabilities(Seat* seat,
                                                   wl_seat* /* seat */,
                                                   uint32_t /* caps */) {
   if (seat) {
-    auto keyboard = seat->get_keyboard();
-    if (keyboard.has_value()) {
+    if (const auto keyboard = seat->get_keyboard(); keyboard.has_value()) {
       keyboard.value()->register_observer(this, this);
     }
-    auto pointer = seat->get_pointer();
-    if (pointer.has_value()) {
+    if (const auto pointer = seat->get_pointer(); pointer.has_value()) {
       pointer.value()->register_observer(this, this);
     }
   }

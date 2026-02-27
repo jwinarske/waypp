@@ -20,6 +20,7 @@
 
 #include "logging/logging.h"
 #include "waypp/window/xdg_toplevel.h"
+using waypp::Egl;
 
 /**
  * @class XdgWindowManager

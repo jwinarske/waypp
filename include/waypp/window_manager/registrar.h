@@ -125,6 +125,14 @@ class Registrar {
   [[nodiscard]] agl_shell* get_agl_shell() const { return agl_shell_; }
 #endif
 
+#if ENABLE_IVI_SHELL_CLIENT
+  [[nodiscard]] ivi_application* get_ivi_application() const {
+    return ivi_application_;
+  }
+
+  [[nodiscard]] ivi_wm* get_ivi_wm() const { return ivi_wm_; }
+#endif
+
 #if HAS_WAYLAND_PROTOCOL_PRESENTATION_TIME
 
   [[nodiscard]] struct wp_presentation* get_presentation_time_wp_presentation()
@@ -274,6 +282,11 @@ class Registrar {
   agl_shell* agl_shell_{};
 #endif
 
+#if ENABLE_IVI_SHELL_CLIENT
+  ivi_application* ivi_application_{};
+  ivi_wm* ivi_wm_{};
+#endif
+
 #if HAS_WAYLAND_PROTOCOL_PRESENTATION_TIME
   struct {
     struct wp_presentation* wp_presentation;
@@ -396,6 +409,22 @@ class Registrar {
                                          uint32_t name,
                                          const char* interface,
                                          uint32_t version);
+
+#endif
+
+#if ENABLE_IVI_SHELL_CLIENT
+
+  static void handle_interface_ivi_application(Registrar* r,
+                                               wl_registry* registry,
+                                               uint32_t name,
+                                               const char* interface,
+                                               uint32_t version);
+
+  static void handle_interface_ivi_wm(Registrar* r,
+                                      wl_registry* registry,
+                                      uint32_t name,
+                                      const char* interface,
+                                      uint32_t version);
 
 #endif
 

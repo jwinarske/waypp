@@ -25,6 +25,7 @@
 #include <csignal>
 
 #include <GLES3/gl32.h>
+#include <linux/input.h>
 #include <cxxopts.hpp>
 #include <glm/glm.hpp>
 
@@ -83,9 +84,12 @@ struct Configuration {
 } config;
 
 struct Context {
-  GLuint framebuffer;
-  GLuint shader_program;
-  GLuint VAO;
+  GLuint framebuffer{};
+  GLuint texColor{};
+  GLuint shader_program{};
+  GLuint VAO{};
+  int render_width{};
+  int render_height{};
 } ctx;
 
 /**
@@ -121,7 +125,7 @@ GLuint load_shader(const GLchar* shader_source, const GLenum shader_type) {
     if (len > 1) {
       auto buf = std::make_unique<char[]>(static_cast<size_t>(len));
       glGetShaderInfoLog(shader, len, nullptr, buf.get());
-      std::string res{buf.get(), static_cast<size_t>(len)};
+      const std::string res{buf.get(), static_cast<size_t>(len)};
       buf.reset();
       spdlog::error("[gl shader] {}", res.c_str());
       exit(EXIT_FAILURE);
@@ -135,7 +139,7 @@ GLuint load_shader(const GLchar* shader_source, const GLenum shader_type) {
 void initialize_scene(Window* window) {
   /// Quad
 
-  float quad_vertices[] = {
+  constexpr float quad_vertices[] = {
       -1.0, -1.0, 0.0, 0.0, -1.0, 1.0, 0.0, 1.0, 1.0, -1.0, 1.0, 0.0,
 
       1.0,  -1.0, 1.0, 0.0, -1.0, 1.0, 0.0, 1.0, 1.0, 1.0,  1.0, 1.0};
@@ -161,22 +165,21 @@ void initialize_scene(Window* window) {
 
   glBindVertexArray(0);
 
-  /// Framebuffer
+  /// Framebuffer + texture (size-dependent)
 
   glGenFramebuffers(1, &ctx.framebuffer);
+  glGenTextures(1, &ctx.texColor);
+
+  ctx.render_width = window->get_width();
+  ctx.render_height = window->get_height();
+
   glBindFramebuffer(GL_FRAMEBUFFER, ctx.framebuffer);
-
-  /// Texture
-
-  GLuint texColor;
-  glGenTextures(1, &texColor);
-  glBindTexture(GL_TEXTURE_2D, texColor);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, window->get_width(),
-               window->get_height(), 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
-  glBindTexture(GL_TEXTURE_2D, 0);
+  glBindTexture(GL_TEXTURE_2D, ctx.texColor);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ctx.render_width, ctx.render_height, 0,
+               GL_RGB, GL_UNSIGNED_BYTE, nullptr);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                         texColor, 0);
-
+                         ctx.texColor, 0);
+  glBindTexture(GL_TEXTURE_2D, 0);
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
   /// Shaders
@@ -204,7 +207,7 @@ void initialize_scene(Window* window) {
   if (len > 1) {
     auto buf = std::make_unique<char[]>(static_cast<size_t>(len));
     glGetProgramInfoLog(ctx.shader_program, len, nullptr, buf.get());
-    std::string res{buf.get(), static_cast<size_t>(len)};
+    const std::string res{buf.get(), static_cast<size_t>(len)};
     buf.reset();
     spdlog::error("[gl] linking {}", res.c_str());
     exit(EXIT_FAILURE);
@@ -215,7 +218,38 @@ void initialize_scene(Window* window) {
 
   glUseProgram(ctx.shader_program);
 
-  glm::vec2 screen(window->get_width(), window->get_height());
+  glm::vec2 screen(ctx.render_width, ctx.render_height);
+  glUniform2fv(glGetUniformLocation(ctx.shader_program, "iResolution"), 1,
+               &screen[0]);
+}
+
+/**
+ * @brief Handles a window resize by recreating the size-dependent framebuffer
+ *        texture and updating the iResolution uniform + GL viewport.
+ *
+ * Called from draw_frame whenever window dimensions differ from the last
+ * rendered frame.
+ */
+static void resize_scene(Window* window) {
+  ctx.render_width = window->get_width();
+  ctx.render_height = window->get_height();
+
+  DLOG_DEBUG("[gl-shadertoy] resize_scene {}x{}", ctx.render_width,
+             ctx.render_height);
+
+  // Recreate the framebuffer colour attachment at the new size.
+  glBindFramebuffer(GL_FRAMEBUFFER, ctx.framebuffer);
+  glBindTexture(GL_TEXTURE_2D, ctx.texColor);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ctx.render_width, ctx.render_height, 0,
+               GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                         ctx.texColor, 0);
+  glBindTexture(GL_TEXTURE_2D, 0);
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+  // Update the iResolution uniform and GL viewport.
+  glUseProgram(ctx.shader_program);
+  glm::vec2 screen(ctx.render_width, ctx.render_height);
   glUniform2fv(glGetUniformLocation(ctx.shader_program, "iResolution"), 1,
                &screen[0]);
 }
@@ -241,18 +275,26 @@ static void draw_frame(void* userdata, uint32_t /* time */) {
     scene_initialized = true;
   }
 
+  // Detect resize and rebuild size-dependent GL resources.
+  if (window->get_width() != ctx.render_width ||
+      window->get_height() != ctx.render_height) {
+    resize_scene(window);
+  }
+
   const auto now = std::chrono::duration_cast<std::chrono::microseconds>(
       std::chrono::steady_clock::now().time_since_epoch());
   const auto current_frame = std::chrono::duration<float>(now).count();
 
   glBindFramebuffer(GL_FRAMEBUFFER, ctx.framebuffer);
 
+  glViewport(0, 0, ctx.render_width, ctx.render_height);
   glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT);
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   glUseProgram(ctx.shader_program);
 
+  glViewport(0, 0, ctx.render_width, ctx.render_height);
   glUniform1f(glGetUniformLocation(ctx.shader_program, "iTime"),
               static_cast<float>(static_cast<int>(current_frame) % 60));
   glBindVertexArray(ctx.VAO);
@@ -261,15 +303,23 @@ static void draw_frame(void* userdata, uint32_t /* time */) {
   window->swap_buffers();
 }
 
-class EventObserver : public SeatObserver, public KeyboardObserver {
+class EventObserver : public SeatObserver,
+                      public KeyboardObserver,
+                      public PointerObserver {
  public:
+  explicit EventObserver(XdgTopLevel* toplevel, Seat** seat_out)
+      : toplevel_(toplevel), seat_out_(seat_out) {}
+
   void notify_seat_capabilities(Seat* seat,
                                 wl_seat* /* seat */,
                                 uint32_t /* caps */) override {
     if (seat) {
-      auto keyboard = seat->get_keyboard();
-      if (keyboard.has_value()) {
+      *seat_out_ = seat;
+      if (const auto keyboard = seat->get_keyboard(); keyboard.has_value()) {
         keyboard.value()->register_observer(this);
+      }
+      if (const auto pointer = seat->get_pointer(); pointer.has_value()) {
+        pointer.value()->register_observer(this);
       }
     }
   }
@@ -279,6 +329,8 @@ class EventObserver : public SeatObserver, public KeyboardObserver {
                         const char* name) override {
     spdlog::info("Seat: {}", name);
   }
+
+  // ── KeyboardObserver ──────────────────────────────────────────────────
 
   void notify_keyboard_enter(Keyboard* /* keyboard */,
                              wl_keyboard* /* wl_keyboard */,
@@ -322,6 +374,70 @@ class EventObserver : public SeatObserver, public KeyboardObserver {
         state == KeyState::KEY_STATE_PRESS ? "press" : "release",
         xdg_key_symbol_count, xdg_key_symbols[0]);
   }
+
+  // ── PointerObserver ───────────────────────────────────────────────────
+
+  void notify_pointer_enter(Pointer* pointer,
+                            wl_pointer* /* wl_pointer */,
+                            uint32_t serial,
+                            wl_surface* /* surface */,
+                            double /* sx */,
+                            double /* sy */) override {
+    pointer->set_cursor(serial, "left_ptr");
+  }
+
+  void notify_pointer_leave(Pointer* /* pointer */,
+                            wl_pointer* /* wl_pointer */,
+                            uint32_t /* serial */,
+                            wl_surface* /* surface */) override {}
+
+  void notify_pointer_motion(Pointer* /* pointer */,
+                             wl_pointer* /* wl_pointer */,
+                             uint32_t /* time */,
+                             double /* sx */,
+                             double /* sy */) override {}
+
+  void notify_pointer_button(Pointer* pointer,
+                             wl_pointer* /* wl_pointer */,
+                             uint32_t serial,
+                             uint32_t /* time */,
+                             uint32_t button,
+                             uint32_t state) override {
+    if (button == BTN_LEFT && state == WL_POINTER_BUTTON_STATE_PRESSED &&
+        *seat_out_) {
+      if (const auto edge = toplevel_->check_edge_resize(pointer->get_xy());
+          edge != XDG_TOPLEVEL_RESIZE_EDGE_NONE) {
+        toplevel_->resize((*seat_out_)->get_seat(), serial, edge);
+      }
+    }
+  }
+
+  void notify_pointer_axis(Pointer* /* pointer */,
+                           wl_pointer* /* wl_pointer */,
+                           uint32_t /* time */,
+                           uint32_t /* axis */,
+                           double /* value */) override {}
+
+  void notify_pointer_frame(Pointer* /* pointer */,
+                            wl_pointer* /* wl_pointer */) override {}
+
+  void notify_pointer_axis_source(Pointer* /* pointer */,
+                                  wl_pointer* /* wl_pointer */,
+                                  uint32_t /* axis_source */) override {}
+
+  void notify_pointer_axis_stop(Pointer* /* pointer */,
+                                wl_pointer* /* wl_pointer */,
+                                uint32_t /* time */,
+                                uint32_t /* axis */) override {}
+
+  void notify_pointer_axis_discrete(Pointer* /* pointer */,
+                                    wl_pointer* /* wl_pointer */,
+                                    uint32_t /* axis */,
+                                    int32_t /* discrete */) override {}
+
+ private:
+  XdgTopLevel* toplevel_;
+  Seat** seat_out_;
 };
 
 /**
@@ -329,7 +445,7 @@ class EventObserver : public SeatObserver, public KeyboardObserver {
  *
  * This function initializes the surface manager and creates a surface with the
  * specified dimensions and type. It sets up a signal handler for SIGINT
- * (Ctrl+C) to stop the program, and then enters a loop to handle surface
+ * (Ctrl+C) to stop the program and then enters a loop to handle surface
  * events.
  *
  * @param argc The number of command line arguments.
@@ -362,7 +478,7 @@ int main(int argc, char** argv) {
             ("b,non-blocking", "Don't sync to compositor redraw (eglSwapInterval 0)");
 
   // clang-format on
-  auto result = options.parse(argc, argv);
+  const auto result = options.parse(argc, argv);
 
   config = {
       .width = result["width"].as<int>(),
@@ -383,26 +499,28 @@ int main(int argc, char** argv) {
   }
 
   auto wm = std::make_shared<XdgWindowManager>(display);
-  auto event_observer = std::make_unique<EventObserver>();
-  auto seat = wm->get_seat();
-  if (seat.has_value()) {
-    seat.value()->register_observer(event_observer.get());
-  }
 
-  Egl::config egl_config{};
+  waypp::Egl::config egl_config{};
   egl_config.context_attribs_size = kEglContextAttribs1.size();
   egl_config.context_attribs = kEglContextAttribs1.data();
   egl_config.config_attribs_size = kEglConfigAttribs1.size();
   egl_config.config_attribs = kEglConfigAttribs1.data();
   egl_config.buffer_bpp = 32;
   egl_config.swap_interval = config.interval;
-  egl_config.type = Egl::OPENGL_API;
+  egl_config.type = waypp::Egl::OPENGL_API;
 
   auto top_level = wm->create_top_level(
-      "simple-egl", "org.freedesktop.gitlab.jwinarske.waypp.gl-shadertoy",
+      "gl-shadertoy", "org.freedesktop.gitlab.jwinarske.waypp.gl-shadertoy",
       config.width, config.height, kResizeMargin, 0, 0, config.fullscreen,
       config.maximized, config.fullscreen_ratio, config.tearing, draw_frame,
       &egl_config);
+
+  Seat* seat = nullptr;
+  const auto event_observer =
+      std::make_unique<EventObserver>(top_level.get(), &seat);
+  if (const auto seat_opt = wm->get_seat(); seat_opt.has_value()) {
+    seat_opt.value()->register_observer(event_observer.get());
+  }
 
   top_level->start_frame_callbacks();
 

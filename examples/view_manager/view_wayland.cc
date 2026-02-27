@@ -44,6 +44,7 @@ ViewWayland::ViewWayland(std::shared_ptr<XdgWindowManager> xdg_window_manager,
         tearing, draw_frame);
     spdlog::debug("XDG Window Version: {}", toplevel_->get_version());
 
+    // Pass this as user_data — draw_frame receives ViewWayland* as data.
     toplevel_->start_frame_callbacks(this);
   }
 }
@@ -123,13 +124,22 @@ void ViewWayland::create_random_color_grid(const uint32_t width,
 }
 
 void ViewWayland::draw_frame(void* data, const uint32_t /* time */) {
-  const auto window = static_cast<Window*>(data);
-  const auto view = static_cast<ViewWayland*>(window->get_user_data());
+  const auto view = static_cast<ViewWayland*>(data);
+  const auto window = static_cast<Window*>(view->toplevel_.get());
+
+  // Flush any pending geometry update (compositor configure → resize) so that
+  // window->get_width()/get_height() and the buffer dimensions are current
+  // before we attempt to acquire a buffer.
+  window->update_buffer_geometry();
 
   const auto buffer = window->next_buffer();
   if (!buffer) {
     spdlog::error("Failed to acquire a buffer");
-    exit(EXIT_FAILURE);
+    // Do not call exit(): we are inside a wl_surface_frame callback.
+    // Halt the frame-callback chain and signal the run loop to exit cleanly.
+    window->stop_frame_callbacks();
+    window->close();
+    return;
   }
 
   view->create_random_color_grid(

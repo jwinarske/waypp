@@ -49,6 +49,11 @@ Registrar::Registrar(wl_display* wl_display,
       ,
       {agl_shell_interface.name, handle_interface_agl_shell}
 #endif
+#if ENABLE_IVI_SHELL_CLIENT
+      ,
+      {ivi_application_interface.name, handle_interface_ivi_application},
+      {ivi_wm_interface.name, handle_interface_ivi_wm}
+#endif
 #if HAS_WAYLAND_PROTOCOL_XDG_DECORATION_UNSTABLE_V1
       ,
       {zxdg_decoration_manager_v1_interface.name,
@@ -153,6 +158,17 @@ Registrar::~Registrar() {
   if (agl_shell_) {
     LOG_TRACE("[Registrar] agl_shell_destroy(agl_shell_)");
     agl_shell_destroy(agl_shell_);
+  }
+#endif
+
+#if ENABLE_IVI_SHELL_CLIENT
+  if (ivi_wm_) {
+    LOG_TRACE("[Registrar] ivi_wm_destroy(ivi_wm_)");
+    ivi_wm_destroy(ivi_wm_);
+  }
+  if (ivi_application_) {
+    LOG_TRACE("[Registrar] ivi_application_destroy(ivi_application_)");
+    ivi_application_destroy(ivi_application_);
   }
 #endif
 
@@ -678,6 +694,32 @@ void Registrar::handle_interface_agl_shell(Registrar* r,
       wl_registry_bind(registry, name, &agl_shell_interface,
                        std::min(kAglShellMinVersion, version)));
   LOG_DEBUG("{}: {}", interface, agl_shell_get_version(r->agl_shell_));
+}
+
+#endif
+
+#if ENABLE_IVI_SHELL_CLIENT
+
+void Registrar::handle_interface_ivi_application(Registrar* r,
+                                                 wl_registry* registry,
+                                                 const uint32_t name,
+                                                 const char* interface,
+                                                 const uint32_t version) {
+  r->ivi_application_ = static_cast<ivi_application*>(
+      wl_registry_bind(registry, name, &ivi_application_interface,
+                       std::min(kIviApplicationMinVersion, version)));
+  LOG_DEBUG("{}: {}", interface,
+            ivi_application_get_version(r->ivi_application_));
+}
+
+void Registrar::handle_interface_ivi_wm(Registrar* r,
+                                        wl_registry* registry,
+                                        const uint32_t name,
+                                        const char* interface,
+                                        const uint32_t version) {
+  r->ivi_wm_ = static_cast<ivi_wm*>(wl_registry_bind(
+      registry, name, &ivi_wm_interface, std::min(kIviWmMinVersion, version)));
+  LOG_DEBUG("{}: {}", interface, ivi_wm_get_version(r->ivi_wm_));
 }
 
 #endif

@@ -20,6 +20,7 @@
 #include <algorithm>
 
 #include "logging/logging.h"
+using waypp::Egl;
 
 Window::Window(std::shared_ptr<WindowManager> wm,
                const char* name,
@@ -84,8 +85,8 @@ Window::Window(std::shared_ptr<WindowManager> wm,
 #if ENABLE_EGL
   if (egl_config && egl_config->context_attribs_size &&
       egl_config->config_attribs_size) {
-    egl_ = std::make_unique<Egl>(wm_->get_display(), wl_surface_, width, height,
-                                 egl_config);
+    egl_ = std::make_unique<waypp::Egl>(wm_->get_display(), wl_surface_, width,
+                                        height, egl_config);
     egl_->set_swap_interval(egl_config->swap_interval);
   }
 #endif

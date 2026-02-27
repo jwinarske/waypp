@@ -21,6 +21,7 @@
 #include <stdexcept>
 
 #include "logging/logging.h"
+using waypp::Egl;
 
 /**
  * @brief The Egl class represents an EGL object used for OpenGL rendering.

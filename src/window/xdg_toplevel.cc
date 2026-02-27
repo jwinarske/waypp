@@ -20,6 +20,8 @@
 
 #include "logging/logging.h"
 
+using waypp::Egl;
+
 #if ENABLE_CSD
 #include "waypp/window/csd_frame.h"
 #include "waypp/window_manager/window_manager.h"

@@ -48,7 +48,7 @@ class XdgTopLevel : public Window {
               bool fullscreen_ratio,
               bool tearing,
               const std::function<void(void*, const uint32_t)>& frame_callback,
-              Egl::config* egl_config,
+              waypp::Egl::config* egl_config,
               bool enable_csd = false);
 
   ~XdgTopLevel();
