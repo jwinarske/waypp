@@ -117,6 +117,24 @@ if (ENABLE_AGL_SHELL_CLIENT)
 endif ()
 
 #
+# IVI-shell apps
+#
+if (ENABLE_IVI_SHELL_CLIENT)
+
+    #
+    # ivi-simple-shm
+    #
+    add_executable(ivi-simple-shm ivi-simple-shm.cc)
+
+    target_link_libraries(ivi-simple-shm PRIVATE waypp wayland-gen cxxopts::cxxopts toolchain::toolchain)
+
+    add_sanitizers(ivi-simple-shm)
+
+    install(TARGETS ivi-simple-shm DESTINATION bin)
+
+endif ()
+
+#
 # Vulkan
 #
 if (ENABLE_VULKAN)

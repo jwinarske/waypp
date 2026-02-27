@@ -259,3 +259,16 @@ void AglShell::ready() const {
   LOG_DEBUG("[AGL] Ready");
   agl_shell_ready(agl_shell_);
 }
+
+void AglShell::process_app_status_event(const char* app_id,
+                                        const std::string& event_type) {
+  if (!agl_shell_)
+    return;
+
+  if (event_type == "started") {
+    activate_app(std::string(app_id));
+  } else if (event_type == "terminated") {
+    deactivate_app(std::string(app_id));
+  }
+  // "deactivated" is not handled
+}

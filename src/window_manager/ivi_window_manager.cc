@@ -22,6 +22,7 @@
 
 #include "logging/logging.h"
 #include "waypp/window/ivi_surface.h"
+using waypp::Egl;
 
 /**
  * @class IviWindowManager
@@ -63,7 +64,8 @@ IviWindowManager::~IviWindowManager() = default;
  * internally to register the surface with the compositor. The returned
  * shared_ptr keeps the surface alive for the lifetime of the caller's handle.
  *
- * @param ivi_id         IVI surface identifier (must be unique on this display).
+ * @param ivi_id         IVI surface identifier (must be unique on this
+ * display).
  * @param width          Initial surface width in pixels.
  * @param height         Initial surface height in pixels.
  * @param buffer_count   Number of backing buffers.
@@ -92,4 +94,3 @@ std::shared_ptr<IviSurface> IviWindowManager::create_ivi_surface(
 }
 
 #endif  // ENABLE_IVI_SHELL_CLIENT
-

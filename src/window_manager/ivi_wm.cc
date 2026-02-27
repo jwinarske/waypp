@@ -87,8 +87,8 @@ void IviWm::layer_add_surface(const uint32_t layer_id,
 
 void IviWm::layer_remove_surface(const uint32_t layer_id,
                                  const uint32_t surface_id) {
-  DLOG_DEBUG("[IviWm] layer_remove_surface layer_id={} surface_id={}",
-             layer_id, surface_id);
+  DLOG_DEBUG("[IviWm] layer_remove_surface layer_id={} surface_id={}", layer_id,
+             surface_id);
   ivi_wm_layer_remove_surface(ivi_wm_, layer_id, surface_id);
 }
 
@@ -135,8 +135,7 @@ void IviWm::set_surface_source_rectangle(const uint32_t surface_id,
   DLOG_DEBUG(
       "[IviWm] set_surface_source_rectangle surface_id={} x={} y={} w={} h={}",
       surface_id, x, y, width, height);
-  ivi_wm_set_surface_source_rectangle(ivi_wm_, surface_id, x, y, width,
-                                      height);
+  ivi_wm_set_surface_source_rectangle(ivi_wm_, surface_id, x, y, width, height);
 }
 
 void IviWm::set_layer_source_rectangle(const uint32_t layer_id,
@@ -169,9 +168,8 @@ void IviWm::set_layer_destination(const uint32_t layer_id,
                                   const int y,
                                   const int width,
                                   const int height) {
-  DLOG_DEBUG(
-      "[IviWm] set_layer_destination layer_id={} x={} y={} w={} h={}",
-      layer_id, x, y, width, height);
+  DLOG_DEBUG("[IviWm] set_layer_destination layer_id={} x={} y={} w={} h={}",
+             layer_id, x, y, width, height);
   ivi_wm_set_layer_destination_rectangle(ivi_wm_, layer_id, x, y, width,
                                          height);
 }
@@ -258,9 +256,8 @@ void IviWm::handle_layer_source_rectangle(void* /*data*/,
                                           const int32_t y,
                                           const int32_t width,
                                           const int32_t height) {
-  DLOG_DEBUG(
-      "[IviWm] layer_source_rectangle layer_id={} x={} y={} w={} h={}",
-      layer_id, x, y, width, height);
+  DLOG_DEBUG("[IviWm] layer_source_rectangle layer_id={} x={} y={} w={} h={}",
+             layer_id, x, y, width, height);
 }
 
 void IviWm::handle_surface_destination_rectangle(void* /*data*/,
@@ -335,8 +332,8 @@ void IviWm::handle_surface_size(void* /*data*/,
                                 const uint32_t surface_id,
                                 const int32_t width,
                                 const int32_t height) {
-  DLOG_DEBUG("[IviWm] surface_size surface_id={} size={}x{}", surface_id,
-             width, height);
+  DLOG_DEBUG("[IviWm] surface_size surface_id={} size={}x{}", surface_id, width,
+             height);
 }
 
 void IviWm::handle_surface_stats(void* /*data*/,
@@ -357,4 +354,3 @@ void IviWm::handle_layer_surface_added(void* /*data*/,
 }
 
 #endif  // ENABLE_IVI_SHELL_CLIENT
-

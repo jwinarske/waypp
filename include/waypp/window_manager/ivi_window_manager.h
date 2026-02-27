@@ -44,9 +44,8 @@ class IviSurface;
  * The compositor must advertise the ivi_application global; if it does not,
  * the constructor throws std::runtime_error.
  */
-class IviWindowManager
-    : public std::enable_shared_from_this<IviWindowManager>,
-      public WindowManager {
+class IviWindowManager : public std::enable_shared_from_this<IviWindowManager>,
+                         public WindowManager {
  public:
   /**
    * @brief Construct an IviWindowManager.
@@ -98,7 +97,7 @@ class IviWindowManager
       uint32_t buffer_format,
       const std::function<void(void*, uint32_t)>& frame_callback,
 #if ENABLE_EGL
-      Egl::config* egl_config = nullptr
+      waypp::Egl::config* egl_config = nullptr
 #else
       void* egl_config = nullptr
 #endif
@@ -118,4 +117,3 @@ class IviWindowManager
 };
 
 #endif  // ENABLE_IVI_SHELL_CLIENT
-

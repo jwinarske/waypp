@@ -34,14 +34,14 @@
  * All mutating requests (visibility, opacity, source/destination rectangles,
  * layer membership) are batched on the compositor side and only applied when
  * commit() is called, which maps to ivi_wm_commit_changes().  The exceptions
- * are create_layer() and destroy_layer() which take effect immediately.
+ * are create_layer() and destroy_layer(), which take effect immediately.
  *
  * Compositor-pushed events (surface/layer created, destroyed, property
  * changes, errors) are logged at DEBUG level via DLOG_DEBUG.
  *
  * Usage:
  * @code
- *   auto* raw_wm = registrar.get_ivi_wm();          // may be nullptr
+ *   auto* raw_wm = registrar.get_ivi_wm();          // maybe nullptr
  *   if (raw_wm) {
  *     IviWm wm(raw_wm);
  *     wm.create_layer(1000, 1920, 1080);
@@ -100,7 +100,7 @@ class IviWm {
   /**
    * @brief Remove a surface from a layer's render order.
    *
-   * The surface is not destroyed; it is merely de-listed from the layer.
+   * The surface is not destroyed; it is merely delisted from the layer.
    *
    * @param layer_id   Target layer.
    * @param surface_id IVI surface ID to remove.
@@ -167,7 +167,8 @@ class IviWm {
   // ── Destination rectangles ──────────────────────────────────────────────
 
   /**
-   * @brief Set the destination (position + size) of a surface within its layer.
+   * @brief Set the destination (position and size) of a surface within its
+   * layer.
    *
    * The surface content is scaled to fill this rectangle.
    * Pass -1 for any parameter to leave it unchanged.
@@ -179,7 +180,8 @@ class IviWm {
                                int height);
 
   /**
-   * @brief Set the destination (position + size) of a layer within its screen.
+   * @brief Set the destination (position and size) of a layer within its
+   * screen.
    *
    * Pass -1 for any parameter to leave it unchanged.
    */
@@ -192,7 +194,7 @@ class IviWm {
   // ── Surface type ────────────────────────────────────────────────────────
 
   /**
-   * @brief Set the surface type (restricted vs desktop-compatible).
+   * @brief Set the surface type (restricted vs. desktop-compatible).
    *
    * Desktop-compatible surfaces allow the compositor to adjust source and
    * destination regions when the application resizes its buffers.
@@ -298,17 +300,13 @@ class IviWm {
                                      ivi_wm* wm,
                                      uint32_t surface_id);
 
-  static void handle_layer_created(void* data,
-                                   ivi_wm* wm,
-                                   uint32_t layer_id);
+  static void handle_layer_created(void* data, ivi_wm* wm, uint32_t layer_id);
 
   static void handle_surface_destroyed(void* data,
                                        ivi_wm* wm,
                                        uint32_t surface_id);
 
-  static void handle_layer_destroyed(void* data,
-                                     ivi_wm* wm,
-                                     uint32_t layer_id);
+  static void handle_layer_destroyed(void* data, ivi_wm* wm, uint32_t layer_id);
 
   static void handle_surface_error(void* data,
                                    ivi_wm* wm,
@@ -341,4 +339,3 @@ class IviWm {
 };
 
 #endif  // ENABLE_IVI_SHELL_CLIENT
-

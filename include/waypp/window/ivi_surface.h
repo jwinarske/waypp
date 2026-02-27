@@ -71,7 +71,7 @@ class IviSurface : public Window {
              uint32_t buffer_format,
              const std::function<void(void*, uint32_t)>& frame_callback,
 #if ENABLE_EGL
-             Egl::config* egl_config = nullptr
+             waypp::Egl::config* egl_config = nullptr
 #else
              void* egl_config = nullptr
 #endif
@@ -115,5 +115,3 @@ class IviSurface : public Window {
 };
 
 #endif  // ENABLE_IVI_SHELL_CLIENT
-
-

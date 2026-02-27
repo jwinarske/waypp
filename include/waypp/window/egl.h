@@ -22,6 +22,15 @@
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
+// Forward-declare Wayland types in global scope before the waypp namespace so
+// that references to wl_display* and wl_surface* inside the namespace resolve
+// to the correct global-scope struct types declared by wayland-client.h.
+struct wl_display;
+struct wl_egl_window;
+struct wl_surface;
+
+namespace waypp {
+
 class Egl {
  public:
   enum api {
@@ -48,11 +57,8 @@ class Egl {
   ~Egl();
 
   void set_swap_interval(int interval);
-
   void make_current();
-
   void clear_current();
-
   void swap_buffers() const;
 
   [[nodiscard]] bool have_swap_buffers_with_damage() const {
@@ -60,14 +66,10 @@ class Egl {
   }
 
   void swap_buffers_with_damage(EGLint* rects, EGLint n_rects) const;
-
   void get_buffer_age(EGLint& buffer_age) const;
-
   void resize(int width, int height, int dx, int dy);
 
-  // Disallow copy and assign.
   Egl(const Egl&) = delete;
-
   Egl& operator=(const Egl&) = delete;
 
  private:
@@ -75,31 +77,25 @@ class Egl {
   std::vector<EGLint> context_attribs_;
   std::vector<EGLint> config_attribs_;
   int buffer_bpp_;
-
   EGLContext context_{};
-
   EGLint major_{}, minor_{};
-
   EGLConfig config_{};
-
   wl_surface* wl_surface_;
   wl_egl_window* wl_egl_window_{};
   EGLSurface egl_surface_{};
-
   int width_;
   int height_;
-
   PFNEGLSWAPBUFFERSWITHDAMAGEEXTPROC pfSwapBufferWithDamage_{};
   PFNEGLSETDAMAGEREGIONKHRPROC pfSetDamageRegion_{};
 
   static bool has_egl_extension(const char* extensions, const char* name);
-
   static void debug_callback(EGLenum error,
                              const char* command,
                              EGLint messageType,
                              EGLLabelKHR threadLabel,
                              EGLLabelKHR objectLabel,
                              const char* message);
-
   static void egl_khr_debug_init();
 };
+
+}  // namespace waypp

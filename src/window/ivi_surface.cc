@@ -22,6 +22,7 @@
 
 #include "logging/logging.h"
 #include "waypp/window_manager/ivi_window_manager.h"
+using waypp::Egl;
 
 /**
  * @brief Static ivi_surface listener vtable.
@@ -166,4 +167,3 @@ void IviSurface::handle_configure(void* data,
 }
 
 #endif  // ENABLE_IVI_SHELL_CLIENT
-
