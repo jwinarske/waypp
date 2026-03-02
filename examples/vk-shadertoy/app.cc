@@ -51,7 +51,13 @@ App::App(const Configuration& config) {
   }
 
   shader_toy_ = std::make_unique<ShaderToy>();
-  wm_ = std::make_shared<XdgWindowManager>(display_, config.disable_cursor);
+
+  auto [wm_base, wm_type] =
+      WindowManagerFactory::create(display_, config.disable_cursor);
+  if (wm_type == WindowManagerType::kIvi) {
+    throw std::runtime_error("vk-shadertoy: IVI shell is not supported");
+  }
+  wm_ = std::static_pointer_cast<XdgWindowManager>(wm_base);
   if (const auto seat = wm_->get_seat(); seat.has_value()) {
     seat.value()->register_observer(this, this);
   }

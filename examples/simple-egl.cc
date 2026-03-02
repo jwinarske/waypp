@@ -32,6 +32,7 @@
 #include <cxxopts.hpp>
 
 #include "waypp/window/xdg_toplevel.h"
+#include "waypp/window_manager/window_manager_factory.h"
 
 #include "logging/logging.h"
 
@@ -622,7 +623,11 @@ int main(const int argc, char** argv) {
   }
 
   try {
-    auto wm = std::make_shared<XdgWindowManager>(display);
+    auto [wm_base, wm_type] = WindowManagerFactory::create(display);
+    if (wm_type == WindowManagerType::kIvi) {
+      throw std::runtime_error("simple-egl: IVI shell is not supported");
+    }
+    auto wm = std::static_pointer_cast<XdgWindowManager>(wm_base);
     const auto observer = std::make_unique<Observer>(app);
     if (wm->get_seat().has_value()) {
       app.seat_ = wm->get_seat().value();

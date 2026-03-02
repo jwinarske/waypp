@@ -30,6 +30,7 @@
 
 #include "logging/logging.h"
 #include "presentation-time-client-protocol.h"
+#include "waypp/window_manager/window_manager_factory.h"
 #include "window/xdg_toplevel.h"
 
 enum run_mode {
@@ -296,7 +297,13 @@ int main(const int argc, char** argv) {
     exit(EXIT_FAILURE);
   }
 
-  ctx->wm = std::make_unique<XdgWindowManager>(ctx->display);
+  auto [wm_base, wm_type] = WindowManagerFactory::create(ctx->display);
+  if (wm_type == WindowManagerType::kIvi) {
+    spdlog::critical("presentation-shm: IVI shell is not supported");
+    wl_display_disconnect(ctx->display);
+    return EXIT_FAILURE;
+  }
+  ctx->wm = std::static_pointer_cast<XdgWindowManager>(wm_base);
 
   spdlog::info("XDG Window Manager Version: {}", ctx->wm->get_version());
 

@@ -35,6 +35,7 @@
 #include "waypp/window/ivi_surface.h"
 #include "waypp/window_manager/ivi_window_manager.h"
 #include "waypp/window_manager/ivi_wm.h"
+#include "waypp/window_manager/window_manager_factory.h"
 
 struct Configuration {
   uint32_t ivi_id;
@@ -144,8 +145,12 @@ class App final : public PointerObserver,
       throw std::runtime_error("Unable to connect to Wayland display socket");
     }
 
-    wm_ =
-        std::make_shared<IviWindowManager>(wl_display_, config.disable_cursor);
+    auto [wm, wm_type] =
+        WindowManagerFactory::create(wl_display_, config.disable_cursor);
+    if (wm_type != WindowManagerType::kIvi) {
+      throw std::runtime_error("ivi-simple-shm: ivi_application not present");
+    }
+    wm_ = std::static_pointer_cast<IviWindowManager>(wm);
 
     if (wm_->get_seat().has_value()) {
       seat_ = wm_->get_seat().value();

@@ -34,6 +34,7 @@
 
 #include "waypp/window/xdg_toplevel.h"
 #include "waypp/window_manager/agl_shell.h"
+#include "waypp/window_manager/window_manager_factory.h"
 
 struct Configuration {
   int width;
@@ -157,7 +158,12 @@ class App final : public PointerObserver,
       throw std::runtime_error("Unable to connect to Wayland display socket");
     }
 
-    agl_shell_ = std::make_shared<AglShell>(display_, config.disable_cursor);
+    auto [wm, wm_type] =
+        WindowManagerFactory::create(display_, config.disable_cursor);
+    if (wm_type != WindowManagerType::kAgl) {
+      throw std::runtime_error("agl-simple-shm: agl_shell not present");
+    }
+    agl_shell_ = std::static_pointer_cast<AglShell>(wm);
     spdlog::info("AGL Shell Version: {}", agl_shell_->get_version());
     if (agl_shell_->get_seat().has_value()) {
       agl_shell_->get_seat().value()->register_observer(this);

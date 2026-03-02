@@ -24,6 +24,7 @@
 #include "logging/logging.h"
 #include "shader_toy.h"
 #include "waypp/window/xdg_toplevel.h"
+#include "waypp/window_manager/window_manager_factory.h"
 
 class App : public SeatObserver,
             public PointerObserver,
@@ -52,7 +53,7 @@ class App : public SeatObserver,
 
   bool run();
 
-  void toggle_fullscreen() { toplevel_->set_fullscreen(); }
+  void toggle_fullscreen() const { toplevel_->set_fullscreen(); }
 
  private:
   static constexpr int kResizeMargin = 12;

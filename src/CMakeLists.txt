@@ -67,6 +67,8 @@ if (ENABLE_AGL_SHELL_CLIENT)
     target_sources(waypp PRIVATE window_manager/agl_shell.cc)
 endif ()
 
+target_sources(waypp PRIVATE window_manager/window_manager_factory.cc)
+
 if (ENABLE_IVI_SHELL_CLIENT)
     target_sources(waypp PRIVATE
             window_manager/ivi_window_manager.cc

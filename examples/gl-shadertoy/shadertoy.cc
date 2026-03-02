@@ -34,6 +34,7 @@
 #include "logging/logging.h"
 #include "shaders/glsl-ray-tracing-shaders.h"
 #include "waypp/window/xdg_toplevel.h"
+#include "waypp/window_manager/window_manager_factory.h"
 
 class App;
 
@@ -660,7 +661,11 @@ int main(int argc, char** argv) {
   }
 
   try {
-    auto wm = std::make_shared<XdgWindowManager>(display);
+    auto [wm_base, wm_type] = WindowManagerFactory::create(display);
+    if (wm_type == WindowManagerType::kIvi) {
+      throw std::runtime_error("gl-shadertoy: IVI shell is not supported");
+    }
+    auto wm = std::static_pointer_cast<XdgWindowManager>(wm_base);
 
     waypp::Egl::config egl_config{};
     egl_config.context_attribs_size = kEglContextAttribs1.size();

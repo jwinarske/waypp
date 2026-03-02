@@ -47,6 +47,7 @@
 
 #include "logging/logging.h"
 #include "waypp/window/xdg_toplevel.h"
+#include "waypp/window_manager/window_manager_factory.h"
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -161,26 +162,32 @@ class App final : public PointerObserver,
       throw std::runtime_error("Unable to connect to Wayland display socket");
     }
 
-    wm_ =
-        std::make_shared<XdgWindowManager>(wl_display_, config.disable_cursor);
+    auto [wm, wm_type] =
+        WindowManagerFactory::create(wl_display_, config.disable_cursor);
+    wm_ = std::move(wm);
     if (wm_->get_seat().has_value()) {
       seat_ = wm_->get_seat().value();
       seat_->register_observer(this);
     }
 
-    spdlog::info("XDG Window Manager Version: {}", wm_->get_version());
+    if (wm_type == WindowManagerType::kXdg) {
+      const auto xdg_wm = std::static_pointer_cast<XdgWindowManager>(wm_);
+      spdlog::info("XDG Window Manager Version: {}", xdg_wm->get_version());
 
-    const bool enable_csd = !config.no_csd;
+      const bool enable_csd = !config.no_csd;
 
-    toplevel_ = wm_->create_top_level(
-        config.title.c_str(),
-        "org.freedesktop.gitlab.jwinarske.waypp.simple_csd", config.width,
-        config.height, kResizeMargin, 2, WL_SHM_FORMAT_XRGB8888,
-        config.fullscreen, config.maximized, config.fullscreen_ratio,
-        config.tearing, draw_frame,
-        /*egl_config=*/nullptr, enable_csd);
+      toplevel_ = xdg_wm->create_top_level(
+          config.title.c_str(),
+          "org.freedesktop.gitlab.jwinarske.waypp.simple_csd", config.width,
+          config.height, kResizeMargin, 2, WL_SHM_FORMAT_XRGB8888,
+          config.fullscreen, config.maximized, config.fullscreen_ratio,
+          config.tearing, draw_frame,
+          /*egl_config=*/nullptr, enable_csd);
 
-    spdlog::info("XDG Window Version: {}", toplevel_->get_version());
+      spdlog::info("XDG Window Version: {}", toplevel_->get_version());
+    } else {
+      throw std::runtime_error("simple-csd: IVI shell is not supported");
+    }
 
     toplevel_->set_surface_damage(0, 0, config.width, config.height);
     toplevel_->start_frame_callbacks();
@@ -347,7 +354,7 @@ class App final : public PointerObserver,
  private:
   wl_display* wl_display_{};
   std::unique_ptr<Logging> logging_{};
-  std::shared_ptr<XdgWindowManager> wm_;
+  std::shared_ptr<WindowManager> wm_;
   Seat* seat_{};
   std::shared_ptr<XdgTopLevel> toplevel_;
 };

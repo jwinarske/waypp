@@ -30,6 +30,7 @@
 
 #include "logging/logging.h"
 #include "view_wayland.h"
+#include "waypp/window_manager/window_manager_factory.h"
 
 ViewManagerWayland::ViewManagerWayland(
     const ViewManager::Configuration& config) {
@@ -38,9 +39,13 @@ ViewManagerWayland::ViewManagerWayland(
     throw std::runtime_error("Unable to connect to Wayland display socket");
   }
 
-  wm_ = std::make_shared<XdgWindowManager>(display_, config.disable_cursor);
-  auto seat = wm_->get_seat();
-  if (seat.has_value()) {
+  auto [wm_base, wm_type] =
+      WindowManagerFactory::create(display_, config.disable_cursor);
+  if (wm_type == WindowManagerType::kIvi) {
+    throw std::runtime_error("ViewManagerWayland: IVI shell is not supported");
+  }
+  wm_ = std::static_pointer_cast<XdgWindowManager>(wm_base);
+  if (const auto seat = wm_->get_seat(); seat.has_value()) {
     seat_ = seat.value();
     seat_->register_observer(this);
   }

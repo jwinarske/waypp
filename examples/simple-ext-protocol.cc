@@ -33,6 +33,7 @@
 
 #include "logging/logging.h"
 #include "waypp/window/xdg_toplevel.h"
+#include "waypp/window_manager/window_manager_factory.h"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
 struct Configuration {
@@ -192,8 +193,14 @@ int main(const int argc, char** argv) {
       .tearing = result["tearing"].as<bool>(),
   };
 
-  auto wm = std::make_shared<XdgWindowManager>(
+  auto [wm_base, wm_type] = WindowManagerFactory::create(
       display, false, ext_interfaces.size(), ext_interfaces.data());
+  if (wm_type == WindowManagerType::kIvi) {
+    spdlog::critical("simple-ext-protocol: IVI shell not supported");
+    wl_display_disconnect(display);
+    return EXIT_FAILURE;
+  }
+  auto wm = std::static_pointer_cast<XdgWindowManager>(wm_base);
   spdlog::info("XDG Window Manager Version: {}", wm->get_version());
   auto top_level = wm->create_top_level(
       "simple-ext-protocol", "jwinarske.waypp.simple_ext_protocol",

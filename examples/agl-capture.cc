@@ -31,6 +31,7 @@
 #include "logging/logging.h"
 #include "window_manager/agl_shell.h"
 #include "window_manager/weston-capture.h"
+#include "window_manager/window_manager_factory.h"
 
 struct Configuration {
   bool write_back;
@@ -52,7 +53,11 @@ class App final : public WestonCaptureObserver {
       throw std::runtime_error("Unable to connect to Wayland socket.");
     }
 
-    agl_shell_ = std::make_shared<AglShell>(display_, false);
+    auto [wm, wm_type] = WindowManagerFactory::create(display_, false);
+    if (wm_type != WindowManagerType::kAgl) {
+      throw std::runtime_error("agl-capture: agl_shell not present");
+    }
+    agl_shell_ = std::static_pointer_cast<AglShell>(wm);
     const auto d = agl_shell_->get_display();
 
     // required when not creating a window
@@ -60,8 +65,8 @@ class App final : public WestonCaptureObserver {
 
     if (config.list) {
       auto& outputs = agl_shell_->get_outputs();
-      for (const auto& output : outputs) {
-        spdlog::info("Output: {}", output.second->get_name());
+      for (const auto& [output, obj] : outputs) {
+        spdlog::info("Output: {}", obj->get_name());
       }
       // Signal the run loop to exit immediately after listing.
       gRunning.store(false, std::memory_order_relaxed);
@@ -103,9 +108,9 @@ class App final : public WestonCaptureObserver {
       weston_capture_list_.push_back(std::make_unique<WestonCapture>(
           weston_capture_v1_, output, source, this, this));
     } else {
-      for (const auto& output : agl_shell_->get_outputs()) {
+      for (const auto& [output, obj] : agl_shell_->get_outputs()) {
         weston_capture_list_.push_back(std::make_unique<WestonCapture>(
-            weston_capture_v1_, output.first, source, this, this));
+            weston_capture_v1_, output, source, this, this));
       }
     }
 
