@@ -215,21 +215,29 @@ class Pointer {
                           uint32_t axis,
                           wl_fixed_t value);
 
+#if defined(WL_POINTER_FRAME_SINCE_VERSION)
   static void handle_frame(void* data, wl_pointer* wl_pointer);
+#endif
 
+#if defined(WL_POINTER_AXIS_SOURCE_SINCE_VERSION)
   static void handle_axis_source(void* data,
                                  wl_pointer* wl_pointer,
                                  uint32_t axis_source);
+#endif
 
+#if defined(WL_POINTER_AXIS_STOP_SINCE_VERSION)
   static void handle_axis_stop(void* data,
                                wl_pointer* wl_pointer,
                                uint32_t time,
                                uint32_t axis);
+#endif
 
+#if defined(WL_POINTER_AXIS_DISCRETE_SINCE_VERSION)
   static void handle_axis_discrete(void* data,
                                    wl_pointer* wl_pointer,
                                    uint32_t axis,
                                    int32_t discrete);
+#endif
 
 #if defined(WL_POINTER_AXIS_VALUE120_SINCE_VERSION)
   static void handle_axis_value120(void* data,
@@ -251,10 +259,18 @@ class Pointer {
       .motion = handle_motion,
       .button = handle_button,
       .axis = handle_axis,
+#if defined(WL_POINTER_FRAME_SINCE_VERSION)
       .frame = handle_frame,
+#endif
+#if defined(WL_POINTER_AXIS_SOURCE_SINCE_VERSION)
       .axis_source = handle_axis_source,
+#endif
+#if defined(WL_POINTER_AXIS_STOP_SINCE_VERSION)
       .axis_stop = handle_axis_stop,
+#endif
+#if defined(WL_POINTER_AXIS_DISCRETE_SINCE_VERSION)
       .axis_discrete = handle_axis_discrete,
+#endif
 #if defined(WL_POINTER_AXIS_VALUE120_SINCE_VERSION)
       .axis_value120 = handle_axis_value120,
 #endif
