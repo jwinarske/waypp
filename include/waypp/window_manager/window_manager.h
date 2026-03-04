@@ -17,6 +17,9 @@
 #pragma once
 
 #include <algorithm>
+#include <atomic>
+#include <mutex>
+#include <thread>
 #include <vector>
 
 #include <EGL/egl.h>
@@ -45,6 +48,18 @@ class WindowManager : public Registrar {
 
   ~WindowManager();
 
+  /// Start the dedicated compositor thread.  All wl_display_* I/O runs
+  /// exclusively on that thread from this point on.
+  void start_compositor_thread();
+
+  /// Stop the compositor thread and join it.
+  void stop_compositor_thread();
+
+  /// Blocking single-event dispatch for use BEFORE start_compositor_thread()
+  /// (e.g. window construction roundtrips).  Must not be called once the
+  /// compositor thread is running.
+  [[nodiscard]] int display_dispatch() const;
+
   [[nodiscard]] int poll_events(int timeout) const;
 
   [[maybe_unused]] [[nodiscard]] int dispatch(int timeout) const;
@@ -52,8 +67,6 @@ class WindowManager : public Registrar {
   [[nodiscard]] int dispatch_pending() const {
     return wl_display_dispatch_pending(get_display());
   }
-
-  [[nodiscard]] int display_dispatch() const;
 
   [[nodiscard]] bool has_subcompositor() const { return get_compositor(); }
 
@@ -79,6 +92,15 @@ class WindowManager : public Registrar {
 
  private:
   std::vector<WindowManagerObserver*> observers_{};
-
   const std::map<wl_output*, std::unique_ptr<Output>>& outputs_;
+
+  std::thread compositor_thread_;
+  std::atomic<bool> compositor_stop_{false};
+
+  // Self-pipe used to wake the compositor thread from stop_compositor_thread()
+  // without touching wl_display_* from another thread.
+  int wake_pipe_read_fd_{-1};
+  int wake_pipe_write_fd_{-1};
+
+  void compositor_thread_func();
 };

@@ -109,6 +109,17 @@ class Keyboard {
    */
   [[nodiscard]] bool is_repeat_valid() const { return !repeat_setup_failed_; }
 
+  /// Returns the read end of the self-pipe used by the key-repeat signal
+  /// handler, or -1 if the pipe was not created.  WindowManager::dispatch()
+  /// polls this fd directly so that GLib's Wayland GSource is never called
+  /// from the same thread as our prepare_read/read_events sequence.
+  [[nodiscard]] int get_pipe_read_fd() const { return repeat_.pipe_read_fd; }
+
+  /// Called by WindowManager::dispatch() after it has drained the self-pipe.
+  /// Fires notify_keyboard_xkb_v1_key(..., KEY_STATE_PRESSED) on all
+  /// registered observers for the currently held key.
+  void dispatch_repeat();
+
   void set_event_mask(const event_mask& event_mask);
 
   // Disallow copy and assign.
