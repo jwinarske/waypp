@@ -439,29 +439,35 @@ gboolean Keyboard::repeat_dispatch_cb(GIOChannel* /* channel */,
   }
 
   auto* obj = static_cast<Keyboard*>(user_data);
-
-  // Drain the pipe – each byte corresponds to one (or more coalesced) signals.
-  char buf[64];
-  while (read(obj->repeat_.pipe_read_fd, buf, sizeof(buf)) > 0) {
-  }
-
-  // Clear the pending flag *after* draining so we don't miss a signal that
-  // arrived between the last read() and this store.
-  obj->repeat_.pending.store(false, std::memory_order_relaxed);
-
-  if (obj->event_mask_.enabled && obj->event_mask_.all) {
-    return G_SOURCE_CONTINUE;
-  }
-
-  for (const auto observer : obj->observers_) {
-    observer->notify_keyboard_xkb_v1_key(
-        obj, obj->repeat_.notify.wl_keyboard, obj->repeat_.notify.serial,
-        obj->repeat_.notify.time, obj->repeat_.notify.xkb_scancode,
-        obj->repeat_.notify.key_repeats, WL_KEYBOARD_KEY_STATE_PRESSED,
-        obj->repeat_.notify.xdg_keysym_count, obj->repeat_.notify.key_syms);
-  }
-
+  obj->dispatch_repeat();
   return G_SOURCE_CONTINUE;
+}
+
+/**
+ * @brief Dispatches key-repeat observer notifications.
+ *
+ * Called either by the GLib IO watch callback (repeat_dispatch_cb) or
+ * directly by WindowManager::dispatch() after draining the self-pipe via
+ * poll(2).  The pipe must already be drained by the caller before calling
+ * this function.
+ *
+ * Safe to call from any non-signal context: uses virtual dispatch, iterates
+ * std::vector, and logs freely.
+ */
+void Keyboard::dispatch_repeat() {
+  // Clear the pending flag.
+  repeat_.pending.store(false, std::memory_order_relaxed);
+
+  if (event_mask_.enabled && event_mask_.all)
+    return;
+
+  for (const auto observer : observers_) {
+    observer->notify_keyboard_xkb_v1_key(
+        this, repeat_.notify.wl_keyboard, repeat_.notify.serial,
+        repeat_.notify.time, repeat_.notify.xkb_scancode,
+        repeat_.notify.key_repeats, WL_KEYBOARD_KEY_STATE_PRESSED,
+        repeat_.notify.xdg_keysym_count, repeat_.notify.key_syms);
+  }
 }
 
 void Keyboard::set_event_mask(const event_mask& event_mask) {

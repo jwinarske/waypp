@@ -359,21 +359,54 @@ void Pointer::handle_axis_discrete(void* data,
                                    wl_pointer* pointer,
                                    uint32_t axis,
                                    int32_t discrete) {
-  auto obj = static_cast<Pointer*>(data);
-  if (obj->wl_pointer_ != pointer) {
+  const auto obj = static_cast<Pointer*>(data);
+  if (obj->wl_pointer_ != pointer)
     return;
-  }
-
-  if (obj->event_mask_.enabled && obj->event_mask_.all) {
+  if (obj->event_mask_.enabled && obj->event_mask_.all)
     return;
-  }
 
   LOG_TRACE("Pointer::handle_axis_discrete");
 
-  for (auto observer : obj->observers_) {
+  for (const auto observer : obj->observers_)
     observer->notify_pointer_axis_discrete(obj, pointer, axis, discrete);
-  }
 }
+
+#if defined(WL_POINTER_AXIS_VALUE120_SINCE_VERSION)
+void Pointer::handle_axis_value120(void* data,
+                                   wl_pointer* pointer,
+                                   uint32_t axis,
+                                   int32_t value120) {
+  const auto obj = static_cast<Pointer*>(data);
+  if (obj->wl_pointer_ != pointer)
+    return;
+  if (obj->event_mask_.enabled && obj->event_mask_.all)
+    return;
+
+  LOG_TRACE("Pointer::handle_axis_value120");
+
+  for (const auto observer : obj->observers_)
+    observer->notify_pointer_axis_value120(obj, pointer, axis, value120);
+}
+#endif
+
+#if defined(WL_POINTER_AXIS_RELATIVE_DIRECTION_SINCE_VERSION)
+void Pointer::handle_axis_relative_direction(void* data,
+                                             wl_pointer* pointer,
+                                             uint32_t axis,
+                                             uint32_t direction) {
+  const auto obj = static_cast<Pointer*>(data);
+  if (obj->wl_pointer_ != pointer)
+    return;
+  if (obj->event_mask_.enabled && obj->event_mask_.all)
+    return;
+
+  LOG_TRACE("Pointer::handle_axis_relative_direction");
+
+  for (auto observer : obj->observers_)
+    observer->notify_pointer_axis_relative_direction(obj, pointer, axis,
+                                                     direction);
+}
+#endif
 
 #if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
 
@@ -488,13 +521,13 @@ void Pointer::set_cursor(uint32_t serial,
     }
   }
 
-  auto cursor = wl_cursor_theme_get_cursor(theme_, cursor_name);
+  const auto cursor = wl_cursor_theme_get_cursor(theme_, cursor_name);
   if (!cursor) {
     LOG_ERROR("[Pointer] unable to load {}", cursor_name);
     return;
   }
-  auto image = cursor->images[0];
-  auto buffer = wl_cursor_image_get_buffer(image);
+  const auto image = cursor->images[0];
+  const auto buffer = wl_cursor_image_get_buffer(image);
   if (!buffer) {
     return;
   }
@@ -515,7 +548,7 @@ std::string Pointer::get_cursor_theme() {
   if (!res.empty()) {
     // clean up string
     std::string tmp = "\'\n";
-    for_each(tmp.begin(), tmp.end(), [&res](char n) {
+    for_each(tmp.begin(), tmp.end(), [&res](const char n) {
       res.erase(std::remove(res.begin(), res.end(), n), res.end());
     });
   }

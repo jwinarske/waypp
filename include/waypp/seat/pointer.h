@@ -77,6 +77,20 @@ class PointerObserver {
                                             wl_pointer* wl_pointer,
                                             uint32_t axis,
                                             int32_t discrete) = 0;
+
+  // axis_value120: high-resolution scroll (replaces axis_discrete in v8+).
+  // Default no-op — override to handle hi-res scroll.
+  virtual void notify_pointer_axis_value120(Pointer* /*pointer*/,
+                                            wl_pointer* /*wl_pointer*/,
+                                            uint32_t /*axis*/,
+                                            int32_t /*value120*/) {}
+
+  // axis_relative_direction: scroll direction relative to the surface.
+  virtual void notify_pointer_axis_relative_direction(
+      Pointer* /*pointer*/,
+      wl_pointer* /*wl_pointer*/,
+      uint32_t /*axis*/,
+      uint32_t /*direction*/) {}
 };
 
 class Pointer {
@@ -217,6 +231,20 @@ class Pointer {
                                    uint32_t axis,
                                    int32_t discrete);
 
+#if defined(WL_POINTER_AXIS_VALUE120_SINCE_VERSION)
+  static void handle_axis_value120(void* data,
+                                   wl_pointer* wl_pointer,
+                                   uint32_t axis,
+                                   int32_t value120);
+#endif
+
+#if defined(WL_POINTER_AXIS_RELATIVE_DIRECTION_SINCE_VERSION)
+  static void handle_axis_relative_direction(void* data,
+                                             wl_pointer* wl_pointer,
+                                             uint32_t axis,
+                                             uint32_t direction);
+#endif
+
   static constexpr wl_pointer_listener pointer_listener_ = {
       .enter = handle_enter,
       .leave = handle_leave,
@@ -228,10 +256,10 @@ class Pointer {
       .axis_stop = handle_axis_stop,
       .axis_discrete = handle_axis_discrete,
 #if defined(WL_POINTER_AXIS_VALUE120_SINCE_VERSION)
-      .axis_value120 = nullptr,
+      .axis_value120 = handle_axis_value120,
 #endif
 #if defined(WL_POINTER_AXIS_RELATIVE_DIRECTION_SINCE_VERSION)
-      .axis_relative_direction = nullptr,
+      .axis_relative_direction = handle_axis_relative_direction,
 #endif
   };
 };
