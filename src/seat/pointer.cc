@@ -268,6 +268,7 @@ void Pointer::handle_axis(void* data,
  * @param data The user data associated with the pointer.
  * @param pointer The pointer object.
  */
+#if defined(WL_POINTER_FRAME_SINCE_VERSION)
 void Pointer::handle_frame(void* data, wl_pointer* pointer) {
   const auto obj = static_cast<Pointer*>(data);
   if (obj->wl_pointer_ != pointer) {
@@ -284,6 +285,7 @@ void Pointer::handle_frame(void* data, wl_pointer* pointer) {
     observer->notify_pointer_frame(obj, pointer);
   }
 }
+#endif
 
 /**
  * @brief Handles the axis source event for the Pointer object.
@@ -295,10 +297,11 @@ void Pointer::handle_frame(void* data, wl_pointer* pointer) {
  * This function is called when the axis source event is received for the
  * Pointer object. It prints a message to the standard error stream.
  */
+#if defined(WL_POINTER_AXIS_SOURCE_SINCE_VERSION)
 void Pointer::handle_axis_source(void* data,
                                  wl_pointer* pointer,
                                  uint32_t axis_source) {
-  auto obj = static_cast<Pointer*>(data);
+  const auto obj = static_cast<Pointer*>(data);
   if (obj->wl_pointer_ != pointer) {
     return;
   }
@@ -310,10 +313,11 @@ void Pointer::handle_axis_source(void* data,
 
   DLOG_TRACE("Pointer::handle_axis_source");
 
-  for (auto observer : obj->observers_) {
+  for (const auto observer : obj->observers_) {
     observer->notify_pointer_axis_source(obj, pointer, axis_source);
   }
 }
+#endif
 
 /**
  * @brief Handles the stop event for an axis on the pointer.
@@ -325,11 +329,12 @@ void Pointer::handle_axis_source(void* data,
  * @param time      The timestamp of the event.
  * @param axis      The axis that stopped.
  */
+#if defined(WL_POINTER_AXIS_STOP_SINCE_VERSION)
 void Pointer::handle_axis_stop(void* data,
                                wl_pointer* pointer,
                                uint32_t time,
                                uint32_t axis) {
-  auto obj = static_cast<Pointer*>(data);
+  const auto obj = static_cast<Pointer*>(data);
   if (obj->wl_pointer_ != pointer) {
     return;
   }
@@ -340,10 +345,11 @@ void Pointer::handle_axis_stop(void* data,
 
   DLOG_TRACE("Pointer::handle_axis_stop");
 
-  for (auto observer : obj->observers_) {
+  for (const auto observer : obj->observers_) {
     observer->notify_pointer_axis_stop(obj, pointer, time, axis);
   }
 }
+#endif
 
 /**
  * @brief Handles the discrete axis events for the Pointer.
@@ -355,6 +361,7 @@ void Pointer::handle_axis_stop(void* data,
  * @param axis The axis value.
  * @param discrete The discrete value.
  */
+#if defined(WL_POINTER_AXIS_DISCRETE_SINCE_VERSION)
 void Pointer::handle_axis_discrete(void* data,
                                    wl_pointer* pointer,
                                    uint32_t axis,
@@ -370,8 +377,31 @@ void Pointer::handle_axis_discrete(void* data,
   for (const auto observer : obj->observers_)
     observer->notify_pointer_axis_discrete(obj, pointer, axis, discrete);
 }
+#endif
 
 #if defined(WL_POINTER_AXIS_VALUE120_SINCE_VERSION)
+/**
+ * @brief Handles high-resolution scroll axis events (wl_pointer.axis_value120).
+ *
+ * Introduced in wl_pointer version 8 as a replacement for axis_discrete.
+ * The compositor sends this event for every axis frame that originates from a
+ * high-resolution input device (e.g. a smooth-scroll wheel or touchpad).
+ *
+ * The @p value120 parameter encodes the scroll amount as a multiple of 1/120
+ * click; a high-resolution device sends smaller increments that sum to +/-120
+ * across a full detent.  Positive values scroll downward / rightward.
+ *
+ * This handler must be non-null in the wl_pointer_listener; a null slot causes
+ * wl_abort() inside libwayland when the compositor sends the event.
+ *
+ * @param data      User data registered with wl_pointer_add_listener --
+ *                  cast to Pointer*.
+ * @param pointer   The wl_pointer object that generated the event.
+ * @param axis      The scroll axis: WL_POINTER_AXIS_VERTICAL_SCROLL (0) or
+ *                  WL_POINTER_AXIS_HORIZONTAL_SCROLL (1).
+ * @param value120  Scroll amount in units of 1/120 logical scroll step.
+ *                  Positive = down / right, negative = up / left.
+ */
 void Pointer::handle_axis_value120(void* data,
                                    wl_pointer* pointer,
                                    uint32_t axis,
@@ -390,6 +420,33 @@ void Pointer::handle_axis_value120(void* data,
 #endif
 
 #if defined(WL_POINTER_AXIS_RELATIVE_DIRECTION_SINCE_VERSION)
+/**
+ * @brief Handles scroll direction relative to the surface
+ *        (wl_pointer.axis_relative_direction).
+ *
+ * Introduced in wl_pointer version 9.  The compositor sends this event once
+ * per axis per frame to describe whether the scroll direction is "identical"
+ * to or "inverted" relative to the physical movement of the input device,
+ * as seen from the surface's coordinate system.
+ *
+ * This is distinct from the axis value sign: a trackpad in "natural scroll"
+ * mode still sends positive axis values for downward finger movement, but the
+ * direction field will be WL_POINTER_AXIS_RELATIVE_DIRECTION_INVERTED so that
+ * clients can apply OS-level scroll direction preferences correctly.
+ *
+ * This handler must be non-null in the wl_pointer_listener; a null slot causes
+ * wl_abort() inside libwayland when the compositor sends the event.
+ *
+ * @param data      User data registered with wl_pointer_add_listener --
+ *                  cast to Pointer*.
+ * @param pointer   The wl_pointer object that generated the event.
+ * @param axis      The scroll axis: WL_POINTER_AXIS_VERTICAL_SCROLL (0) or
+ *                  WL_POINTER_AXIS_HORIZONTAL_SCROLL (1).
+ * @param direction WL_POINTER_AXIS_RELATIVE_DIRECTION_IDENTICAL (0) if the
+ *                  scroll direction matches the physical device movement, or
+ *                  WL_POINTER_AXIS_RELATIVE_DIRECTION_INVERTED (1) if it is
+ *                  reversed (e.g. "natural scroll" / "scroll content" mode).
+ */
 void Pointer::handle_axis_relative_direction(void* data,
                                              wl_pointer* pointer,
                                              uint32_t axis,
@@ -402,7 +459,7 @@ void Pointer::handle_axis_relative_direction(void* data,
 
   LOG_TRACE("Pointer::handle_axis_relative_direction");
 
-  for (auto observer : obj->observers_)
+  for (const auto observer : obj->observers_)
     observer->notify_pointer_axis_relative_direction(obj, pointer, axis,
                                                      direction);
 }
@@ -482,9 +539,9 @@ static uint32_t name_to_shape(const char* name) {
     { "zoom-out",        WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_ZOOM_OUT        },
   };
   // clang-format on
-  for (const auto& e : kTable) {
-    if (std::strcmp(e.name, name) == 0) {
-      return e.shape;
+  for (const auto& [key, value] : kTable) {
+    if (std::strcmp(key, name) == 0) {
+      return value;
     }
   }
   return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT;
