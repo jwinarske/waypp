@@ -72,6 +72,10 @@ class CsdShmPlugin final : public CsdPlugin {
   void destroy() override;
 
  private:
+  // Grant the hit-zone test fixture access to private fields.
+  // This avoids the ODR-unsafe `#define private public` pattern.
+  friend class CsdShmPluginTest;
+
   // -------------------------------------------------------------------------
   // Panel — one subsurface strip + its SHM buffer
   // -------------------------------------------------------------------------
