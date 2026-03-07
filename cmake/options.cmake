@@ -28,7 +28,7 @@ MESSAGE(STATUS "Client-Side Decorations ${ENABLE_CSD}")
 #
 # Link Time Optimization
 #
-option(ENABLE_LTO "Link Time Optimization" OFF)
+option(ENABLE_LTO "Link Time Optimization" ON)
 MESSAGE(STATUS "Link Time Optimizaiton.. ${ENABLE_LTO}")
 
 #

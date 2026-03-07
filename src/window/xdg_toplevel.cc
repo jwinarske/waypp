@@ -209,6 +209,9 @@ void XdgTopLevel::handle_xdg_toplevel_configure(void* data,
   tl->set_maximized(false);
   tl->set_resizing(false);  // cleared here; set back to true if still present
 
+  // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-bounds-constant-array-index)
+  // WL_ARRAY_FOR_EACH is a Wayland C API macro; no C++ alternative exists.
+  // prev_state_ is bool[13]; idx is range-checked by the enclosing if().
   WL_ARRAY_FOR_EACH(state, states, const uint32_t*) {
     if (const uint32_t idx = *state - 1; idx < std::size(tl->prev_state_)) {
       tl->prev_state_[idx] = true;
@@ -221,6 +224,7 @@ void XdgTopLevel::handle_xdg_toplevel_configure(void* data,
       tl->set_resizing(true);
     }
   }
+  // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic,cppcoreguidelines-pro-bounds-constant-array-index)
 
   if (width > 0 && height > 0) {
     tl->set_width(width);
@@ -315,6 +319,8 @@ void XdgTopLevel::handle_xdg_toplevel_wm_capabilities(
   }
   LOG_DEBUG("WM Capabilities:");
   const uint32_t* cap;
+  // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic) --
+  // WL_ARRAY_FOR_EACH is a Wayland C API macro; no C++ alternative exists
   WL_ARRAY_FOR_EACH(cap, capabilities, const uint32_t*) {
     switch (*cap) {
       case XDG_TOPLEVEL_WM_CAPABILITIES_WINDOW_MENU:
@@ -332,6 +338,7 @@ void XdgTopLevel::handle_xdg_toplevel_wm_capabilities(
       default:;
     }
   }
+  // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 }
 
 #endif

@@ -20,6 +20,18 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
+// clang-tidy: The checks below are suppressed for the entire example file.
+// These examples interface directly with Vulkan, EGL, Wayland, and OpenGL
+// C APIs that fundamentally require pointer arithmetic, non-const globals
+// for signal-handler flags, array-to-pointer decay, and reinterpret_cast
+// at C API boundaries. Suppressing per-line would add hundreds of NOLINT
+// annotations with no increase in safety — the patterns are intentional
+// and audited.
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables,
+//             cppcoreguidelines-pro-bounds-pointer-arithmetic,
+//             cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+//             cppcoreguidelines-pro-bounds-constant-array-index,
+//             cppcoreguidelines-pro-type-reinterpret-cast)
 
 #include "view_wayland.h"
 #include "logging/logging.h"
@@ -70,9 +82,33 @@ void ViewWayland::toggle_fullscreen() {
 void ViewWayland::create_random_color_grid(const uint32_t width,
                                            const uint32_t height,
                                            const uint32_t grid_size,
-                                           uint32_t* buffer) {
-  const uint32_t grid_width = width / grid_size;
-  const uint32_t grid_height = height / grid_size;
+                                           uint32_t* buffer,
+                                           const std::size_t buffer_size) {
+  // ── Sanity guards ────────────────────────────────────────────────────────
+  // grid_size == 0 would cause division-by-zero below.
+  if (grid_size == 0) {
+    LOG_ERROR("[create_random_color_grid] grid_size must be > 0");
+    return;
+  }
+
+  // Compute the total pixel count in size_t to avoid uint32_t overflow for
+  // large compositor-provided dimensions (e.g. width=65536 would overflow).
+  // Each pixel is one uint32_t (4 bytes).
+  const auto w = static_cast<std::size_t>(width);
+  const auto h = static_cast<std::size_t>(height);
+
+  if (const std::size_t required_bytes = w * h * sizeof(uint32_t);
+      required_bytes == 0 || required_bytes > buffer_size) {
+    LOG_ERROR(
+        "[create_random_color_grid] buffer too small: need {} bytes, "
+        "have {} bytes (width={}, height={})",
+        required_bytes, buffer_size, width, height);
+    return;
+  }
+
+  // ── Grid setup ───────────────────────────────────────────────────────────
+  const std::size_t grid_w = w / static_cast<std::size_t>(grid_size);
+  const std::size_t grid_h = h / static_cast<std::size_t>(grid_size);
 
   // Grid to hold the corner colors
   std::vector<std::vector<uint32_t>> color_grid(
@@ -87,8 +123,8 @@ void ViewWayland::create_random_color_grid(const uint32_t width,
   }
 
   // Iterate over each cell in the grid
-  for (uint32_t i = 0; i < grid_size; ++i) {
-    for (uint32_t j = 0; j < grid_size; ++j) {
+  for (std::size_t i = 0; i < static_cast<std::size_t>(grid_size); ++i) {
+    for (std::size_t j = 0; j < static_cast<std::size_t>(grid_size); ++j) {
       // Corner colors for this cell
       const uint32_t c00 = color_grid[i][j];
       const uint32_t c01 = color_grid[i][j + 1];
@@ -96,27 +132,33 @@ void ViewWayland::create_random_color_grid(const uint32_t width,
       const uint32_t c11 = color_grid[i + 1][j + 1];
 
       // Iterate over each pixel within the cell
-      for (uint32_t x = 0; x < grid_width; ++x) {
-        for (uint32_t y = 0; y < grid_height; ++y) {
-          const auto tx = x / grid_width;
-          const auto ty = y / grid_height;
+      for (std::size_t x = 0; x < grid_w; ++x) {
+        for (std::size_t y = 0; y < grid_h; ++y) {
+          const auto tx = static_cast<double>(x) / static_cast<double>(grid_w);
+          const auto ty = static_cast<double>(y) / static_cast<double>(grid_h);
 
           // Bilinearly interpolate colors for this pixel
-          const auto r = (1 - tx) * (1 - ty) * (c00 >> 16 & 0xFF) +
-                         tx * (1 - ty) * (c10 >> 16 & 0xFF) +
-                         (1 - tx) * ty * (c01 >> 16 & 0xFF) +
+          const auto r = (1.0 - tx) * (1.0 - ty) * (c00 >> 16 & 0xFF) +
+                         tx * (1.0 - ty) * (c10 >> 16 & 0xFF) +
+                         (1.0 - tx) * ty * (c01 >> 16 & 0xFF) +
                          tx * ty * (c11 >> 16 & 0xFF);
-          const auto g = (1 - tx) * (1 - ty) * (c00 >> 8 & 0xFF) +
-                         tx * (1 - ty) * (c10 >> 8 & 0xFF) +
-                         (1 - tx) * ty * (c01 >> 8 & 0xFF) +
+          const auto g = (1.0 - tx) * (1.0 - ty) * (c00 >> 8 & 0xFF) +
+                         tx * (1.0 - ty) * (c10 >> 8 & 0xFF) +
+                         (1.0 - tx) * ty * (c01 >> 8 & 0xFF) +
                          tx * ty * (c11 >> 8 & 0xFF);
-          const auto b = (1 - tx) * (1 - ty) * (c00 & 0xFF) +
-                         tx * (1 - ty) * (c10 & 0xFF) +
-                         (1 - tx) * ty * (c01 & 0xFF) + tx * ty * (c11 & 0xFF);
+          const auto b = (1.0 - tx) * (1.0 - ty) * (c00 & 0xFF) +
+                         tx * (1.0 - ty) * (c10 & 0xFF) +
+                         (1.0 - tx) * ty * (c01 & 0xFF) +
+                         tx * ty * (c11 & 0xFF);
 
-          // Set pixel color in the final buffer
-          buffer[((i * grid_height + y) * width) + (j * grid_width + x)] =
-              (r << 16) | (g << 8) | b;
+          // All index arithmetic in size_t — no uint32_t overflow possible.
+          // Maximum index: (grid_size-1)*grid_h + (grid_h-1)) * w
+          //              + (grid_size-1)*grid_w + (grid_w-1)
+          //              < h * w  == checked above against buffer_size.
+          const std::size_t idx = (i * grid_h + y) * w + (j * grid_w + x);
+          buffer[idx] = (static_cast<uint32_t>(r) << 16) |
+                        (static_cast<uint32_t>(g) << 8) |
+                        static_cast<uint32_t>(b);
         }
       }
     }
@@ -142,10 +184,10 @@ void ViewWayland::draw_frame(void* data, const uint32_t /* time */) {
     return;
   }
 
-  view->create_random_color_grid(
-      static_cast<uint32_t>(window->get_width()),
-      static_cast<uint32_t>(window->get_height()), 8,
-      static_cast<uint32_t*>(buffer->get_shm_data()));
+  view->create_random_color_grid(static_cast<uint32_t>(window->get_width()),
+                                 static_cast<uint32_t>(window->get_height()), 8,
+                                 static_cast<uint32_t*>(buffer->get_shm_data()),
+                                 buffer->get_size());
 
   wl_surface_attach(window->get_surface(), buffer->get_wl_buffer(), 0, 0);
   wl_surface_damage(window->get_surface(), 0, 0, window->get_width(),
@@ -163,3 +205,8 @@ void ViewWayland::resize(struct wl_seat* seat,
                          uint32_t edges) {
   toplevel_->resize(seat, serial, edges);
 }
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables,
+//           cppcoreguidelines-pro-bounds-pointer-arithmetic,
+//           cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+//           cppcoreguidelines-pro-bounds-constant-array-index,
+//           cppcoreguidelines-pro-type-reinterpret-cast)

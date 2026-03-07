@@ -144,4 +144,8 @@ readability-static-accessed-through-instance,
 readability-static-definition-in-anonymous-namespace,
 readability-string-compare,
 readability-uniqueptr-delete-release,
-readability-use-anyofallof'
+readability-use-anyofallof,
+cppcoreguidelines-avoid-non-const-global-variables,
+clang-analyzer-security.*,
+cppcoreguidelines-pro-bounds-*,
+cppcoreguidelines-pro-type-reinterpret-cast'

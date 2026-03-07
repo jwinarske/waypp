@@ -28,6 +28,7 @@
 #include "view_manager_wayland.h"
 #include "waypp/window/xdg_toplevel.h"
 
+#include <cstddef>
 #include <random>
 
 class ViewWayland final : public View {
@@ -72,7 +73,8 @@ class ViewWayland final : public View {
   void create_random_color_grid(uint32_t width,
                                 uint32_t height,
                                 uint32_t grid_size,
-                                uint32_t* buffer);
+                                uint32_t* buffer,
+                                std::size_t buffer_size);
 
   static void draw_frame(void* data, std::uint32_t time);
 };

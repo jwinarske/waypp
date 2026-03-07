@@ -516,8 +516,7 @@ Buffer* Window::next_buffer() const {
       return nullptr;
 
     /* paint the padding */
-    memset(buffer->get_shm_data(), 0xff,
-           static_cast<size_t>(buffer->get_size()));
+    memset(buffer->get_shm_data(), 0xff, buffer->get_size());
   }
 
   return buffer;

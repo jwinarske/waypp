@@ -102,5 +102,5 @@ class WindowManager : public Registrar {
   int wake_pipe_read_fd_{-1};
   int wake_pipe_write_fd_{-1};
 
-  void compositor_thread_func();
+  void compositor_thread_func() const;
 };

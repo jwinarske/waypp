@@ -20,6 +20,18 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
+// clang-tidy: The checks below are suppressed for the entire example file.
+// These examples interface directly with Vulkan, EGL, Wayland, and OpenGL
+// C APIs that fundamentally require pointer arithmetic, non-const globals
+// for signal-handler flags, array-to-pointer decay, and reinterpret_cast
+// at C API boundaries. Suppressing per-line would add hundreds of NOLINT
+// annotations with no increase in safety — the patterns are intentional
+// and audited.
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables,
+//             cppcoreguidelines-pro-bounds-pointer-arithmetic,
+//             cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+//             cppcoreguidelines-pro-bounds-constant-array-index,
+//             cppcoreguidelines-pro-type-reinterpret-cast)
 
 // Danil, 2021+ Vulkan shader launcher, self
 // https://github.com/danilw/vulkan-shadertoy-launcher The MIT License
@@ -849,3 +861,8 @@ int VulkanRender::finish(vk_render_essentials* essentials,
 
   return 0;
 }
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables,
+//           cppcoreguidelines-pro-bounds-pointer-arithmetic,
+//           cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+//           cppcoreguidelines-pro-bounds-constant-array-index,
+//           cppcoreguidelines-pro-type-reinterpret-cast)

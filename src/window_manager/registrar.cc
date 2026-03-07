@@ -122,10 +122,14 @@ Registrar::Registrar(wl_display* wl_display,
 
   /// Add external interfaces
   if (ext_interface_count) {
+    // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic) --
+    // ext_interface_data is a caller-supplied C array; ext_interface_count
+    // is the caller-guaranteed element count; no C++ range alternative exists.
     for (unsigned long i = 0; i < ext_interface_count; i++) {
       (*registrar_global_)[ext_interface_data[i].interface] =
           ext_interface_data[i].global_callback;
     }
+    // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
   }
 
   wl_registry_add_listener(wl_registry_, &listener_, this);

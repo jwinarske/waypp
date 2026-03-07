@@ -16,6 +16,7 @@
 
 #include "waypp/seat/keyboard.h"
 
+#include <array>
 #include <cstring>
 
 #include <fcntl.h>
@@ -51,10 +52,10 @@ Keyboard::Keyboard(wl_keyboard* keyboard, const event_mask& event_mask)
   // Open the self-pipe used by the signal handler to wake the GLib event loop.
   // Both ends are non-blocking, so the signal handler never blocks, and
   // O_CLOEXEC ensures the fds are not leaked into child processes.
-  int pipefd[2];
-  if (pipe2(pipefd, O_CLOEXEC | O_NONBLOCK) == 0) {
-    repeat_.pipe_read_fd = pipefd[0];
-    repeat_.pipe_write_fd = pipefd[1];
+  std::array<int, 2> pipefd{-1, -1};
+  if (pipe2(pipefd.data(), O_CLOEXEC | O_NONBLOCK) == 0) {
+    repeat_.pipe_read_fd = pipefd.at(0);
+    repeat_.pipe_write_fd = pipefd.at(1);
   } else {
     LOG_ERROR("[Keyboard] pipe2 failed: {}", std::strerror(errno));
   }
@@ -191,10 +192,13 @@ void Keyboard::handle_enter(void* data,
   if (obj->format_ == WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
     if (keys->size) {
       const uint32_t* key;
+      // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic) --
+      // WL_ARRAY_FOR_EACH is a Wayland C API macro; no C++ alternative exists
       WL_ARRAY_FOR_EACH(key, keys, const uint32_t*) {
         handle_key(data, wl_keyboard, serial, 0, *key,
                    WL_KEYBOARD_KEY_STATE_PRESSED);
       }
+      // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     }
   }
 
