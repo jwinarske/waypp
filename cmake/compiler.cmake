@@ -36,9 +36,11 @@ function(COMPILER_FLAGS_APPEND scope add_val conflict_match)
         string(APPEND CMAKE_CXX_FLAGS_DEBUG "${add_val}")
         message("-- APPEND DEBUG FLAGS ..... ${add_val}")
     else ()
+        # Covers "ALL" and any unrecognised scope — appends to the base flags
+        # which are inherited by every build configuration.
         string(APPEND CMAKE_C_FLAGS "${add_val}")
         string(APPEND CMAKE_CXX_FLAGS "${add_val}")
-        message("-- APPEND FLAGS ........... ${add_val}")
+        message("-- APPEND ALL CONFIG FLAGS  ${add_val}")
     endif ()
 endfunction(COMPILER_FLAGS_APPEND)
 
@@ -84,10 +86,32 @@ add_compile_definitions(
         $<$<NOT:$<CONFIG:Debug>>:NDEBUG>
 )
 
-COMPILER_FLAGS_APPEND(RELEASE " -fstack-protector-all" "-f(no-)?stack-protector(-all|-strong)?")
-COMPILER_FLAGS_APPEND(RELEASE " -fno-omit-frame-pointer" "-f(no-)?omit-frame-pointer")
-COMPILER_FLAGS_APPEND(RELEASE " -Wformat=2" "-Wformat(=[0-9]+)?")
-COMPILER_FLAGS_APPEND(RELEASE " -D_FORTIFY_SOURCE=2" "-D_FORTIFY_SOURCE(=[0-9]+)?")
+# ── Security hardening flags ────────────────────────────────────────────────
+#
+# Applied to ALL build types so that stack corruption and format-string bugs
+# are caught during development, CI (sanitizer runs), and release builds alike.
+#
+#   -fstack-protector-strong  — instruments functions that have local buffers,
+#       VLAs, or address-taken locals; much lighter than -all, catches the same
+#       real-world attack classes.
+#
+#   -fno-omit-frame-pointer   — preserves frame pointers for sanitizers,
+#       profilers (perf, gdb), and accurate stack unwinding in all configs.
+#
+#   -Wformat=2                — enables format-string security warnings
+#       (-Wformat-nonliteral, -Wformat-security) for all configs; zero runtime
+#       cost, catches bugs earliest in Debug/CI.
+#
+COMPILER_FLAGS_APPEND(ALL " -fstack-protector-strong" "-f(no-)?stack-protector(-all|-strong)?")
+COMPILER_FLAGS_APPEND(ALL " -fno-omit-frame-pointer"  "-f(no-)?omit-frame-pointer")
+COMPILER_FLAGS_APPEND(ALL " -Wformat=2"               "-Wformat(=[0-9]+)?")
+
+# Release-only hardening — either requires optimisation to be effective
+# (-D_FORTIFY_SOURCE=2 is a no-op at -O0) or is too expensive for debug
+# incremental builds (-fstack-protector-all instruments every function).
+#
+COMPILER_FLAGS_APPEND(RELEASE " -fstack-protector-all"  "-f(no-)?stack-protector(-all|-strong)?")
+COMPILER_FLAGS_APPEND(RELEASE " -D_FORTIFY_SOURCE=2"    "-D_FORTIFY_SOURCE(=[0-9]+)?")
 
 string(APPEND CMAKE_EXE_LINKER_FLAGS " -Wl,--build-id=sha1")
 
