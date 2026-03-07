@@ -17,8 +17,9 @@
 #include "waypp/window/egl.h"
 
 #include <wayland-egl.h>
-#include <cstring>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 #include "logging/logging.h"
 using waypp::Egl;
@@ -54,33 +55,42 @@ Egl::Egl(wl_display* display,
     throw std::runtime_error("eglBindAPI failed.");
   }
 
-  EGLint count;
+  EGLint count = 0;
   eglGetConfigs(dpy_, nullptr, 0, &count);
   DLOG_DEBUG("EGL has {} configs", count);
 
-  auto* configs = reinterpret_cast<EGLConfig*>(
-      calloc(static_cast<size_t>(count), sizeof(EGLConfig)));
+  // Guard against a compositor returning zero, negative, or a pathologically
+  // large count (EGLint is signed 32-bit, so negative values are possible).
+  if (count <= 0 || count > 1024) {
+    throw std::runtime_error(
+        "EGL Config: unexpected config count " + std::to_string(count));
+  }
 
-  EGLint n;
-  ret = eglChooseConfig(dpy_, config_attribs_.data(), configs, count, &n);
+  // std::vector provides automatic cleanup under any exit path (return, throw,
+  // or future code additions), eliminating the manual free() calls and the
+  // exception-safety leak that a calloc/free pair would have.
+  std::vector<EGLConfig> configs(static_cast<std::size_t>(count));
+
+  EGLint n = 0;
+  ret = eglChooseConfig(dpy_, config_attribs_.data(), configs.data(), count, &n);
   if (n == 0) {
-    free(configs);
     throw std::runtime_error("EGL Config: Check Config Attributes");
   }
 
   EGLint red_size;
   for (EGLint i = 0; i < n; i++) {
-    eglGetConfigAttrib(dpy_, configs[i], EGL_BUFFER_SIZE, &config->buffer_bpp);
-    eglGetConfigAttrib(dpy_, configs[i], EGL_RED_SIZE, &red_size);
+    eglGetConfigAttrib(dpy_, configs[static_cast<std::size_t>(i)],
+                       EGL_BUFFER_SIZE, &config->buffer_bpp);
+    eglGetConfigAttrib(dpy_, configs[static_cast<std::size_t>(i)],
+                       EGL_RED_SIZE, &red_size);
     DLOG_DEBUG("EGL_BUFFER_SIZE: {}", config->buffer_bpp);
     DLOG_DEBUG("EGL_RED_SIZE: {}", red_size);
     if ((buffer_bpp_ == 0 || buffer_bpp_ == config->buffer_bpp) &&
         red_size < 10) {
-      config_ = configs[i];
+      config_ = configs[static_cast<std::size_t>(i)];
       break;
     }
   }
-  free(configs);
   if (config_ == nullptr) {
     throw std::runtime_error("did not find config with buffer size " +
                              std::to_string(buffer_bpp_));
@@ -338,7 +348,8 @@ void Egl::set_swap_interval(int interval) {
   clear_current();
 }
 
-void Egl::resize(int width, int height, int dx, int dy) {
+void Egl::resize(const int width, const int height, const int dx,
+                 const int dy) {
   width_ = width;
   height_ = height;
   wl_egl_window_resize(wl_egl_window_, width, height, dx, dy);
