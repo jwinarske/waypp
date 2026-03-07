@@ -1971,23 +1971,13 @@ vk_error ShaderToy::make_screenshot(vk_physical_device* phy_dev,
   const auto h = static_cast<std::size_t>(dstImage.extent.height);
   const std::size_t byte_count = w * h * 4u;
 
-  // ── Validate rowPitch before mapping.
-  // subResourceLayout.size is the total byte size of the mapped subresource as
-  // reported by the driver.  If rowPitch × height would exceed that size the
-  // driver returned a nonsensical layout; bail out before touching any memory.
-  if (subResourceLayout.rowPitch == 0 ||
-      subResourceLayout.rowPitch >
-          (subResourceLayout.size / (h > 0u ? h : 1u))) {
-    vk_error_set_vkresult(&retval, VK_ERROR_INITIALIZATION_FAILED);
-    vk_error_printf(&retval,
-                    "screenshot: compositor returned invalid rowPitch "
-                    "(%zu) for subresource size %zu — aborting\n",
-                    static_cast<std::size_t>(subResourceLayout.rowPitch),
-                    static_cast<std::size_t>(subResourceLayout.size));
-    // Memory has NOT been mapped yet — do not call vkUnmapMemory here.
-    free_images(dev, &dstImage, 1);
-    return retval;
-  }
+  // ── Map the image memory first so we have a concrete mapped_size to
+  // validate the driver-supplied layout fields against.
+  // vkMapMemory with VK_WHOLE_SIZE maps the entire allocation; the Vulkan spec
+  // guarantees the mapped region is at least subResourceLayout.size bytes.
+  // We use subResourceLayout.size as the conservative bound for all checks.
+  const auto mapped_size =
+      static_cast<std::size_t>(subResourceLayout.size);
 
   uint8_t* data = nullptr;
   {
@@ -2005,6 +1995,49 @@ vk_error ShaderToy::make_screenshot(vk_physical_device* phy_dev,
       return retval;
     }
   }
+
+  // ── Validate driver-supplied layout fields against the mapped region.
+  //
+  // All three fields are compositor/driver-controlled and must be validated
+  // before any pointer arithmetic is performed, as a maliciously or
+  // incorrectly large value would place 'data' outside the mapped range.
+  //
+  // Check 1 — offset: must be strictly less than mapped_size so that
+  //   data + offset still points inside the mapped region.
+  if (subResourceLayout.offset >= mapped_size) {
+    vk_error_set_vkresult(&retval, VK_ERROR_INITIALIZATION_FAILED);
+    vk_error_printf(&retval,
+                    "screenshot: driver offset (%zu) >= mapped_size (%zu)"
+                    " — aborting\n",
+                    static_cast<std::size_t>(subResourceLayout.offset),
+                    mapped_size);
+    d.vkUnmapMemory(dev->device, dstImage.image_mem);
+    free_images(dev, &dstImage, 1);
+    return retval;
+  }
+
+  // Remaining bytes after the offset — all row reads must fit within this.
+  const std::size_t usable = mapped_size - static_cast<std::size_t>(subResourceLayout.offset);
+
+  // Check 2 — rowPitch: must be non-zero, and rowPitch * h must not exceed
+  //   the usable region so the row-advance loop never walks off the end.
+  //   Also ensure each individual row (w * 4 bytes) fits within one pitch.
+  if (subResourceLayout.rowPitch == 0 || h == 0 ||
+      static_cast<std::size_t>(subResourceLayout.rowPitch) > usable / h ||
+      w * 4u > static_cast<std::size_t>(subResourceLayout.rowPitch)) {
+    vk_error_set_vkresult(&retval, VK_ERROR_INITIALIZATION_FAILED);
+    vk_error_printf(&retval,
+                    "screenshot: invalid rowPitch (%zu), usable=%zu, h=%zu,"
+                    " w=%zu — aborting\n",
+                    static_cast<std::size_t>(subResourceLayout.rowPitch),
+                    usable, h, w);
+    d.vkUnmapMemory(dev->device, dstImage.image_mem);
+    free_images(dev, &dstImage, 1);
+    return retval;
+  }
+
+  // Safe to advance: offset is within [0, mapped_size) and all h row-advances
+  // of rowPitch bytes fit within the usable region.
   data += subResourceLayout.offset;
 
   int color_order[3] = {0, 1, 2};
