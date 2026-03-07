@@ -19,6 +19,7 @@
 #include <wayland-egl.h>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "logging/logging.h"
@@ -30,6 +31,9 @@ using waypp::Egl;
  * This class provides functionality for initializing EGL, choosing an EGL
  * configuration, creating an EGL context, and managing various EGL extensions.
  */
+// NOLINTBEGIN(cppcoreguidelines-pro-type-reinterpret-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
+// EGL and Wayland EGL C APIs require reinterpret_cast for native handle types
+// and pointer arithmetic for the idiomatic vector(ptr, ptr+n) constructor.
 Egl::Egl(wl_display* display,
          wl_surface* wl_surface,
          const int width,
@@ -44,6 +48,7 @@ Egl::Egl(wl_display* display,
       wl_surface_(wl_surface),
       width_(width),
       height_(height) {
+  // NOLINTEND(cppcoreguidelines-pro-type-reinterpret-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
   DLOG_TRACE("++Egl::Egl()");
   EGLBoolean ret = eglInitialize(dpy_, &major_, &minor_);
   if (ret == EGL_FALSE) {
@@ -106,7 +111,9 @@ Egl::Egl(wl_display* display,
 
   const auto extensions = eglQueryString(dpy_, EGL_EXTENSIONS);
 
-  // setup for Damage Region Management
+  // NOLINTBEGIN(cppcoreguidelines-pro-type-reinterpret-cast) --
+  // eglGetProcAddress returns void*(__eglMustCastToProperFunctionPointerType);
+  // EGL spec mandates reinterpret_cast to the typed function pointer.
   if (has_egl_extension(extensions, "EGL_EXT_swap_buffers_with_damage")) {
     pfSwapBufferWithDamage_ =
         reinterpret_cast<PFNEGLSWAPBUFFERSWITHDAMAGEEXTPROC>(
@@ -121,7 +128,6 @@ Egl::Egl(wl_display* display,
   if (has_egl_extension(extensions, "EGL_EXT_partial_update")) {
     pfSetDamageRegion_ = reinterpret_cast<PFNEGLSETDAMAGEREGIONKHRPROC>(
         eglGetProcAddress("eglSetDamageRegionEXT"));
-
   } else if (has_egl_extension(extensions, "EGL_KHR_partial_update")) {
     pfSetDamageRegion_ = reinterpret_cast<PFNEGLSETDAMAGEREGIONKHRPROC>(
         eglGetProcAddress("eglSetDamageRegionKHR"));
@@ -134,6 +140,7 @@ Egl::Egl(wl_display* display,
   egl_surface_ = eglCreateWindowSurface(
       dpy_, config_, reinterpret_cast<EGLNativeWindowType>(wl_egl_window_),
       nullptr);
+  // NOLINTEND(cppcoreguidelines-pro-type-reinterpret-cast)
   if (egl_surface_ == EGL_NO_SURFACE) {
     throw std::runtime_error("failed to create EGL window surface");
   }
@@ -231,10 +238,20 @@ void Egl::swap_buffers_with_damage(EGLint* rects, const EGLint n_rects) const {
  * @return true if the extension is found, false otherwise.
  */
 bool Egl::has_egl_extension(const char* extensions, const char* name) {
-  const char* r = strstr(extensions, name);
-  const auto len = strlen(name);
-  // check that the extension name is terminated by space or null terminator
-  return r != nullptr && (r[len] == ' ' || r[len] == 0);
+  if (!extensions || !name)
+    return false;
+  // Search for the name as a whole token — terminated by space or NUL.
+  // Use string_view to avoid pointer arithmetic on the raw char* result.
+  const std::string_view exts(extensions);
+  const std::string_view needle(name);
+  std::string_view::size_type pos = 0;
+  while ((pos = exts.find(needle, pos)) != std::string_view::npos) {
+    const auto end = pos + needle.size();
+    if (end == exts.size() || exts[end] == ' ')
+      return true;
+    pos = end;
+  }
+  return false;
 }
 
 /**
@@ -319,6 +336,9 @@ void Egl::debug_callback(EGLenum error,
  * supported.
  */
 void Egl::egl_khr_debug_init() {
+  // NOLINTBEGIN(cppcoreguidelines-pro-type-reinterpret-cast,cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+  // eglGetProcAddress requires reinterpret_cast; pfDebugMessageControl takes a
+  // raw C array (EGLAttrib[]) which decays to a pointer per the EGL C API.
   auto pfDebugMessageControl =
       reinterpret_cast<PFNEGLDEBUGMESSAGECONTROLKHRPROC>(
           eglGetProcAddress("eglDebugMessageControlKHR"));
@@ -337,13 +357,14 @@ void Egl::egl_khr_debug_init() {
 
     pfDebugMessageControl(debug_callback, sDebugAttribList);
   }
+  // NOLINTEND(cppcoreguidelines-pro-type-reinterpret-cast,cppcoreguidelines-pro-bounds-array-to-pointer-decay)
 }
 
-void Egl::set_swap_interval(int interval) {
+void Egl::set_swap_interval(const int interval) {
   make_current();
 
-  EGLBoolean ret = eglSwapInterval(dpy_, interval);
-  if (ret == EGL_FALSE) {
+  if (const EGLBoolean ret = eglSwapInterval(dpy_, interval);
+      ret == EGL_FALSE) {
     throw std::runtime_error("eglSwapInterval failed");
   }
   clear_current();

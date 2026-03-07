@@ -583,7 +583,11 @@ void Pointer::set_cursor(uint32_t serial,
     LOG_ERROR("[Pointer] unable to load {}", cursor_name);
     return;
   }
+  // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic) --
+  // wl_cursor C API; images is a wl_cursor_image** array guaranteed non-null
+  // after cursor != nullptr; no C++ range alternative exists for this API.
   const auto image = cursor->images[0];
+  // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
   const auto buffer = wl_cursor_image_get_buffer(image);
   if (!buffer) {
     return;

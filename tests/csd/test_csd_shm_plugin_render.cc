@@ -53,7 +53,7 @@ struct StubbedPanel {
     panel.buffer->size_ = static_cast<size_t>(w) * static_cast<size_t>(h) * 4u;
   }
 
-  static void cleanup(CsdShmPlugin::Panel& panel) {
+  static void cleanup(const CsdShmPlugin::Panel& panel) {
     // Prevent Buffer::~Buffer() from calling munmap on our vector data.
     if (panel.buffer) {
       panel.buffer->shm_data_ = nullptr;
@@ -141,15 +141,23 @@ TEST_F(CsdShmPluginRender, FillRectZeroSizeIsNoop) {
 // ---------------------------------------------------------------------------
 
 TEST(CsdGlyphTable, SpaceGlyphIsAllZero) {
-  for (int row = 0; row < CsdShmPlugin::kGlyphH; ++row) {
-    EXPECT_EQ(CsdShmPlugin::kGlyphs[0][row], 0u) << "row " << row;
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index) -- index
+  // 0 is compile-time constant; raw C array so operator[] is the only access
+  const auto& space_glyph = CsdShmPlugin::kGlyphs[0];
+  int row = 0;
+  for (const uint8_t byte : space_glyph) {
+    EXPECT_EQ(byte, 0u) << "row " << row;
+    ++row;
   }
 }
 
 TEST(CsdGlyphTable, ExclamationHasNonZeroRows) {
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index) -- index
+  // 1 is compile-time constant; raw C array
+  const auto& excl_glyph = CsdShmPlugin::kGlyphs[1];
   bool any_set = false;
-  for (int row = 0; row < CsdShmPlugin::kGlyphH; ++row) {
-    if (CsdShmPlugin::kGlyphs[1][row] != 0u) {
+  for (const uint8_t byte : excl_glyph) {
+    if (byte != 0u) {
       any_set = true;
       break;
     }
@@ -158,11 +166,15 @@ TEST(CsdGlyphTable, ExclamationHasNonZeroRows) {
 }
 
 TEST(CsdGlyphTable, AllGlyphsWithinFiveBits) {
-  for (int gi = 0; gi < 95; ++gi) {
-    for (int row = 0; row < CsdShmPlugin::kGlyphH; ++row) {
-      EXPECT_EQ(CsdShmPlugin::kGlyphs[gi][row] & ~0x1Fu, 0u)
+  int gi = 0;
+  for (const auto& glyph : CsdShmPlugin::kGlyphs) {
+    int row = 0;
+    for (const uint8_t byte : glyph) {
+      EXPECT_EQ(byte & ~0x1Fu, 0u)
           << "glyph[" << gi << "][" << row << "] has bits beyond column 4";
+      ++row;
     }
+    ++gi;
   }
 }
 

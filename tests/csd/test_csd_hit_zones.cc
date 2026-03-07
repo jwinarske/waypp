@@ -32,14 +32,27 @@
 #include "waypp/window/csd_hit_zone.h"
 
 // ---------------------------------------------------------------------------
-// Fake wl_surface pointers — never dereferenced, only compared.
+// Fake wl_surface pointers — never dereferenced, only compared as identities.
+// SentinelSurface wraps the single unavoidable reinterpret_cast in one place.
+// The globals are suppressed for avoid-non-const-global-variables: wl_surface
+// is an opaque C API type whose pointed-to data cannot be const-qualified
+// because the struct members they are assigned to are wl_surface* (non-const).
 // ---------------------------------------------------------------------------
-static const auto kSurfTop    = reinterpret_cast<wl_surface*>(0x1001);
-static const auto kSurfLeft   = reinterpret_cast<wl_surface*>(0x1002);
-static const auto kSurfRight  = reinterpret_cast<wl_surface*>(0x1003);
-static const auto kSurfBottom = reinterpret_cast<wl_surface*>(0x1004);
-static const auto kSurfParent = reinterpret_cast<wl_surface*>(0x1000);
-static const auto kSurfOther  = reinterpret_cast<wl_surface*>(0x9999);
+static wl_surface* SentinelSurface(const uintptr_t addr) {
+  return static_cast<wl_surface*>(reinterpret_cast<void*>(
+      addr));  // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast) -- the
+               // only portable way to produce a non-null sentinel from an
+               // integer in C++17
+}
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables) -- wl_surface
+// is a C opaque type; pointed-to data cannot be const-qualified
+static wl_surface* const kSurfTop = SentinelSurface(0x1001);
+static wl_surface* const kSurfLeft = SentinelSurface(0x1002);
+static wl_surface* const kSurfRight = SentinelSurface(0x1003);
+static wl_surface* const kSurfBottom = SentinelSurface(0x1004);
+static wl_surface* const kSurfParent = SentinelSurface(0x1000);
+static wl_surface* const kSurfOther = SentinelSurface(0x9999);
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
 // ---------------------------------------------------------------------------
 // CsdShmPluginTest — Google Test fixture and test-seam friend class.
@@ -56,30 +69,30 @@ class CsdShmPluginTest : public ::testing::Test {
   static std::unique_ptr<CsdShmPlugin> make_plugin(int32_t content_w = 600,
                                                    int32_t content_h = 400) {
     auto p = std::make_unique<CsdShmPlugin>();
-    p->initialised_    = true;
-    p->visible_        = true;
-    p->content_w_      = content_w;
-    p->content_h_      = content_h;
+    p->initialised_ = true;
+    p->visible_ = true;
+    p->content_w_ = content_w;
+    p->content_h_ = content_h;
     p->parent_surface_ = kSurfParent;
 
     // top: full frame width x kTopH
     p->top_.surface = kSurfTop;
-    p->top_.w       = content_w + CsdShmPlugin::kSideW * 2;  // 608
-    p->top_.h       = CsdShmPlugin::kTopH;                   // 30
+    p->top_.w = content_w + CsdShmPlugin::kSideW * 2;  // 608
+    p->top_.h = CsdShmPlugin::kTopH;                   // 30
 
     // left / right: kSideW x content_h
     p->left_.surface = kSurfLeft;
-    p->left_.w       = CsdShmPlugin::kSideW;
-    p->left_.h       = content_h;
+    p->left_.w = CsdShmPlugin::kSideW;
+    p->left_.h = content_h;
 
     p->right_.surface = kSurfRight;
-    p->right_.w       = CsdShmPlugin::kSideW;
-    p->right_.h       = content_h;
+    p->right_.w = CsdShmPlugin::kSideW;
+    p->right_.h = content_h;
 
     // bottom: full frame width x kBottomH
     p->bottom_.surface = kSurfBottom;
-    p->bottom_.w       = p->top_.w;
-    p->bottom_.h       = CsdShmPlugin::kBottomH;
+    p->bottom_.w = p->top_.w;
+    p->bottom_.h = CsdShmPlugin::kBottomH;
 
     return p;
   }
@@ -89,11 +102,11 @@ class CsdShmPluginTest : public ::testing::Test {
   // propagate friend access through inheritance, so the compiler
   //  rejects direct 'p->left_.h' in a TEST_F body.  Routing through these
   // static methods keeps all private access inside the friend class.
-  static int32_t left_h(const CsdShmPlugin& p)   { return p.left_.h;   }
-  static int32_t right_h(const CsdShmPlugin& p)  { return p.right_.h;  }
+  static int32_t left_h(const CsdShmPlugin& p) { return p.left_.h; }
+  static int32_t right_h(const CsdShmPlugin& p) { return p.right_.h; }
   static int32_t bottom_w(const CsdShmPlugin& p) { return p.bottom_.w; }
-  static void set_visible(CsdShmPlugin& p, bool v)      { p.visible_     = v; }
-  static void set_initialised(CsdShmPlugin& p, bool v)  { p.initialised_ = v; }
+  static void set_visible(CsdShmPlugin& p, bool v) { p.visible_ = v; }
+  static void set_initialised(CsdShmPlugin& p, bool v) { p.initialised_ = v; }
 };
 
 // ---------------------------------------------------------------------------
@@ -228,8 +241,7 @@ TEST_F(CsdShmPluginTest, BottomPanelMiddleIsResizeBottom) {
 
 TEST_F(CsdShmPluginTest, BottomPanelLeftEdgeIsResizeBottomLeft) {
   const auto p = make_plugin();
-  EXPECT_EQ(p->hit_test(kSurfBottom, 2.0, 4.0),
-            CsdHitZone::kResizeBottomLeft);
+  EXPECT_EQ(p->hit_test(kSurfBottom, 2.0, 4.0), CsdHitZone::kResizeBottomLeft);
 }
 
 TEST_F(CsdShmPluginTest, BottomPanelRightEdgeIsResizeBottomRight) {

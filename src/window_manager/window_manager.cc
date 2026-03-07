@@ -20,6 +20,7 @@
 #include <poll.h>
 #include <unistd.h>
 #include <wayland-client.h>
+#include <array>
 #include <cerrno>
 
 #include "logging/logging.h"
@@ -41,10 +42,10 @@ WindowManager::WindowManager(wl_display* display,
       outputs_(get_outputs()) {
   (void)context;
   DLOG_TRACE("++WindowManager::WindowManager()");
-  int pfd[2];
-  if (pipe2(pfd, O_CLOEXEC | O_NONBLOCK) == 0) {
-    wake_pipe_read_fd_ = pfd[0];
-    wake_pipe_write_fd_ = pfd[1];
+  std::array<int, 2> pfd{-1, -1};
+  if (pipe2(pfd.data(), O_CLOEXEC | O_NONBLOCK) == 0) {
+    wake_pipe_read_fd_ = pfd.at(0);
+    wake_pipe_write_fd_ = pfd.at(1);
   } else {
     LOG_ERROR("WindowManager: pipe2 failed: {}", std::strerror(errno));
   }
@@ -81,7 +82,7 @@ WindowManager::~WindowManager() {
 //   5. Repeat.
 // ─────────────────────────────────────────────────────────────────────────────
 
-void WindowManager::compositor_thread_func() {
+void WindowManager::compositor_thread_func() const {
   DLOG_DEBUG("compositor thread: start");
 
   while (!compositor_stop_.load(std::memory_order_acquire)) {
@@ -112,23 +113,24 @@ void WindowManager::compositor_thread_func() {
     const int pipe_fd = kb ? kb->get_pipe_read_fd() : -1;
 
     // Slots: 0=wayland, 1=wake(stop), 2=key-repeat(optional)
-    pollfd fds[3]{};
-    int nfds = 0;
-    fds[nfds++] = {wl_display_get_fd(get_display()), POLLIN, 0};
-    const int wake_slot = nfds;
+    std::array<pollfd, 3> fds{};
+    std::size_t nfds = 0;
+    fds.at(nfds++) = {wl_display_get_fd(get_display()), POLLIN, 0};
+    const std::size_t wake_slot = nfds;
     if (wake_pipe_read_fd_ >= 0)
-      fds[nfds++] = {wake_pipe_read_fd_, POLLIN, 0};
-    const int kb_slot = nfds;
+      fds.at(nfds++) = {wake_pipe_read_fd_, POLLIN, 0};
+    const std::size_t kb_slot = nfds;
     if (pipe_fd >= 0)
-      fds[nfds++] = {pipe_fd, POLLIN, 0};
+      fds.at(nfds++) = {pipe_fd, POLLIN, 0};
 
     // If the last flush hit EAGAIN, also watch for writability.
     if (flush_ret < 0 && errno == EAGAIN)
-      fds[0].events |= POLLOUT;
+      fds.at(0).events |= POLLOUT;
 
     // ── Wait ────────────────────────────────────────────────────────────
 
-    if (const int ret = poll(fds, static_cast<nfds_t>(nfds), -1); ret < 0) {
+    if (const int ret = poll(fds.data(), static_cast<nfds_t>(nfds), -1);
+        ret < 0) {
       if (errno == EINTR) {
         wl_display_cancel_read(get_display());
         continue;
@@ -139,27 +141,30 @@ void WindowManager::compositor_thread_func() {
     }
 
     // ── Stop wake-pipe ──────────────────────────────────────────────────
-    if (wake_pipe_read_fd_ >= 0 && (fds[wake_slot].revents & POLLIN)) {
+    if (wake_pipe_read_fd_ >= 0 && (fds.at(wake_slot).revents & POLLIN)) {
+      // NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay) --
+      // POSIX read() requires a raw pointer; buf is a fixed local array.
       char buf[64];
       while (::read(wake_pipe_read_fd_, buf, sizeof(buf)) > 0) {
       }
+      // NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
       wl_display_cancel_read(get_display());
       break;
     }
 
     // ── Wayland fd error ────────────────────────────────────────────────
-    if (fds[0].revents & (POLLERR | POLLHUP | POLLNVAL)) {
+    if (fds.at(0).revents & (POLLERR | POLLHUP | POLLNVAL)) {
       LOG_ERROR("compositor thread: Wayland fd error/hangup");
       wl_display_cancel_read(get_display());
       break;
     }
 
     // ── Retry flush if the socket became writable ───────────────────────────
-    if (fds[0].revents & POLLOUT)
+    if (fds.at(0).revents & POLLOUT)
       wl_display_flush(get_display());
 
     // ── Read + dispatch Wayland events ──────────────────────────────────
-    if (fds[0].revents & POLLIN) {
+    if (fds.at(0).revents & POLLIN) {
       if (wl_display_read_events(get_display()) == -1) {
         LOG_ERROR("compositor thread: wl_display_read_events error: {}",
                   std::strerror(errno));
@@ -175,10 +180,13 @@ void WindowManager::compositor_thread_func() {
     }
 
     // ── Key-repeat pipe ─────────────────────────────────────────────────
-    if (kb && pipe_fd >= 0 && (fds[kb_slot].revents & POLLIN)) {
+    if (kb && pipe_fd >= 0 && (fds.at(kb_slot).revents & POLLIN)) {
+      // NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay) --
+      // POSIX read() requires a raw pointer; buf is a fixed local array.
       char buf[64];
       while (::read(pipe_fd, buf, sizeof(buf)) > 0) {
       }
+      // NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
       kb->dispatch_repeat();
     }
   }

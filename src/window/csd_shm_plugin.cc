@@ -204,11 +204,14 @@ void CsdShmPlugin::fill_rect(const Panel& p,
     return;
   auto* px = static_cast<uint32_t*>(p.buffer->get_shm_data());
   const int32_t stride = p.w;
+  // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic) --
+  // Pixel buffer access; bounds are enforced by the loop guards above.
   for (int32_t y = ry; y < ry + rh && y < p.h; ++y) {
     for (int32_t x = rx; x < rx + rw && x < p.w; ++x) {
       px[y * stride + x] = argb;
     }
   }
+  // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 }
 
 void CsdShmPlugin::paint_title(const std::string& text) const {
@@ -233,6 +236,10 @@ void CsdShmPlugin::paint_title(const std::string& text) const {
       cx += kGlyphW + 1;
       continue;
     }
+    // NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay,cppcoreguidelines-pro-bounds-constant-array-index,cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    // ch is validated in [0x20,0x7E]; kGlyphs[ch-0x20] is in-bounds.
+    // glyph[gy] and px[...] use pointer arithmetic over fixed-size buffers
+    // whose bounds are enforced by the loop guards.
     const auto* glyph = kGlyphs[ch - 0x20];
     for (int gy = 0; gy < kGlyphH; ++gy) {
       const int32_t py = cy + gy;
@@ -246,6 +253,7 @@ void CsdShmPlugin::paint_title(const std::string& text) const {
         }
       }
     }
+    // NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay,cppcoreguidelines-pro-bounds-constant-array-index,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     cx += kGlyphW + 1;
   }
 }

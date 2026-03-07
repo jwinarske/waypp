@@ -69,14 +69,17 @@ bool Command::RunApproved(ApprovedCommand cmd, std::string& result) {
   result.clear();
 
   const char* const* argv = argv_for(cmd);
+  // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic) --
+  // argv is a null-terminated C array; argv[0] is the standard executable path.
   if (!argv || !argv[0]) {
     LOG_ERROR("[Command] RunApproved: unknown ApprovedCommand value");
     return false;
   }
+  // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
   // Create a pipe: pipefd[0] = read end, pipefd[1] = write end.
-  int pipefd[2];
-  if (pipe(pipefd) != 0) {
+  std::array<int, 2> pipefd{-1, -1};
+  if (pipe(pipefd.data()) != 0) {
     LOG_ERROR("[Command] RunApproved: pipe() failed: {}", std::strerror(errno));
     return false;
   }
@@ -86,8 +89,8 @@ bool Command::RunApproved(ApprovedCommand cmd, std::string& result) {
   if (pid < 0) {
     // fork() failed — clean up both pipe ends and bail.
     LOG_ERROR("[Command] RunApproved: fork() failed: {}", std::strerror(errno));
-    close(pipefd[0]);
-    close(pipefd[1]);
+    close(pipefd.at(0));
+    close(pipefd.at(1));
     return false;
   }
 
@@ -96,18 +99,20 @@ bool Command::RunApproved(ApprovedCommand cmd, std::string& result) {
     // Redirect stdout → write the end of pipe, then exec.
     // Any failure here calls _exit() so C++ destructors are NOT run in the
     // child (avoids double-free of shared resources).
-    close(pipefd[0]);  // a child does not read
+    close(pipefd.at(0));  // a child does not read
 
-    if (dup2(pipefd[1], STDOUT_FILENO) == -1) {
+    if (dup2(pipefd.at(1), STDOUT_FILENO) == -1) {
       _exit(127);
     }
-    close(pipefd[1]);
+    close(pipefd.at(1));
 
     // execve: no shell, no PATH search, no caller-controlled strings.
-    // The const_cast is required by the POSIX execve signature; the arrays
-    // themselves are immutable compile-time constants.
+    // The const_cast is required by the POSIX execve signature; argv[0] is
+    // pointer arithmetic on a null-terminated C array mandated by execve(2).
+    // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     execve(argv[0], const_cast<char* const*>(argv),
            nullptr /* empty environment */);
+    // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
     // execve only returns on failure.
     _exit(127);
@@ -116,11 +121,13 @@ bool Command::RunApproved(ApprovedCommand cmd, std::string& result) {
   // ── Parent process ─────────────────────────────────────────────────────────
   close(pipefd[1]);  // parent does not write
 
-  // Drain the child's stdout into a result.
+  // NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay,cppcoreguidelines-pro-bounds-pointer-arithmetic)
+  // POSIX read() requires raw pointer (array decay); argv[0] is the standard
+  // null-terminated argv first-element access.
   {
     char buf[4096];
     ssize_t n;
-    while ((n = read(pipefd[0], buf, sizeof(buf))) > 0) {
+    while ((n = read(pipefd.at(0), buf, sizeof(buf))) > 0) {
       result.append(buf, static_cast<std::size_t>(n));
     }
     if (n < 0) {
@@ -128,9 +135,8 @@ bool Command::RunApproved(ApprovedCommand cmd, std::string& result) {
                 std::strerror(errno));
     }
   }
-  close(pipefd[0]);
+  close(pipefd.at(0));
 
-  // Reap the child and inspect its exit status.
   int wstatus = 0;
   if (waitpid(pid, &wstatus, 0) == -1) {
     LOG_ERROR("[Command] RunApproved: waitpid() failed: {}",
@@ -146,5 +152,6 @@ bool Command::RunApproved(ApprovedCommand cmd, std::string& result) {
 
   DLOG_TRACE("[Command] RunApproved: '{}' succeeded, {} byte(s)", argv[0],
              result.size());
+  // NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay,cppcoreguidelines-pro-bounds-pointer-arithmetic)
   return true;
 }
