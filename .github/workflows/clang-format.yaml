@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
 
@@ -35,7 +35,7 @@ jobs:
 
           # Add LLVM apt repo
           RELEASE_NAME=$(lsb_release -sc 2>/dev/null || echo "noble")
-          echo "deb http://apt.llvm.org/${RELEASE_NAME}/ llvm-toolchain-${RELEASE_NAME}-${CLANG_VERSION} main" \
+          echo "deb https://apt.llvm.org/${RELEASE_NAME}/ llvm-toolchain-${RELEASE_NAME}-${CLANG_VERSION} main" \
             | sudo tee /etc/apt/sources.list.d/llvm.list
 
           sudo apt-get update -yq
@@ -66,7 +66,7 @@ jobs:
 
       - name: Publish Report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.1
         with:
           name: clang-format-results
           path: clang-format-*
