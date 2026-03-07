@@ -1,4 +1,6 @@
 name: clang-tidy
+permissions:
+  contents: read
 
 on:
   workflow_call:
