@@ -202,8 +202,10 @@ void WindowManager::stop_compositor_thread() {
   // This is the only safe cross-thread wakeup — no Wayland calls are made.
   if (wake_pipe_write_fd_ >= 0) {
     constexpr char token = 1;
-    const ssize_t result = write(wake_pipe_write_fd_, &token, 1);
-    (void)result;
+    if (write(wake_pipe_write_fd_, &token, 1) < 0) {
+      LOG_ERROR("WindowManager: wake pipe write failed: {}",
+                std::strerror(errno));
+    }
   }
   compositor_thread_.join();
 }

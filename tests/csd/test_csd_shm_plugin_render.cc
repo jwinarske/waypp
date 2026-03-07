@@ -50,7 +50,7 @@ struct StubbedPanel {
     panel.buffer->shm_data_ = pixels.data();
     panel.buffer->width_ = w;
     panel.buffer->height_ = h;
-    panel.buffer->size_ = w * h * 4;
+    panel.buffer->size_ = static_cast<size_t>(w) * static_cast<size_t>(h) * 4u;
   }
 
   static void cleanup(CsdShmPlugin::Panel& panel) {

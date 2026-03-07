@@ -17,6 +17,7 @@
 #pragma once
 
 #include <wayland-client-core.h>
+#include <cstddef>
 #include <cstdint>
 
 class Buffer {
@@ -31,7 +32,7 @@ class Buffer {
 
   [[nodiscard]] uint32_t get_format() const { return format_; }
 
-  [[nodiscard]] int get_size() const { return size_; }
+  [[nodiscard]] size_t get_size() const { return size_; }
 
   int create_shm_buffer(int width, int height, uint32_t format);
 
@@ -62,7 +63,7 @@ class Buffer {
   uint32_t format_{};
   bool busy_;
 
-  int size_{};
+  size_t size_{};
   wl_shm* wl_shm_;
   wl_buffer* buffer_{};
   void* shm_data_{};

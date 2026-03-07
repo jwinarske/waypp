@@ -17,11 +17,12 @@
 #include "waypp/window/buffer.h"
 
 #include <cerrno>
+#include <climits>
+#include <cstdint>
 #include <cstring>
 
 #include <sys/mman.h>
 #include <unistd.h>
-#include <wayland-client.h>
 
 #include "anonymous_file.h"
 
@@ -32,7 +33,7 @@ Buffer::Buffer(wl_shm* wl_shm)
 
 Buffer::~Buffer() {
   if (shm_data_ != nullptr && shm_data_ != MAP_FAILED) {
-    munmap(shm_data_, static_cast<size_t>(size_));
+    munmap(shm_data_, size_);
   }
 
   if (buffer_) {
@@ -43,7 +44,7 @@ Buffer::~Buffer() {
 
 void Buffer::destroy() {
   if (shm_data_ != nullptr && shm_data_ != MAP_FAILED) {
-    munmap(shm_data_, static_cast<size_t>(size_));
+    munmap(shm_data_, size_);
     shm_data_ = nullptr;
   }
   if (buffer_) {
@@ -139,17 +140,40 @@ int Buffer::create_shm_buffer(int width, int height, uint32_t format) {
       return -1;
   }
 
-  const int pitch = width * bpp;
-  size_ = pitch * height;
+  // ── Compute pitch and total size in int64_t to prevent int overflow.
+  // With a 32-bit int, width=32768 and bpp=4 gives pitch=131072 (fine), but
+  // size = 131072 * 32768 = 4,294,967,296 — overflows to INT_MIN and then
+  // wraps to an enormous value when cast to size_t in mmap/munmap, causing UB.
+  //
+  // wl_shm_create_pool takes int32_t, so the Wayland protocol hard-caps the
+  // maximum valid size at INT32_MAX (2 GiB).
+  static constexpr auto kMaxBufferSize =
+      static_cast<int64_t>(INT32_MAX);  // 2,147,483,647 bytes (~2 GiB)
 
-  const auto fd = AnonymousFile::create(size_);
+  const int64_t pitch64 = static_cast<int64_t>(width) * bpp;
+  const int64_t size64  = pitch64 * static_cast<int64_t>(height);
+
+  if (size64 <= 0 || size64 > kMaxBufferSize) {
+    LOG_ERROR(
+        "[Buffer] computed size {} B is out of range [1, {}] "
+        "(width={}, height={}, bpp={}) — buffer not created",
+        size64, kMaxBufferSize, width, height, bpp);
+    return -1;
+  }
+
+  // Safe: size64 is in (0, INT32_MAX] so both the size_t store and the
+  // int32_t cast for wl_shm_create_pool are lossless.
+  const auto pitch = static_cast<int>(pitch64);
+  size_ = static_cast<size_t>(size64);
+
+  const auto fd = AnonymousFile::create(static_cast<off_t>(size_));
   if (fd < 0) {
     LOG_ERROR("creating a buffer file for {} B failed: {}", size_,
               std::strerror(errno));
     return -1;
   }
 
-  const auto data = mmap(nullptr, static_cast<size_t>(size_),
+  const auto data = mmap(nullptr, size_,
                          PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   if (data == MAP_FAILED) {
     LOG_ERROR("mmap failed: {}", std::strerror(errno));
@@ -157,7 +181,9 @@ int Buffer::create_shm_buffer(int width, int height, uint32_t format) {
     return -1;
   }
 
-  const auto wl_shm_pool = wl_shm_create_pool(wl_shm_, fd, size_);
+  // wl_shm_create_pool takes int32_t; size64 <= INT32_MAX is guaranteed above.
+  const auto wl_shm_pool =
+      wl_shm_create_pool(wl_shm_, fd, static_cast<int32_t>(size64));
   if (!wl_shm_pool) {
     LOG_ERROR("failed to create Wayland SHM pool");
     close(fd);
