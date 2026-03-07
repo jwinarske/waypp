@@ -26,8 +26,10 @@
 
 #include "utils.h"
 
+#include <cstddef>
 #include <filesystem>
 #include <fstream>
+#include <vector>
 
 #include "logging/logging.h"
 
@@ -265,25 +267,64 @@ vk_error VulkanUtils::load_shader(struct vk_device* dev,
   info.codeSize = size;
   info.pCode = code;
 
-  auto res = d.vkCreateShaderModule(dev->device, &info, nullptr, shader);
+  const auto res = d.vkCreateShaderModule(dev->device, &info, nullptr, shader);
   vk_error_set_vkresult(&retval, res);
 
   return retval;
 }
 
 #ifdef YARIV_SHADER
+// Maximum plausible decoded SPIR-V size (16 MiB).  A SPIR-V binary larger
+// than this almost certainly indicates a corrupted or malicious yariv stream.
+static constexpr std::size_t kMaxSpirvBytes = 16u * 1024u * 1024u;
+
 vk_error vk_load_shader_yariv(struct vk_device* dev,
                               const uint32_t* yariv_code,
                               VkShaderModule* shader,
                               size_t in_yariv_size) {
   vk_error retval = VK_ERROR_NONE;
-  void* in_yariv = (void*)yariv_code;
-  size_t out_spirv_size = yariv_decode_size(in_yariv, in_yariv_size);
-  uint32_t* out_spirv = malloc(out_spirv_size);
-  yariv_decode(out_spirv, out_spirv_size, in_yariv, in_yariv_size);
-  retval = vk_load_shader(dev, out_spirv, shader, out_spirv_size);
 
-  free(out_spirv);
+  // yariv_decode_size() returns 0 on malformed input.  An unreasonably large
+  // value indicates a corrupt stream that would cause a multi-gigabyte alloc.
+  const void* in_yariv = static_cast<const void*>(yariv_code);
+  const std::size_t out_spirv_size = yariv_decode_size(in_yariv, in_yariv_size);
+
+  if (out_spirv_size == 0) {
+    spdlog::error(
+        "[vk_load_shader_yariv] yariv_decode_size returned 0 "
+        "— malformed yariv stream (in_yariv_size={})",
+        in_yariv_size);
+    vk_error_set_vkresult(&retval, VK_ERROR_INITIALIZATION_FAILED);
+    return retval;
+  }
+
+  if (out_spirv_size > kMaxSpirvBytes) {
+    spdlog::error(
+        "[vk_load_shader_yariv] decoded SPIR-V size {} exceeds "
+        "sanity limit {} — refusing to allocate",
+        out_spirv_size, kMaxSpirvBytes);
+    vk_error_set_vkresult(&retval, VK_ERROR_INITIALIZATION_FAILED);
+    return retval;
+  }
+
+  // SPIR-V words are 32-bit; the byte count must be a multiple of 4.
+  if (out_spirv_size % sizeof(uint32_t) != 0) {
+    spdlog::error(
+        "[vk_load_shader_yariv] decoded size {} is not a multiple "
+        "of 4 — malformed SPIR-V",
+        out_spirv_size);
+    vk_error_set_vkresult(&retval, VK_ERROR_INITIALIZATION_FAILED);
+    return retval;
+  }
+
+  // std::vector provides RAII: memory is freed automatically on every exit
+  // path — return, exception from vk_load_shader, or future additions.
+  // No manual free() needed; no null-pointer write on OOM (throws instead).
+  std::vector<uint32_t> out_spirv(out_spirv_size / sizeof(uint32_t));
+  yariv_decode(out_spirv.data(), out_spirv_size, const_cast<void*>(in_yariv),
+               in_yariv_size);
+
+  retval = vk_load_shader(dev, out_spirv.data(), shader, out_spirv_size);
   return retval;
 }
 #endif
