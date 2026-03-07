@@ -1965,8 +1965,9 @@ vk_error ShaderToy::make_screenshot(vk_physical_device* phy_dev,
                                 &subResourceLayout);
 
   // ── Compute output byte count with size_t arithmetic to prevent overflow.
-  // Doing the multiplication in uint32_t overflows at 4096×4096 (16 M pixels × 4
-  // bytes = 64 MiB > UINT32_MAX).  Promote to size_t before any multiplication.
+  // Doing the multiplication in uint32_t overflows at 4096×4096 (16 M pixels ×
+  // 4 bytes = 64 MiB > UINT32_MAX).  Promote to size_t before any
+  // multiplication.
   const auto w = static_cast<std::size_t>(dstImage.extent.width);
   const auto h = static_cast<std::size_t>(dstImage.extent.height);
   const std::size_t byte_count = w * h * 4u;
@@ -1976,20 +1977,18 @@ vk_error ShaderToy::make_screenshot(vk_physical_device* phy_dev,
   // vkMapMemory with VK_WHOLE_SIZE maps the entire allocation; the Vulkan spec
   // guarantees the mapped region is at least subResourceLayout.size bytes.
   // We use subResourceLayout.size as the conservative bound for all checks.
-  const auto mapped_size =
-      static_cast<std::size_t>(subResourceLayout.size);
+  const auto mapped_size = static_cast<std::size_t>(subResourceLayout.size);
 
   uint8_t* data = nullptr;
   {
-    const VkResult map_res = d.vkMapMemory(
-        dev->device, dstImage.image_mem, 0, VK_WHOLE_SIZE, 0,
-        reinterpret_cast<void**>(&data));
+    const VkResult map_res =
+        d.vkMapMemory(dev->device, dstImage.image_mem, 0, VK_WHOLE_SIZE, 0,
+                      reinterpret_cast<void**>(&data));
     if (map_res != VK_SUCCESS || !data) {
       vk_error_set_vkresult(&retval, map_res != VK_SUCCESS
                                          ? map_res
                                          : VK_ERROR_INITIALIZATION_FAILED);
-      vk_error_printf(&retval,
-                      "screenshot: vkMapMemory failed (VkResult=%d)\n",
+      vk_error_printf(&retval, "screenshot: vkMapMemory failed (VkResult=%d)\n",
                       static_cast<int>(map_res));
       free_images(dev, &dstImage, 1);
       return retval;
@@ -2017,7 +2016,8 @@ vk_error ShaderToy::make_screenshot(vk_physical_device* phy_dev,
   }
 
   // Remaining bytes after the offset — all row reads must fit within this.
-  const std::size_t usable = mapped_size - static_cast<std::size_t>(subResourceLayout.offset);
+  const std::size_t usable =
+      mapped_size - static_cast<std::size_t>(subResourceLayout.offset);
 
   // Check 2 — rowPitch: must be non-zero, and rowPitch * h must not exceed
   //   the usable region so the row-advance loop never walks off the end.

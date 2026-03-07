@@ -106,8 +106,7 @@ bool Command::RunApproved(ApprovedCommand cmd, std::string& result) {
     // execve: no shell, no PATH search, no caller-controlled strings.
     // The const_cast is required by the POSIX execve signature; the arrays
     // themselves are immutable compile-time constants.
-    execve(argv[0],
-           const_cast<char* const*>(argv),
+    execve(argv[0], const_cast<char* const*>(argv),
            nullptr /* empty environment */);
 
     // execve only returns on failure.

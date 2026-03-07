@@ -143,11 +143,10 @@ void ViewWayland::create_random_color_grid(const uint32_t width,
           // Maximum index: (grid_size-1)*grid_h + (grid_h-1)) * w
           //              + (grid_size-1)*grid_w + (grid_w-1)
           //              < h * w  == checked above against buffer_size.
-          const std::size_t idx =
-              (i * grid_h + y) * w + (j * grid_w + x);
+          const std::size_t idx = (i * grid_h + y) * w + (j * grid_w + x);
           buffer[idx] = (static_cast<uint32_t>(r) << 16) |
                         (static_cast<uint32_t>(g) << 8) |
-                         static_cast<uint32_t>(b);
+                        static_cast<uint32_t>(b);
         }
       }
     }
@@ -173,11 +172,10 @@ void ViewWayland::draw_frame(void* data, const uint32_t /* time */) {
     return;
   }
 
-  view->create_random_color_grid(
-      static_cast<uint32_t>(window->get_width()),
-      static_cast<uint32_t>(window->get_height()), 8,
-      static_cast<uint32_t*>(buffer->get_shm_data()),
-      buffer->get_size());
+  view->create_random_color_grid(static_cast<uint32_t>(window->get_width()),
+                                 static_cast<uint32_t>(window->get_height()), 8,
+                                 static_cast<uint32_t*>(buffer->get_shm_data()),
+                                 buffer->get_size());
 
   wl_surface_attach(window->get_surface(), buffer->get_wl_buffer(), 0, 0);
   wl_surface_damage(window->get_surface(), 0, 0, window->get_width(),

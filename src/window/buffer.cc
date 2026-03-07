@@ -151,7 +151,7 @@ int Buffer::create_shm_buffer(int width, int height, uint32_t format) {
       static_cast<int64_t>(INT32_MAX);  // 2,147,483,647 bytes (~2 GiB)
 
   const int64_t pitch64 = static_cast<int64_t>(width) * bpp;
-  const int64_t size64  = pitch64 * static_cast<int64_t>(height);
+  const int64_t size64 = pitch64 * static_cast<int64_t>(height);
 
   if (size64 <= 0 || size64 > kMaxBufferSize) {
     LOG_ERROR(
@@ -173,8 +173,8 @@ int Buffer::create_shm_buffer(int width, int height, uint32_t format) {
     return -1;
   }
 
-  const auto data = mmap(nullptr, size_,
-                         PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  const auto data =
+      mmap(nullptr, size_, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   if (data == MAP_FAILED) {
     LOG_ERROR("mmap failed: {}", std::strerror(errno));
     close(fd);

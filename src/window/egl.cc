@@ -62,8 +62,8 @@ Egl::Egl(wl_display* display,
   // Guard against a compositor returning zero, negative, or a pathologically
   // large count (EGLint is signed 32-bit, so negative values are possible).
   if (count <= 0 || count > 1024) {
-    throw std::runtime_error(
-        "EGL Config: unexpected config count " + std::to_string(count));
+    throw std::runtime_error("EGL Config: unexpected config count " +
+                             std::to_string(count));
   }
 
   // std::vector provides automatic cleanup under any exit path (return, throw,
@@ -72,7 +72,8 @@ Egl::Egl(wl_display* display,
   std::vector<EGLConfig> configs(static_cast<std::size_t>(count));
 
   EGLint n = 0;
-  ret = eglChooseConfig(dpy_, config_attribs_.data(), configs.data(), count, &n);
+  ret =
+      eglChooseConfig(dpy_, config_attribs_.data(), configs.data(), count, &n);
   if (n == 0) {
     throw std::runtime_error("EGL Config: Check Config Attributes");
   }
@@ -81,8 +82,8 @@ Egl::Egl(wl_display* display,
   for (EGLint i = 0; i < n; i++) {
     eglGetConfigAttrib(dpy_, configs[static_cast<std::size_t>(i)],
                        EGL_BUFFER_SIZE, &config->buffer_bpp);
-    eglGetConfigAttrib(dpy_, configs[static_cast<std::size_t>(i)],
-                       EGL_RED_SIZE, &red_size);
+    eglGetConfigAttrib(dpy_, configs[static_cast<std::size_t>(i)], EGL_RED_SIZE,
+                       &red_size);
     DLOG_DEBUG("EGL_BUFFER_SIZE: {}", config->buffer_bpp);
     DLOG_DEBUG("EGL_RED_SIZE: {}", red_size);
     if ((buffer_bpp_ == 0 || buffer_bpp_ == config->buffer_bpp) &&
@@ -348,7 +349,9 @@ void Egl::set_swap_interval(int interval) {
   clear_current();
 }
 
-void Egl::resize(const int width, const int height, const int dx,
+void Egl::resize(const int width,
+                 const int height,
+                 const int dx,
                  const int dy) {
   width_ = width;
   height_ = height;
