@@ -16,61 +16,136 @@
 
 #include "command.h"
 
+#include <sys/wait.h>
+#include <unistd.h>
+#include <array>
+#include <cerrno>
 #include <cstring>
 
 #include "logging/logging.h"
 
-bool Command::is_safe_char(const char c) {
-  return std::isalnum(static_cast<unsigned char>(c)) || c == ' ' || c == '_' ||
-         c == '-' || c == '/' || c == '.';
+// ─────────────────────────────────────────────────────────────────────────────
+// Hard-coded argv tables — one entry per ApprovedCommand value.
+//
+// Rules:
+//   • argv[0] must be the absolute path to the executable.
+//   • All arguments are compile-time constants; no runtime string is ever
+//     appended, interpolated, or shell-expanded.
+//   • The array must be null-terminated (last element == nullptr).
+// ─────────────────────────────────────────────────────────────────────────────
+namespace {
+
+// argv for ApprovedCommand::kGsettingsGetCursorTheme
+// Equivalent to: gsettings get org.gnome.desktop.interface cursor-theme
+// but without going through /bin/sh.
+constexpr std::array<const char*, 5> kArgvGsettingsGetCursorTheme{{
+    "/usr/bin/gsettings",
+    "get",
+    "org.gnome.desktop.interface",
+    "cursor-theme",
+    nullptr,
+}};
+
+/**
+ * @brief Return the hard-coded argv for the given ApprovedCommand.
+ *
+ * Returns nullptr if the enum value is not recognised (should never happen
+ * in practice, but keeps the switch exhaustive and avoids UB).
+ */
+const char* const* argv_for(ApprovedCommand cmd) noexcept {
+  switch (cmd) {
+    case ApprovedCommand::kGsettingsGetCursorTheme:
+      return kArgvGsettingsGetCursorTheme.data();
+  }
+  return nullptr;
 }
 
-std::string Command::sanitize_cmd(const std::string& cmd) {
-  std::string safe_cmd;
-  for (const char c : cmd) {
-    if (is_safe_char(c)) {
-      safe_cmd += c;
+}  // namespace
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RunApproved — pipe + fork + execve, no shell intermediary
+// ─────────────────────────────────────────────────────────────────────────────
+bool Command::RunApproved(ApprovedCommand cmd, std::string& result) {
+  result.clear();
+
+  const char* const* argv = argv_for(cmd);
+  if (!argv || !argv[0]) {
+    LOG_ERROR("[Command] RunApproved: unknown ApprovedCommand value");
+    return false;
+  }
+
+  // Create a pipe: pipefd[0] = read end, pipefd[1] = write end.
+  int pipefd[2];
+  if (pipe(pipefd) != 0) {
+    LOG_ERROR("[Command] RunApproved: pipe() failed: {}", std::strerror(errno));
+    return false;
+  }
+
+  const pid_t pid = fork();
+
+  if (pid < 0) {
+    // fork() failed — clean up both pipe ends and bail.
+    LOG_ERROR("[Command] RunApproved: fork() failed: {}", std::strerror(errno));
+    close(pipefd[0]);
+    close(pipefd[1]);
+    return false;
+  }
+
+  if (pid == 0) {
+    // ── Child process ───────────────────────────────────────────────────────
+    // Redirect stdout → write the end of pipe, then exec.
+    // Any failure here calls _exit() so C++ destructors are NOT run in the
+    // child (avoids double-free of shared resources).
+    close(pipefd[0]);  // a child does not read
+
+    if (dup2(pipefd[1], STDOUT_FILENO) == -1) {
+      _exit(127);
+    }
+    close(pipefd[1]);
+
+    // execve: no shell, no PATH search, no caller-controlled strings.
+    // The const_cast is required by the POSIX execve signature; the arrays
+    // themselves are immutable compile-time constants.
+    execve(argv[0],
+           const_cast<char* const*>(argv),
+           nullptr /* empty environment */);
+
+    // execve only returns on failure.
+    _exit(127);
+  }
+
+  // ── Parent process ─────────────────────────────────────────────────────────
+  close(pipefd[1]);  // parent does not write
+
+  // Drain the child's stdout into a result.
+  {
+    char buf[4096];
+    ssize_t n;
+    while ((n = read(pipefd[0], buf, sizeof(buf))) > 0) {
+      result.append(buf, static_cast<std::size_t>(n));
+    }
+    if (n < 0) {
+      LOG_ERROR("[Command] RunApproved: read() failed: {}",
+                std::strerror(errno));
     }
   }
-  return safe_cmd;
-}
+  close(pipefd[0]);
 
-bool Command::Execute(const std::string& cmd, std::string& result) {
-  if (cmd.empty()) {
-    spdlog::error("[Command] Execute: cmd is empty");
-    return false;
-  }
-  const std::string safe_cmd = sanitize_cmd(cmd);
-  if (safe_cmd.empty()) {
-    spdlog::error(
-        "[Command] Execute: command '{}' reduced to empty string "
-        "after sanitization — refusing to execute",
-        cmd);
-    return false;
-  }
-  FILE* fp = popen(safe_cmd.c_str(), "r");
-  if (!fp) {
-    spdlog::error("[ExecuteCommand] Failed to Execute Command: ({}) {}", errno,
-                  strerror(errno));
-    spdlog::error("Failed to Execute Command: {}", cmd);
+  // Reap the child and inspect its exit status.
+  int wstatus = 0;
+  if (waitpid(pid, &wstatus, 0) == -1) {
+    LOG_ERROR("[Command] RunApproved: waitpid() failed: {}",
+              std::strerror(errno));
     return false;
   }
 
-  SPDLOG_TRACE("[Command] Execute: {}", cmd);
-
-  result.clear();
-  auto buf = std::make_unique<char[]>(1024);
-  while (fgets(buf.get(), 1024, fp) != nullptr) {
-    result.append(buf.get());
-  }
-  buf.reset();
-
-  SPDLOG_TRACE("[Command] Execute Result: [{}] {}", result.size(), result);
-
-  if (pclose(fp) == -1) {
-    spdlog::error("[ExecuteCommand] Failed to Close Pipe: ({}) {}", errno,
-                  strerror(errno));
+  if (!WIFEXITED(wstatus) || WEXITSTATUS(wstatus) != 0) {
+    LOG_ERROR("[Command] RunApproved: '{}' exited with status {}", argv[0],
+              WIFEXITED(wstatus) ? WEXITSTATUS(wstatus) : -1);
     return false;
   }
+
+  DLOG_TRACE("[Command] RunApproved: '{}' succeeded, {} byte(s)", argv[0],
+             result.size());
   return true;
 }

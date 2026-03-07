@@ -18,40 +18,45 @@
 
 #include <string>
 
+/**
+ * @brief Enumeration of every subprocess that waypp is permitted to run.
+ *
+ * Adding a new external process requires explicitly extending this enum
+ * *and* the corresponding argv table in command.cc.  No caller can pass an
+ * arbitrary string to the execution layer.
+ */
+enum class ApprovedCommand {
+  /// gsettings get org.gnome.desktop.interface cursor-theme
+  kGsettingsGetCursorTheme,
+};
+
+/**
+ * @class Command
+ *
+ * @brief Shell-free subprocess runner.
+ *
+ * Every execution path uses @c pipe(2) + @c fork(2) + @c execve(2) with a
+ * hard-coded, null-terminated argv array.  There is no shell intermediary,
+ * no string sanitisation step, and no caller-controlled argument.
+ *
+ * Usage:
+ * @code
+ *   std::string theme;
+ *   Command::RunApproved(ApprovedCommand::kGsettingsGetCursorTheme, theme);
+ * @endcode
+ */
 class Command {
  public:
   /**
-   * @brief Executes a command and captures its output.
+   * @brief Execute a pre-approved command and capture its stdout.
    *
-   * Sanitizes the input command, executes it using `popen`, and captures
-   * the output. Logs errors if the command execution or pipe closure fails.
+   * Forks a child, exec's the hard-coded argv for @p cmd (no shell), reads
+   * all output from the child's stdout into @p result, then reaps the child.
    *
-   * @param cmd The command to execute.
-   * @param result A string to store the command's output.
-   * @return True if the command executed successfully, false otherwise.
+   * @param cmd   Which pre-approved command to run.
+   * @param result  Receives the child's stdout, cleared on entry.
+   * @return @c true if the child exited with status 0 and stdout was captured;
+   *         @c false on fork/exec/wait failure or non-zero exit status.
    */
-  static bool Execute(const std::string& cmd, std::string& result);
-
- private:
-  /**
-   * @brief Checks if a character is safe to use in a command.
-   *
-   * A character is considered safe if it is alphanumeric, a space,
-   * an underscore, a hyphen, a forward slash, or a period.
-   *
-   * @param c The character to check.
-   * @return true if the character is safe, false otherwise.
-   */
-  static bool is_safe_char(char c);
-
-  /**
-   * @brief Sanitizes a command string by removing unsafe characters.
-   *
-   * Iterates through the input command string and appends only safe
-   * characters to the output string.
-   *
-   * @param cmd The command string to sanitize.
-   * @return A sanitized command string containing only safe characters.
-   */
-  static std::string sanitize_cmd(const std::string& cmd);
+  static bool RunApproved(ApprovedCommand cmd, std::string& result);
 };

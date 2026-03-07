@@ -600,8 +600,7 @@ void Pointer::set_cursor(uint32_t serial,
 
 std::string Pointer::get_cursor_theme() {
   std::string res;
-  Command::Execute("gsettings get org.gnome.desktop.interface cursor-theme",
-                   res);
+  Command::RunApproved(ApprovedCommand::kGsettingsGetCursorTheme, res);
   if (!res.empty()) {
     // clean up string
     std::string tmp = "\'\n";
@@ -636,7 +635,7 @@ std::vector<std::string> Pointer::get_available_cursors(
     return {};
   }
 
-  // Build the cursors directory path and enumerate it directly with
+  // Build the cursors directory path and list it directly with
   // opendir/readdir, avoiding any shell invocation.
   const std::string cursors_dir = "/usr/share/icons/" + theme + "/cursors";
 
