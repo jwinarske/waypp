@@ -26,6 +26,9 @@
 
 #include "shader_toy.h"
 
+#include <cstddef>
+#include <memory>
+
 #include "textures.h"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
@@ -213,7 +216,7 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
 
     for (uint32_t i = 0; i < IMAGE_TEXTURES; i++) {
       char txt[255] = {0};
-      sprintf(txt, "textures/%d.png", i + 1);
+      snprintf(txt, sizeof(txt), "textures/%d.png", i + 1);
 #ifdef USE_stb_image
       retval = init_texture_file(phy_dev, dev, essentials,
                                  &render_data->images[i], txt, USE_MIPMAPS);
@@ -260,9 +263,10 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
           .shader = VK_NULL_HANDLE,
       };
       if (i > 0) {
-        sprintf(txt[i / 2], "shaders/spv/buf%d.frag.spv", i / 2);
+        snprintf(txt[i / 2], sizeof(txt[i / 2]), "shaders/spv/buf%d.frag.spv",
+                 i / 2);
       } else {
-        sprintf(txt[i / 2], "shaders/spv/buf.frag.spv");
+        snprintf(txt[i / 2], sizeof(txt[i / 2]), "shaders/spv/buf.frag.spv");
       }
       render_data->shaders[i + 2 + 1] = (struct vk_shader){
           .spirv_file = txt[i / 2],
@@ -322,6 +326,10 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
 #endif
   render_data->main_gbuffers = static_cast<vk_graphics_buffers*>(
       malloc(essentials->image_count * sizeof *render_data->main_gbuffers));
+  if (!render_data->main_gbuffers) {
+    vk_error_set_vkresult(&retval, VK_ERROR_OUT_OF_HOST_MEMORY);
+    return retval;
+  }
   for (uint32_t i = 0; i < essentials->image_count; ++i) {
     render_data->main_gbuffers[i] = (struct vk_graphics_buffers){
         .surface_size = init_size,
@@ -337,6 +345,10 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
 #endif
     render_data->buf_obuffers = static_cast<vk_offscreen_buffers*>(
         malloc(2 * (sizeof(*render_data->buf_obuffers)) * OFFSCREEN_BUFFERS));
+    if (!render_data->buf_obuffers) {
+      vk_error_set_vkresult(&retval, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return retval;
+    }
     for (uint32_t i = 0; i < 2 * OFFSCREEN_BUFFERS; i++)
       render_data->buf_obuffers[i] = (struct vk_offscreen_buffers){
 #if defined(CUSTOM_BUF_SIZE) && defined(NO_RESIZE_BUF)
@@ -390,6 +402,10 @@ vk_error ShaderToy::allocate_render_data(vk_physical_device* phy_dev,
   image_pointer = static_cast<vk_image**>(
       malloc(1 * sizeof(vk_image*) *
              (IMAGE_TEXTURES + OFFSCREEN_BUFFERS + iKeyboard)));
+  if (!image_pointer) {
+    vk_error_set_vkresult(&retval, VK_ERROR_OUT_OF_HOST_MEMORY);
+    return retval;
+  }
   for (uint32_t i = 0; i < IMAGE_TEXTURES + OFFSCREEN_BUFFERS + iKeyboard;
        i++) {
     image_pointer[i] = &render_data->images[i];
@@ -1944,13 +1960,51 @@ vk_error ShaderToy::make_screenshot(vk_physical_device* phy_dev,
   VkImageSubresource subResource{};
   subResource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
-  VkSubresourceLayout subResourceLayout;
+  VkSubresourceLayout subResourceLayout{};
   d.vkGetImageSubresourceLayout(dev->device, dstImage.image, &subResource,
                                 &subResourceLayout);
 
-  uint8_t* data;
-  d.vkMapMemory(dev->device, dstImage.image_mem, 0, VK_WHOLE_SIZE, 0,
-                reinterpret_cast<void**>(&data));
+  // ── Compute output byte count with size_t arithmetic to prevent overflow.
+  // Doing the multiplication in uint32_t overflows at 4096×4096 (16 M pixels × 4
+  // bytes = 64 MiB > UINT32_MAX).  Promote to size_t before any multiplication.
+  const auto w = static_cast<std::size_t>(dstImage.extent.width);
+  const auto h = static_cast<std::size_t>(dstImage.extent.height);
+  const std::size_t byte_count = w * h * 4u;
+
+  // ── Validate rowPitch before mapping.
+  // subResourceLayout.size is the total byte size of the mapped subresource as
+  // reported by the driver.  If rowPitch × height would exceed that size the
+  // driver returned a nonsensical layout; bail out before touching any memory.
+  if (subResourceLayout.rowPitch == 0 ||
+      subResourceLayout.rowPitch >
+          (subResourceLayout.size / (h > 0u ? h : 1u))) {
+    vk_error_set_vkresult(&retval, VK_ERROR_INITIALIZATION_FAILED);
+    vk_error_printf(&retval,
+                    "screenshot: compositor returned invalid rowPitch "
+                    "(%zu) for subresource size %zu — aborting\n",
+                    static_cast<std::size_t>(subResourceLayout.rowPitch),
+                    static_cast<std::size_t>(subResourceLayout.size));
+    // Memory has NOT been mapped yet — do not call vkUnmapMemory here.
+    free_images(dev, &dstImage, 1);
+    return retval;
+  }
+
+  uint8_t* data = nullptr;
+  {
+    const VkResult map_res = d.vkMapMemory(
+        dev->device, dstImage.image_mem, 0, VK_WHOLE_SIZE, 0,
+        reinterpret_cast<void**>(&data));
+    if (map_res != VK_SUCCESS || !data) {
+      vk_error_set_vkresult(&retval, map_res != VK_SUCCESS
+                                         ? map_res
+                                         : VK_ERROR_INITIALIZATION_FAILED);
+      vk_error_printf(&retval,
+                      "screenshot: vkMapMemory failed (VkResult=%d)\n",
+                      static_cast<int>(map_res));
+      free_images(dev, &dstImage, 1);
+      return retval;
+    }
+  }
   data += subResourceLayout.offset;
 
   int color_order[3] = {0, 1, 2};
@@ -1962,28 +2016,29 @@ vk_error ShaderToy::make_screenshot(vk_physical_device* phy_dev,
     color_order[2] = 0;
   }
 
-  uint8_t* data_rgba;
-  data_rgba = static_cast<uint8_t*>(
-      malloc(4 * dstImage.extent.width * dstImage.extent.height));
-  for (uint32_t y = 0; y < dstImage.extent.height; y++) {
-    auto row = data;
-    for (uint32_t x = 0; x < dstImage.extent.width; x++) {
-      data_rgba[(x + y * dstImage.extent.width) * 4 + 0] =
-          row[x * 4 + static_cast<uint32_t>(color_order[0])];
-      data_rgba[(x + y * dstImage.extent.width) * 4 + 1] =
-          row[x * 4 + static_cast<uint32_t>(color_order[1])];
-      data_rgba[(x + y * dstImage.extent.width) * 4 + 2] =
-          row[x * 4 + static_cast<uint32_t>(color_order[2])];
-      data_rgba[(x + y * dstImage.extent.width) * 4 + 3] = row[x * 4 + 3];
+  // ── RAII output buffer — std::make_unique throws std::bad_alloc on OOM
+  // instead of silently returning nullptr, and is freed automatically on every
+  // exit path (return, throw, or future code additions) without a manual free.
+  auto data_rgba = std::make_unique<uint8_t[]>(byte_count);
+
+  for (std::size_t y = 0; y < h; y++) {
+    const uint8_t* row = data;
+    for (std::size_t x = 0; x < w; x++) {
+      const std::size_t dst = (x + y * w) * 4u;
+      const std::size_t src = x * 4u;
+      data_rgba[dst + 0] = row[src + static_cast<std::size_t>(color_order[0])];
+      data_rgba[dst + 1] = row[src + static_cast<std::size_t>(color_order[1])];
+      data_rgba[dst + 2] = row[src + static_cast<std::size_t>(color_order[2])];
+      data_rgba[dst + 3] = row[src + 3u];
     }
     data += subResourceLayout.rowPitch;
   }
 
-  write_bmp(dstImage.extent.width, dstImage.extent.height, data_rgba);
+  write_bmp(dstImage.extent.width, dstImage.extent.height, data_rgba.get());
 
   spdlog::info("screenshot done");
 
-  free(data_rgba);
+  // data_rgba freed automatically by unique_ptr destructor here.
   d.vkUnmapMemory(dev->device, dstImage.image_mem);
   free_images(dev, &dstImage, 1);
 
