@@ -22,7 +22,7 @@
 
 class XdgOutput {
  public:
-  XdgOutput(zxdg_output_manager_v1* zxdg_output_manager_v1,
+  XdgOutput(wl_proxy* zxdg_output_manager_v1,
             wl_output* wl_output);
 
   ~XdgOutput();
@@ -62,7 +62,7 @@ class XdgOutput {
 
  private:
 #if HAS_WAYLAND_PROTOCOL_XDG_OUTPUT_UNSTABLE_V1
-  struct zxdg_output_v1* zxdg_output_v1_;
+  wl_proxy* zxdg_output_v1_{};
 #endif
 
   struct {
@@ -97,7 +97,7 @@ class XdgOutput {
    * @param y y position within the global compositor space
    */
   static void handle_logical_position(void* data,
-                                      struct zxdg_output_v1* zxdg_output_v1,
+                                      wl_proxy* /*zxdg_output_v1*/,
                                       int32_t x,
                                       int32_t y);
 
@@ -141,7 +141,7 @@ class XdgOutput {
    * @param height height in global compositor space
    */
   static void handle_logical_size(void* data,
-                                  struct zxdg_output_v1* zxdg_output_v1,
+                                  wl_proxy* /*zxdg_output_v1*/,
                                   int32_t width,
                                   int32_t height);
 
@@ -158,7 +158,7 @@ class XdgOutput {
    * Compositors are not required to send it anymore and must send
    * wl_output.done instead.
    */
-  static void handle_done(void* data, struct zxdg_output_v1* zxdg_output_v1);
+  static void handle_done(void* data, wl_proxy* /*zxdg_output_v1*/);
 
   /**
    * name of this output
@@ -190,7 +190,7 @@ class XdgOutput {
    * @since 2
    */
   static void handle_name(void* data,
-                          struct zxdg_output_v1* zxdg_output_v1,
+                          wl_proxy* /*zxdg_output_v1*/,
                           const char* name);
 
   /**
@@ -220,14 +220,14 @@ class XdgOutput {
    * @since 2
    */
   static void handle_description(void* data,
-                                 struct zxdg_output_v1* zxdg_output_v1,
+                                 wl_proxy* /*zxdg_output_v1*/,
                                  const char* description);
 
-  static constexpr struct zxdg_output_v1_listener listener_ = {
-      .logical_position = handle_logical_position,
-      .logical_size = handle_logical_size,
-      .done = handle_done,
-      .name = handle_name,
-      .description = handle_description,
+  static const void* listener_[] = {
+      reinterpret_cast<const void*>(&handle_logical_position),
+      reinterpret_cast<const void*>(&handle_logical_size),
+      reinterpret_cast<const void*>(&handle_done),
+      reinterpret_cast<const void*>(&handle_name),
+      reinterpret_cast<const void*>(&handle_description),
   };
 };

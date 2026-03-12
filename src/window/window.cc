@@ -93,7 +93,11 @@ Window::Window(std::shared_ptr<WindowManager> wm,
 
   if (wm_->get_viewporter()) {
 #if HAS_WAYLAND_PROTOCOL_VIEWPORTER
-    viewport_ = wp_viewporter_get_viewport(wm_->get_viewporter(), wl_surface_);
+    viewport_ = wl_proxy_marshal_constructor(
+        wm_->get_viewporter(),
+        viewporter::client::wp_viewporter_traits::Op::GetViewport,
+        &viewporter::client::wp_viewport_traits::wl_iface(),
+        nullptr, (wl_proxy*)wl_surface_);
     if (!viewport_) {
       LOG_WARN("failed to get Wayland viewport");
     }
@@ -102,11 +106,16 @@ Window::Window(std::shared_ptr<WindowManager> wm,
 
 #if HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1
   if (wm_->get_fractional_scale_manager()) {
-    fractional_scale_ = wp_fractional_scale_manager_v1_get_fractional_scale(
-        wm_->get_fractional_scale_manager(), wl_surface_);
+    fractional_scale_ = wl_proxy_marshal_constructor(
+        wm_->get_fractional_scale_manager(),
+        fractional_scale_v1::client::wp_fractional_scale_manager_v1_traits::Op::GetFractionalScale,
+        &fractional_scale_v1::client::wp_fractional_scale_v1_traits::wl_iface(),
+        nullptr, (wl_proxy*)wl_surface_);
     if (fractional_scale_) {
-      wp_fractional_scale_v1_add_listener(fractional_scale_,
-                                          &fractional_scale_listener_, this);
+      wl_proxy_add_listener(fractional_scale_,
+                            reinterpret_cast<void(**)(void)>(
+                                const_cast<void**>(fractional_scale_listener_)),
+                            this);
     } else {
       LOG_WARN("failed to get Wayland fractional scale");
     }
@@ -115,17 +124,22 @@ Window::Window(std::shared_ptr<WindowManager> wm,
 
 #if HAS_WAYLAND_PROTOCOL_TEARING_CONTROL_V1
   if (wm_->get_tearing_control_manager()) {
-    tearing_control_ = wp_tearing_control_manager_v1_get_tearing_control(
-        wm_->get_tearing_control_manager(), wl_surface_);
+    tearing_control_ = wl_proxy_marshal_constructor(
+        wm_->get_tearing_control_manager(),
+        tearing_control_v1::client::wp_tearing_control_manager_v1_traits::Op::GetTearingControl,
+        &tearing_control_v1::client::wp_tearing_control_v1_traits::wl_iface(),
+        nullptr, (wl_proxy*)wl_surface_);
     if (tearing_control_) {
       if (tearing) {
         DLOG_DEBUG("[Surface] Set Presentation Hint: ASYNC");
-        wp_tearing_control_v1_set_presentation_hint(
-            tearing_control_, WP_TEARING_CONTROL_V1_PRESENTATION_HINT_ASYNC);
+        wl_proxy_marshal(tearing_control_,
+                         tearing_control_v1::client::wp_tearing_control_v1_traits::Op::SetPresentationHint,
+                         static_cast<uint32_t>(tearing_control_v1::client::WpTearingControlV1PresentationHint::Async));
       } else {
         DLOG_DEBUG("[Surface] Set Presentation Hint: VSYNC");
-        wp_tearing_control_v1_set_presentation_hint(
-            tearing_control_, WP_TEARING_CONTROL_V1_PRESENTATION_HINT_VSYNC);
+        wl_proxy_marshal(tearing_control_,
+                         tearing_control_v1::client::wp_tearing_control_v1_traits::Op::SetPresentationHint,
+                         static_cast<uint32_t>(tearing_control_v1::client::WpTearingControlV1PresentationHint::Vsync));
       }
     } else {
       LOG_WARN("failed to get Wayland tearing control");
@@ -139,14 +153,14 @@ Window::Window(std::shared_ptr<WindowManager> wm,
 Window::~Window() {
   if (viewport_) {
 #if HAS_WAYLAND_PROTOCOL_VIEWPORTER
-    DLOG_TRACE("[Window] wp_viewport_destroy(viewport_)");
-    wp_viewport_destroy(viewport_);
+    DLOG_TRACE("[Window] wl_proxy_destroy(viewport_)");
+    wl_proxy_destroy(viewport_);
 #endif
   }
   if (fractional_scale_) {
 #if HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1
-    DLOG_TRACE("[Window] wp_fractional_scale_v1_destroy(fractional_scale_)");
-    wp_fractional_scale_v1_destroy(fractional_scale_);
+    DLOG_TRACE("[Window] wl_proxy_destroy(fractional_scale_)");
+    wl_proxy_destroy(fractional_scale_);
 #endif
   }
   if (wl_callback_) {
@@ -257,8 +271,10 @@ void Window::update_buffer_geometry() {
 
   if (fractional_buffer_scale_ > 0.0) {
     if (viewport_) {
-      wp_viewport_set_destination(viewport_, new_viewport_dest_size.width,
-                                  new_viewport_dest_size.height);
+      wl_proxy_marshal(viewport_,
+                       viewporter::client::wp_viewport_traits::Op::SetDestination,
+                       new_viewport_dest_size.width,
+                       new_viewport_dest_size.height);
     }
   }
 
@@ -272,13 +288,10 @@ void Window::update_buffer_geometry() {
 
 void Window::handle_preferred_scale(
     void* data,
-    wp_fractional_scale_v1* wp_fractional_scale_v1,
+    wl_proxy* /*wp_fractional_scale_v1*/,
     const uint32_t scale) {
   LOG_TRACE("[Window] handle_preferred_scale()");
   auto* w = static_cast<Window*>(data);
-  if (w->fractional_scale_ != wp_fractional_scale_v1) {
-    return;
-  }
   w->fractional_buffer_scale_ = static_cast<double>(scale) / 120;
   w->needs_buffer_geometry_update_ = true;
 }

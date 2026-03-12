@@ -40,82 +40,89 @@ Registrar::Registrar(wl_display* wl_display,
       {wl_shm_interface.name, handle_interface_shm},
       {wl_seat_interface.name, handle_interface_seat},
       {wl_output_interface.name, handle_interface_output},
-      {weston_capture_v1_interface.name, handle_interface_weston_capture_v1}
+      {weston_output_capture::client::weston_capture_v1_traits::interface_name.data(),
+       handle_interface_weston_capture_v1}
 #if ENABLE_XDG_CLIENT
       ,
-      {xdg_wm_base_interface.name, handle_interface_xdg_wm_base}
+      {xdg_shell::client::xdg_wm_base_traits::interface_name.data(),
+       handle_interface_xdg_wm_base}
 #endif
 #if ENABLE_AGL_SHELL_CLIENT
       ,
-      {agl_shell_interface.name, handle_interface_agl_shell}
+      {agl_shell::client::agl_shell_traits::interface_name.data(),
+       handle_interface_agl_shell}
 #endif
 #if ENABLE_IVI_SHELL_CLIENT
       ,
-      {ivi_application_interface.name, handle_interface_ivi_application},
-      {ivi_wm_interface.name, handle_interface_ivi_wm}
+      {ivi_application::client::ivi_application_traits::interface_name.data(),
+       handle_interface_ivi_application},
+      {ivi_wm::client::ivi_wm_traits::interface_name.data(), handle_interface_ivi_wm}
 #endif
 #if HAS_WAYLAND_PROTOCOL_XDG_DECORATION_UNSTABLE_V1
       ,
-      {zxdg_decoration_manager_v1_interface.name,
+      {xdg_decoration_unstable_v1::client::zxdg_decoration_manager_v1_traits::interface_name.data(),
        handle_interface_zxdg_decoration}
 #endif
 #if HAS_WAYLAND_PROTOCOL_PRESENTATION_TIME
       ,
-      {wp_presentation_interface.name, handle_interface_presentation}
+      {presentation_time::client::wp_presentation_traits::interface_name.data(),
+       handle_interface_presentation}
 #endif
 #if HAS_WAYLAND_PROTOCOL_TEARING_CONTROL_V1
       ,
-      {wp_tearing_control_manager_v1_interface.name,
+      {tearing_control_v1::client::wp_tearing_control_manager_v1_traits::interface_name.data(),
        handle_interface_tearing_control_manager}
 #endif
 #if HAS_WAYLAND_PROTOCOL_VIEWPORTER
       ,
-      {wp_viewporter_interface.name, handle_interface_viewporter}
+      {viewporter::client::wp_viewporter_traits::interface_name.data(),
+       handle_interface_viewporter}
 #endif
 #if HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1
       ,
-      {wp_fractional_scale_manager_v1_interface.name,
+      {fractional_scale_v1::client::wp_fractional_scale_manager_v1_traits::interface_name.data(),
        handle_interface_fractional_scale_manager}
 #endif
 #if HAS_WAYLAND_PROTOCOL_XDG_OUTPUT_UNSTABLE_V1
       ,
-      {zxdg_output_manager_v1_interface.name,
+      {xdg_output_unstable_v1::client::zxdg_output_manager_v1_traits::interface_name.data(),
        handle_interface_xdg_output_unstable_v1}
 #endif
 #if HAS_WAYLAND_PROTOCOL_IDLE_INHIBIT_UNSTABLE_V1
       ,
-      {zwp_idle_inhibit_manager_v1_interface.name,
+      {idle_inhibit_unstable_v1::client::zwp_idle_inhibit_manager_v1_traits::interface_name.data(),
        handle_interface_zwp_idle_inhibit_manager_v1}
 #endif
 #if HAS_WAYLAND_PROTOCOL_XDG_ACTIVATION_V1
       ,
-      {xdg_activation_v1_interface.name, handle_interface_xdg_activation_v1}
+      {xdg_activation_v1::client::xdg_activation_v1_traits::interface_name.data(),
+       handle_interface_xdg_activation_v1}
 #endif
 #if HAS_WAYLAND_PROTOCOL_POINTER_GESTURES_UNSTABLE_V1
       ,
-      {zwp_pointer_gestures_v1_interface.name,
+      {pointer_gestures_unstable_v1::client::zwp_pointer_gestures_v1_traits::interface_name.data(),
        handle_interface_zwp_pointer_gestures_v1}
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_POINTER_CONSTRAINTS_UNSTABLE_V1
       ,
-      {zwp_pointer_constraints_v1_interface.name,
+      {pointer_constraints_unstable_v1::client::zwp_pointer_constraints_v1_traits::interface_name.data(),
        handle_interface_zwp_pointer_constraints_v1}
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_RELATIVE_POINTER_UNSTABLE_V1
       ,
-      {zwp_relative_pointer_manager_v1_interface.name,
+      {relative_pointer_unstable_v1::client::zwp_relative_pointer_manager_v1_traits::interface_name.data(),
        handle_interface_zwp_relative_pointer_manager_v1}
 #endif
 #if HAS_WAYLAND_PROTOCOL_PRIMARY_SELECTION_UNSTABLE_V1
       ,
-      {zwp_primary_selection_device_manager_v1_interface.name,
+      {wp_primary_selection_unstable_v1::client::zwp_primary_selection_device_manager_v1_traits::interface_name.data(),
        handle_interface_zwp_primary_selection_device_manager_v1}
 #endif
 #if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
       ,
-      {wp_cursor_shape_manager_v1_interface.name,
+      {cursor_shape_v1::client::wp_cursor_shape_manager_v1_traits::interface_name.data(),
        handle_interface_cursor_shape_manager}
 #endif
   };
@@ -160,115 +167,92 @@ Registrar::~Registrar() {
 
 #if ENABLE_AGL_SHELL_CLIENT
   if (agl_shell_) {
-    LOG_TRACE("[Registrar] agl_shell_destroy(agl_shell_)");
-    agl_shell_destroy(agl_shell_);
+    LOG_TRACE("[Registrar] wl_proxy_destroy(agl_shell_)");
+    wl_proxy_destroy(agl_shell_);
   }
 #endif
 
 #if ENABLE_IVI_SHELL_CLIENT
   if (ivi_wm_) {
-    LOG_TRACE("[Registrar] ivi_wm_destroy(ivi_wm_)");
-    ivi_wm_destroy(ivi_wm_);
+    LOG_TRACE("[Registrar] wl_proxy_destroy(ivi_wm_)");
+    wl_proxy_destroy(ivi_wm_);
   }
   if (ivi_application_) {
-    LOG_TRACE("[Registrar] ivi_application_destroy(ivi_application_)");
-    ivi_application_destroy(ivi_application_);
+    LOG_TRACE("[Registrar] wl_proxy_destroy(ivi_application_)");
+    wl_proxy_destroy(ivi_application_);
   }
 #endif
 
 #if ENABLE_XDG_CLIENT
   if (xdg_wm_base_) {
-    LOG_TRACE("[Registrar] xdg_wm_base_destroy(xdg_wm_base_)");
-    xdg_wm_base_destroy(xdg_wm_base_);
+    LOG_TRACE("[Registrar] wl_proxy_destroy(xdg_wm_base_)");
+    wl_proxy_destroy(xdg_wm_base_);
   }
 #endif
 
   if (presentation_time_.wp_presentation) {
-    LOG_TRACE(
-        "[Registrar] "
-        "wp_presentation_destroy(presentation_time_.wp_presentation)");
-    wp_presentation_destroy(presentation_time_.wp_presentation);
+    LOG_TRACE("[Registrar] wl_proxy_destroy(presentation_time_.wp_presentation)");
+    wl_proxy_destroy(presentation_time_.wp_presentation);
   }
 
 #if HAS_WAYLAND_PROTOCOL_XDG_DECORATION_UNSTABLE_V1
   if (zxdg_decoration_manager_v1_) {
-    LOG_TRACE(
-        "[Registrar] "
-        "zxdg_decoration_manager_v1_destroy(zxdg_decoration_manager_v1_)");
-    zxdg_decoration_manager_v1_destroy(zxdg_decoration_manager_v1_);
+    LOG_TRACE("[Registrar] wl_proxy_destroy(zxdg_decoration_manager_v1_)");
+    wl_proxy_destroy(zxdg_decoration_manager_v1_);
   }
 #endif
 #if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
   if (wp_cursor_shape_manager_) {
-    LOG_TRACE(
-        "[Registrar] "
-        "wp_cursor_shape_manager_v1_destroy(wp_cursor_shape_manager_)");
-    wp_cursor_shape_manager_v1_destroy(wp_cursor_shape_manager_);
+    LOG_TRACE("[Registrar] wl_proxy_destroy(wp_cursor_shape_manager_)");
+    wl_proxy_destroy(wp_cursor_shape_manager_);
   }
 #endif
 #if HAS_WAYLAND_PROTOCOL_TEARING_CONTROL_V1
   if (wp_tearing_control_manager_) {
-    LOG_TRACE(
-        "[Registrar] "
-        "wp_tearing_control_manager_v1_destroy(wp_tearing_control_manager_)");
-    wp_tearing_control_manager_v1_destroy(wp_tearing_control_manager_);
+    LOG_TRACE("[Registrar] wl_proxy_destroy(wp_tearing_control_manager_)");
+    wl_proxy_destroy(wp_tearing_control_manager_);
   }
 #endif
 #if HAS_WAYLAND_PROTOCOL_VIEWPORTER
   if (wp_viewporter_) {
-    LOG_TRACE("[Registrar] wp_viewporter_destroy(wp_viewporter_)");
-    wp_viewporter_destroy(wp_viewporter_);
+    LOG_TRACE("[Registrar] wl_proxy_destroy(wp_viewporter_)");
+    wl_proxy_destroy(wp_viewporter_);
   }
 #endif
 #if HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1
   if (fractional_scale_manager_) {
-    LOG_TRACE(
-        "[Registrar] "
-        "wp_fractional_scale_manager_v1_destroy(fractional_scale_manager_)");
-    wp_fractional_scale_manager_v1_destroy(fractional_scale_manager_);
+    LOG_TRACE("[Registrar] wl_proxy_destroy(fractional_scale_manager_)");
+    wl_proxy_destroy(fractional_scale_manager_);
   }
 #endif
 #if HAS_WAYLAND_PROTOCOL_IDLE_INHIBIT_UNSTABLE_V1
   if (zwp_idle_inhibit_manager_v1_) {
-    LOG_TRACE(
-        "[Registrar] "
-        "zwp_idle_inhibit_manager_v1_destroy(zwp_idle_inhibit_manager_v1_)");
-    zwp_idle_inhibit_manager_v1_destroy(zwp_idle_inhibit_manager_v1_);
+    LOG_TRACE("[Registrar] wl_proxy_destroy(zwp_idle_inhibit_manager_v1_)");
+    wl_proxy_destroy(zwp_idle_inhibit_manager_v1_);
   }
 #endif
 #if HAS_WAYLAND_PROTOCOL_POINTER_GESTURES_UNSTABLE_V1
   if (zwp_pointer_gestures_v1_) {
-    LOG_TRACE(
-        "[Registrar] "
-        "zwp_pointer_gestures_v1_destroy(zwp_pointer_gestures_v1_)");
-    zwp_pointer_gestures_v1_destroy(zwp_pointer_gestures_v1_);
+    LOG_TRACE("[Registrar] wl_proxy_destroy(zwp_pointer_gestures_v1_)");
+    wl_proxy_destroy(zwp_pointer_gestures_v1_);
   }
 #endif
 #if HAS_WAYLAND_PROTOCOL_POINTER_CONSTRAINTS_UNSTABLE_V1
   if (zwp_pointer_constraints_v1_) {
-    LOG_TRACE(
-        "[Registrar] "
-        "zwp_pointer_constraints_v1_destroy(zwp_pointer_constraints_v1_)");
-    zwp_pointer_constraints_v1_destroy(zwp_pointer_constraints_v1_);
+    LOG_TRACE("[Registrar] wl_proxy_destroy(zwp_pointer_constraints_v1_)");
+    wl_proxy_destroy(zwp_pointer_constraints_v1_);
   }
 #endif
 #if HAS_WAYLAND_PROTOCOL_RELATIVE_POINTER_UNSTABLE_V1
   if (zwp_relative_pointer_manager_v1_) {
-    LOG_TRACE(
-        "[Registrar] "
-        "zwp_relative_pointer_manager_v1_destroy(zwp_relative_pointer_manager_"
-        "v1_)");
-    zwp_relative_pointer_manager_v1_destroy(zwp_relative_pointer_manager_v1_);
+    LOG_TRACE("[Registrar] wl_proxy_destroy(zwp_relative_pointer_manager_v1_)");
+    wl_proxy_destroy(zwp_relative_pointer_manager_v1_);
   }
 #endif
 #if HAS_WAYLAND_PROTOCOL_PRIMARY_SELECTION_UNSTABLE_V1
   if (zwp_primary_selection_device_manager_v1_) {
-    LOG_TRACE(
-        "[Registrar] "
-        "zwp_primary_selection_device_manager_v1_destroy(zwp_primary_selection_"
-        "device_manager_v1_)");
-    zwp_primary_selection_device_manager_v1_destroy(
-        zwp_primary_selection_device_manager_v1_);
+    LOG_TRACE("[Registrar] wl_proxy_destroy(zwp_primary_selection_device_manager_v1_)");
+    wl_proxy_destroy(zwp_primary_selection_device_manager_v1_);
   }
 #endif
 
@@ -679,10 +663,11 @@ void Registrar::handle_interface_xdg_wm_base(Registrar* r,
                                              const uint32_t name,
                                              const char* interface,
                                              const uint32_t version) {
-  r->xdg_wm_base_ = static_cast<xdg_wm_base*>(
-      wl_registry_bind(registry, name, &xdg_wm_base_interface,
+  r->xdg_wm_base_ = static_cast<wl_proxy*>(
+      wl_registry_bind(registry, name,
+                       &xdg_shell::client::xdg_wm_base_traits::wl_iface(),
                        std::min(kXdgWmBaseMinVersion, version)));
-  LOG_DEBUG("{}: {}", interface, xdg_wm_base_get_version(r->xdg_wm_base_));
+  LOG_DEBUG("{}: {}", interface, wl_proxy_get_version(r->xdg_wm_base_));
 }
 
 #endif
@@ -694,10 +679,11 @@ void Registrar::handle_interface_agl_shell(Registrar* r,
                                            const uint32_t name,
                                            const char* interface,
                                            const uint32_t version) {
-  r->agl_shell_ = static_cast<agl_shell*>(
-      wl_registry_bind(registry, name, &agl_shell_interface,
+  r->agl_shell_ = static_cast<wl_proxy*>(
+      wl_registry_bind(registry, name,
+                       &agl_shell::client::agl_shell_traits::wl_iface(),
                        std::min(kAglShellMinVersion, version)));
-  LOG_DEBUG("{}: {}", interface, agl_shell_get_version(r->agl_shell_));
+  LOG_DEBUG("{}: {}", interface, wl_proxy_get_version(r->agl_shell_));
 }
 
 #endif
@@ -709,11 +695,11 @@ void Registrar::handle_interface_ivi_application(Registrar* r,
                                                  const uint32_t name,
                                                  const char* interface,
                                                  const uint32_t version) {
-  r->ivi_application_ = static_cast<ivi_application*>(
-      wl_registry_bind(registry, name, &ivi_application_interface,
+  r->ivi_application_ = static_cast<wl_proxy*>(
+      wl_registry_bind(registry, name,
+                       &ivi_application::client::ivi_application_traits::wl_iface(),
                        std::min(kIviApplicationMinVersion, version)));
-  LOG_DEBUG("{}: {}", interface,
-            ivi_application_get_version(r->ivi_application_));
+  LOG_DEBUG("{}: {}", interface, wl_proxy_get_version(r->ivi_application_));
 }
 
 void Registrar::handle_interface_ivi_wm(Registrar* r,
@@ -721,9 +707,11 @@ void Registrar::handle_interface_ivi_wm(Registrar* r,
                                         const uint32_t name,
                                         const char* interface,
                                         const uint32_t version) {
-  r->ivi_wm_ = static_cast<ivi_wm*>(wl_registry_bind(
-      registry, name, &ivi_wm_interface, std::min(kIviWmMinVersion, version)));
-  LOG_DEBUG("{}: {}", interface, ivi_wm_get_version(r->ivi_wm_));
+  r->ivi_wm_ = static_cast<wl_proxy*>(
+      wl_registry_bind(registry, name,
+                       &ivi_wm::client::ivi_wm_traits::wl_iface(),
+                       std::min(kIviWmMinVersion, version)));
+  LOG_DEBUG("{}: {}", interface, wl_proxy_get_version(r->ivi_wm_));
 }
 
 #endif
@@ -735,12 +723,12 @@ void Registrar::handle_interface_zxdg_decoration(Registrar* r,
                                                  const uint32_t name,
                                                  const char* interface,
                                                  const uint32_t version) {
-  r->zxdg_decoration_manager_v1_ = static_cast<zxdg_decoration_manager_v1*>(
-      wl_registry_bind(registry, name, &zxdg_decoration_manager_v1_interface,
+  r->zxdg_decoration_manager_v1_ = static_cast<wl_proxy*>(
+      wl_registry_bind(registry, name,
+                       &xdg_decoration_unstable_v1::client::zxdg_decoration_manager_v1_traits::wl_iface(),
                        std::min(kXdgDecorationManagerMinVersion, version)));
-  LOG_DEBUG(
-      "{}: {}", interface,
-      zxdg_decoration_manager_v1_get_version(r->zxdg_decoration_manager_v1_));
+  LOG_DEBUG("{}: {}", interface,
+            wl_proxy_get_version(r->zxdg_decoration_manager_v1_));
 }
 
 #endif
@@ -753,11 +741,12 @@ void Registrar::handle_interface_xdg_output_unstable_v1(
     const uint32_t name,
     const char* interface,
     const uint32_t version) {
-  r->zxdg_output_manager_v1_ = static_cast<zxdg_output_manager_v1*>(
-      wl_registry_bind(registry, name, &zxdg_output_manager_v1_interface,
+  r->zxdg_output_manager_v1_ = static_cast<wl_proxy*>(
+      wl_registry_bind(registry, name,
+                       &xdg_output_unstable_v1::client::zxdg_output_manager_v1_traits::wl_iface(),
                        std::min(kXdgOutputManagerMinVersion, version)));
   LOG_DEBUG("{}: {}", interface,
-            zxdg_output_manager_v1_get_version(r->zxdg_output_manager_v1_));
+            wl_proxy_get_version(r->zxdg_output_manager_v1_));
 }
 
 #endif
@@ -767,11 +756,12 @@ void Registrar::handle_interface_weston_capture_v1(Registrar* r,
                                                    const uint32_t name,
                                                    const char* interface,
                                                    const uint32_t version) {
-  r->weston_capture_v1_ = static_cast<weston_capture_v1*>(
-      wl_registry_bind(registry, name, &weston_capture_v1_interface,
+  r->weston_capture_v1_ = static_cast<wl_proxy*>(
+      wl_registry_bind(registry, name,
+                       &weston_output_capture::client::weston_capture_v1_traits::wl_iface(),
                        std::min(kWestonCaptureV1MinVersion, version)));
   LOG_DEBUG("{}: {}", interface,
-            weston_capture_v1_get_version(r->weston_capture_v1_));
+            wl_proxy_get_version(r->weston_capture_v1_));
 }
 
 #if HAS_WAYLAND_PROTOCOL_IDLE_INHIBIT_UNSTABLE_V1
@@ -782,12 +772,12 @@ void Registrar::handle_interface_zwp_idle_inhibit_manager_v1(
     const uint32_t name,
     const char* interface,
     const uint32_t version) {
-  r->zwp_idle_inhibit_manager_v1_ = static_cast<zwp_idle_inhibit_manager_v1*>(
-      wl_registry_bind(registry, name, &zwp_idle_inhibit_manager_v1_interface,
+  r->zwp_idle_inhibit_manager_v1_ = static_cast<wl_proxy*>(
+      wl_registry_bind(registry, name,
+                       &idle_inhibit_unstable_v1::client::zwp_idle_inhibit_manager_v1_traits::wl_iface(),
                        std::min(kIdleInhibitManagerV1MinVersion, version)));
-  LOG_DEBUG(
-      "{}: {}", interface,
-      zwp_idle_inhibit_manager_v1_get_version(r->zwp_idle_inhibit_manager_v1_));
+  LOG_DEBUG("{}: {}", interface,
+            wl_proxy_get_version(r->zwp_idle_inhibit_manager_v1_));
 }
 
 #endif
@@ -799,22 +789,20 @@ void Registrar::handle_interface_xdg_activation_v1(Registrar* r,
                                                    uint32_t name,
                                                    const char* interface,
                                                    uint32_t version) {
-  r->xdg_activation_v1_ = static_cast<struct xdg_activation_v1*>(
-      wl_registry_bind(registry, name, &xdg_activation_v1_interface,
+  r->xdg_activation_v1_ = static_cast<wl_proxy*>(
+      wl_registry_bind(registry, name,
+                       &xdg_activation_v1::client::xdg_activation_v1_traits::wl_iface(),
                        std::min(kXdgActivationV1MinVersion, version)));
   LOG_DEBUG("{}: {}", interface,
-            xdg_activation_v1_get_version(r->xdg_activation_v1_));
+            wl_proxy_get_version(r->xdg_activation_v1_));
 }
 
 #endif
 
 void Registrar::handle_presentation_clock_id(void* data,
-                                             wp_presentation* wp_presentation,
+                                             wl_proxy* /*wp_presentation*/,
                                              const uint32_t clk_id) {
   const auto r = static_cast<Registrar*>(data);
-  if (r->presentation_time_.wp_presentation != wp_presentation) {
-    return;
-  }
   r->presentation_time_.clk_id = static_cast<clockid_t>(clk_id);
 }
 
@@ -823,13 +811,16 @@ void Registrar::handle_interface_presentation(Registrar* r,
                                               const uint32_t name,
                                               const char* interface,
                                               const uint32_t version) {
-  r->presentation_time_.wp_presentation = static_cast<wp_presentation*>(
-      wl_registry_bind(registry, name, &wp_presentation_interface,
+  r->presentation_time_.wp_presentation = static_cast<wl_proxy*>(
+      wl_registry_bind(registry, name,
+                       &presentation_time::client::wp_presentation_traits::wl_iface(),
                        std::min(kPresentationTimeMinVersion, version)));
-  wp_presentation_add_listener(r->presentation_time_.wp_presentation,
-                               &presentation_listener_, r);
+  wl_proxy_add_listener(r->presentation_time_.wp_presentation,
+                        reinterpret_cast<void(**)(void)>(
+                            const_cast<void**>(presentation_listener_)),
+                        r);
   LOG_DEBUG("{}: {}", interface,
-            wp_presentation_get_version(r->presentation_time_.wp_presentation));
+            wl_proxy_get_version(r->presentation_time_.wp_presentation));
 }
 
 std::optional<Seat*> Registrar::get_seat(wl_seat* seat) const {
@@ -854,13 +845,12 @@ void Registrar::handle_interface_tearing_control_manager(
     uint32_t name,
     const char* interface,
     uint32_t version) {
-  r->wp_tearing_control_manager_ =
-      static_cast<struct wp_tearing_control_manager_v1*>(wl_registry_bind(
-          registry, name, &wp_tearing_control_manager_v1_interface,
-          std::min(kTearingControlManagerMinVersion, version)));
+  r->wp_tearing_control_manager_ = static_cast<wl_proxy*>(
+      wl_registry_bind(registry, name,
+                       &tearing_control_v1::client::wp_tearing_control_manager_v1_traits::wl_iface(),
+                       std::min(kTearingControlManagerMinVersion, version)));
   LOG_DEBUG("{}: {}", interface,
-            wp_tearing_control_manager_v1_get_version(
-                r->wp_tearing_control_manager_));
+            wl_proxy_get_version(r->wp_tearing_control_manager_));
 }
 
 #endif
@@ -872,10 +862,11 @@ void Registrar::handle_interface_viewporter(Registrar* r,
                                             const uint32_t name,
                                             const char* interface,
                                             const uint32_t version) {
-  r->wp_viewporter_ = static_cast<wp_viewporter*>(
-      wl_registry_bind(registry, name, &wp_viewporter_interface,
+  r->wp_viewporter_ = static_cast<wl_proxy*>(
+      wl_registry_bind(registry, name,
+                       &viewporter::client::wp_viewporter_traits::wl_iface(),
                        std::min(kViewporterMinVersion, version)));
-  LOG_DEBUG("{}: {}", interface, wp_viewporter_get_version(r->wp_viewporter_));
+  LOG_DEBUG("{}: {}", interface, wl_proxy_get_version(r->wp_viewporter_));
 }
 
 #endif
@@ -888,13 +879,12 @@ void Registrar::handle_interface_fractional_scale_manager(
     uint32_t name,
     const char* interface,
     uint32_t version) {
-  r->fractional_scale_manager_ =
-      static_cast<struct wp_fractional_scale_manager_v1*>(wl_registry_bind(
-          registry, name, &wp_fractional_scale_manager_v1_interface,
-          std::min(kFractionalScaleManagerMinVersion, version)));
-  LOG_DEBUG(
-      "{}: {}", interface,
-      wp_fractional_scale_manager_v1_get_version(r->fractional_scale_manager_));
+  r->fractional_scale_manager_ = static_cast<wl_proxy*>(
+      wl_registry_bind(registry, name,
+                       &fractional_scale_v1::client::wp_fractional_scale_manager_v1_traits::wl_iface(),
+                       std::min(kFractionalScaleManagerMinVersion, version)));
+  LOG_DEBUG("{}: {}", interface,
+            wl_proxy_get_version(r->fractional_scale_manager_));
 }
 
 #endif
@@ -907,11 +897,12 @@ void Registrar::handle_interface_zwp_pointer_gestures_v1(
     const uint32_t name,
     const char* interface,
     const uint32_t version) {
-  r->zwp_pointer_gestures_v1_ = static_cast<zwp_pointer_gestures_v1*>(
-      wl_registry_bind(registry, name, &zwp_pointer_gestures_v1_interface,
+  r->zwp_pointer_gestures_v1_ = static_cast<wl_proxy*>(
+      wl_registry_bind(registry, name,
+                       &pointer_gestures_unstable_v1::client::zwp_pointer_gestures_v1_traits::wl_iface(),
                        std::min(kPointerGesturesV1MinVersion, version)));
   LOG_DEBUG("{}: {}", interface,
-            zwp_pointer_gestures_v1_get_version(r->zwp_pointer_gestures_v1_));
+            wl_proxy_get_version(r->zwp_pointer_gestures_v1_));
 }
 
 #endif
@@ -924,12 +915,12 @@ void Registrar::handle_interface_zwp_pointer_constraints_v1(
     const uint32_t name,
     const char* interface,
     const uint32_t version) {
-  r->zwp_pointer_constraints_v1_ = static_cast<zwp_pointer_constraints_v1*>(
-      wl_registry_bind(registry, name, &zwp_pointer_constraints_v1_interface,
+  r->zwp_pointer_constraints_v1_ = static_cast<wl_proxy*>(
+      wl_registry_bind(registry, name,
+                       &pointer_constraints_unstable_v1::client::zwp_pointer_constraints_v1_traits::wl_iface(),
                        std::min(kPointerConstraintsV1MinVersion, version)));
-  LOG_DEBUG(
-      "{}: {}", interface,
-      zwp_pointer_constraints_v1_get_version(r->zwp_pointer_constraints_v1_));
+  LOG_DEBUG("{}: {}", interface,
+            wl_proxy_get_version(r->zwp_pointer_constraints_v1_));
 }
 
 #endif
@@ -942,13 +933,12 @@ void Registrar::handle_interface_zwp_relative_pointer_manager_v1(
     const uint32_t name,
     const char* interface,
     const uint32_t version) {
-  r->zwp_relative_pointer_manager_v1_ =
-      static_cast<zwp_relative_pointer_manager_v1*>(wl_registry_bind(
-          registry, name, &zwp_relative_pointer_manager_v1_interface,
-          std::min(kRelativePointerManagerV1MinVersion, version)));
+  r->zwp_relative_pointer_manager_v1_ = static_cast<wl_proxy*>(
+      wl_registry_bind(registry, name,
+                       &relative_pointer_unstable_v1::client::zwp_relative_pointer_manager_v1_traits::wl_iface(),
+                       std::min(kRelativePointerManagerV1MinVersion, version)));
   LOG_DEBUG("{}: {}", interface,
-            zwp_relative_pointer_manager_v1_get_version(
-                r->zwp_relative_pointer_manager_v1_));
+            wl_proxy_get_version(r->zwp_relative_pointer_manager_v1_));
 }
 
 #endif
@@ -961,13 +951,12 @@ void Registrar::handle_interface_zwp_primary_selection_device_manager_v1(
     const uint32_t name,
     const char* interface,
     const uint32_t version) {
-  r->zwp_primary_selection_device_manager_v1_ =
-      static_cast<zwp_primary_selection_device_manager_v1*>(wl_registry_bind(
-          registry, name, &zwp_primary_selection_device_manager_v1_interface,
-          std::min(kPrimarySelectionDeviceManagerV1MinVersion, version)));
+  r->zwp_primary_selection_device_manager_v1_ = static_cast<wl_proxy*>(
+      wl_registry_bind(registry, name,
+                       &wp_primary_selection_unstable_v1::client::zwp_primary_selection_device_manager_v1_traits::wl_iface(),
+                       std::min(kPrimarySelectionDeviceManagerV1MinVersion, version)));
   LOG_DEBUG("{}: {}", interface,
-            zwp_primary_selection_device_manager_v1_get_version(
-                r->zwp_primary_selection_device_manager_v1_));
+            wl_proxy_get_version(r->zwp_primary_selection_device_manager_v1_));
 }
 
 #endif
@@ -979,12 +968,12 @@ void Registrar::handle_interface_cursor_shape_manager(Registrar* r,
                                                       const uint32_t name,
                                                       const char* interface,
                                                       const uint32_t version) {
-  r->wp_cursor_shape_manager_ = static_cast<wp_cursor_shape_manager_v1*>(
-      wl_registry_bind(registry, name, &wp_cursor_shape_manager_v1_interface,
+  r->wp_cursor_shape_manager_ = static_cast<wl_proxy*>(
+      wl_registry_bind(registry, name,
+                       &cursor_shape_v1::client::wp_cursor_shape_manager_v1_traits::wl_iface(),
                        std::min(kCursorShapeManagerMinVersion, version)));
-  LOG_DEBUG(
-      "{}: {}", interface,
-      wp_cursor_shape_manager_v1_get_version(r->wp_cursor_shape_manager_));
+  LOG_DEBUG("{}: {}", interface,
+            wl_proxy_get_version(r->wp_cursor_shape_manager_));
 
   // Forward to any seats that were registered before this global appeared.
   for (auto& [wl_seat, seat] : r->seats_) {

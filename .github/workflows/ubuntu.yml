@@ -27,9 +27,21 @@ jobs:
           echo ${{ github.server_url }}
           sudo apt-get -y install ninja-build libglib2.0-dev \
           libwayland-dev wayland-protocols libxkbcommon-dev \
-          mesa-common-dev libegl1-mesa-dev libgles2-mesa-dev mesa-utils
+          mesa-common-dev libegl1-mesa-dev libgles2-mesa-dev mesa-utils \
+          libpugixml-dev
           cmake --version
           gcc --version
+          pip3 install meson
+
+      - name: Build and install wayland-cxx-scanner
+        run: |
+          git clone --depth=1 https://github.com/jwinarske/wayland-cxx-scanner \
+            /tmp/wayland-cxx-scanner
+          meson setup /tmp/wayland-cxx-scanner-build /tmp/wayland-cxx-scanner \
+            --buildtype=release \
+            --prefix=/usr/local
+          ninja -C /tmp/wayland-cxx-scanner-build
+          sudo --preserve-env=PATH ninja -C /tmp/wayland-cxx-scanner-build install
 
       - name: Configure CMake
         run: |

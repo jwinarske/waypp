@@ -15,34 +15,34 @@ class WestonCaptureObserver {
 
   virtual void notify_weston_capture_format(
       void* data,
-      struct weston_capture_source_v1* weston_capture_source_v1,
+      wl_proxy* weston_capture_source_v1,
       uint32_t drm_format) = 0;
 
   virtual void notify_weston_capture_size(
       void* data,
-      weston_capture_source_v1* weston_capture_source_v1,
+      wl_proxy* weston_capture_source_v1,
       int32_t width,
       int32_t height) = 0;
 
   virtual void notify_weston_capture_complete(
       void* data,
-      weston_capture_source_v1* weston_capture_source_v1) = 0;
+      wl_proxy* weston_capture_source_v1) = 0;
 
   virtual void notify_weston_capture_retry(
       void* data,
-      weston_capture_source_v1* weston_capture_source_v1) = 0;
+      wl_proxy* weston_capture_source_v1) = 0;
 
   virtual void notify_weston_capture_failed(
       void* data,
-      weston_capture_source_v1* weston_capture_source_v1,
+      wl_proxy* weston_capture_source_v1,
       const char* msg) = 0;
 };
 
 class WestonCapture {
  public:
-  WestonCapture(weston_capture_v1* weston_capture_v1,
+  WestonCapture(wl_proxy* weston_capture_v1,
                 wl_output* output,
-                weston_capture_v1_source source,
+                weston_output_capture::client::WestonCaptureV1Source source,
                 WestonCaptureObserver* observer = nullptr,
                 void* user_data = nullptr);
 
@@ -63,12 +63,12 @@ class WestonCapture {
   void set_user_data(void* user_data) { user_data_ = user_data; }
 
  private:
-  weston_capture_v1* weston_capture_v1_;
+  wl_proxy* weston_capture_v1_;
   wl_output* wl_output_;
   uint32_t source_;
   void* user_data_;
 
-  weston_capture_source_v1* weston_capture_source_v1_;
+  wl_proxy* weston_capture_source_v1_;
   std::vector<WestonCaptureObserver*> observers_{};
 
   /**
@@ -85,7 +85,7 @@ class WestonCapture {
    * @param drm_format DRM pixel format code
    */
   static void handle_format(void* data,
-                            weston_capture_source_v1* weston_capture_source_v1,
+                            wl_proxy* weston_capture_source_v1,
                             uint32_t drm_format);
 
   /**
@@ -105,7 +105,7 @@ class WestonCapture {
    * @param height height in pixels
    */
   static void handle_size(void* data,
-                          weston_capture_source_v1* weston_capture_source_v1,
+                          wl_proxy* weston_capture_source_v1,
                           int32_t width,
                           int32_t height);
 
@@ -121,7 +121,7 @@ class WestonCapture {
    */
   static void handle_complete(
       void* data,
-      weston_capture_source_v1* weston_capture_source_v1);
+      wl_proxy* weston_capture_source_v1);
 
   /**
    * retry image capture with a different buffer
@@ -134,7 +134,7 @@ class WestonCapture {
    */
   static void handle_retry(
       void* data,
-      struct weston_capture_source_v1* weston_capture_source_v1);
+      wl_proxy* weston_capture_source_v1);
 
   /**
    * capture failed
@@ -151,14 +151,8 @@ class WestonCapture {
    */
   static void handle_failed(
       void* data,
-      struct weston_capture_source_v1* weston_capture_source_v1,
+      wl_proxy* weston_capture_source_v1,
       const char* msg);
 
-  static constexpr struct weston_capture_source_v1_listener listener_ = {
-      .format = handle_format,
-      .size = handle_size,
-      .complete = handle_complete,
-      .retry = handle_retry,
-      .failed = handle_failed,
-  };
+  static const void* listener_[];
 };

@@ -42,12 +42,13 @@ pkg_check_modules(WAYLAND_PROTOCOLS REQUIRED wayland-protocols>=${MIN_PROTOCOL_V
 pkg_get_variable(WAYLAND_PROTOCOLS_BASE wayland-protocols pkgdatadir)
 
 find_program(WAYLAND_SCANNER_EXECUTABLE NAMES wayland-scanner REQUIRED)
+find_program(WAYLAND_CXX_SCANNER_EXECUTABLE NAMES wayland-cxx-scanner REQUIRED)
 
 macro(wayland_generate protocol_file output_file)
-    add_custom_command(OUTPUT ${output_file}.h
-            COMMAND ${WAYLAND_SCANNER_EXECUTABLE} client-header < ${protocol_file} > ${output_file}.h
+    add_custom_command(OUTPUT ${output_file}.hpp
+            COMMAND ${WAYLAND_CXX_SCANNER_EXECUTABLE} --mode=client-header ${protocol_file} ${output_file}.hpp
             DEPENDS ${protocol_file})
-    list(APPEND WAYLAND_PROTOCOL_SOURCES ${output_file}.h)
+    list(APPEND WAYLAND_PROTOCOL_SOURCES ${output_file}.hpp)
 
     add_custom_command(OUTPUT ${output_file}.c
             COMMAND ${WAYLAND_SCANNER_EXECUTABLE} private-code < ${protocol_file} > ${output_file}.c
@@ -63,7 +64,7 @@ macro(add_protocol protocol_file)
     if (EXISTS ${protocol_file})
         wayland_generate(
                 ${protocol_file}
-                ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/protocols/${PROTOCOL_PREFIX}-client-protocol)
+                ${CMAKE_CURRENT_BINARY_DIR}/protocols/${PROTOCOL_PREFIX}-client-protocol)
         set(HAS_WAYLAND_PROTOCOL_${PROTOCOL_VAR} TRUE)
         list(APPEND LIST_WAYLAND_PROTOCOLS -DHAS_WAYLAND_PROTOCOL_${PROTOCOL_VAR})
     else ()
@@ -73,7 +74,8 @@ endmacro()
 
 set(WAYLAND_PROTOCOL_SOURCES)
 
-file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/protocols)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/protocols)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/waypp)
 
 #
 # Local
@@ -168,7 +170,7 @@ if (EXT_PROTOCOL)
     endforeach ()
 endif ()
 
-configure_file(cmake/waypp.h.in ${CMAKE_CURRENT_SOURCE_DIR}/include/waypp/waypp.h)
+configure_file(cmake/waypp.h.in ${CMAKE_CURRENT_BINARY_DIR}/waypp/waypp.h)
 
 add_library(wayland-gen STATIC ${WAYLAND_PROTOCOL_SOURCES})
 target_link_libraries(wayland-gen PUBLIC PkgConfig::WAYLAND)
@@ -177,7 +179,8 @@ if (ENABLE_EGL)
 endif ()
 target_include_directories(wayland-gen PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
-        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/protocols
+        ${CMAKE_CURRENT_BINARY_DIR}/protocols
+        ${CMAKE_CURRENT_BINARY_DIR}
 )
 target_include_directories(wayland-gen PUBLIC ${LOGGING_INCLUDE_DIRS})
 

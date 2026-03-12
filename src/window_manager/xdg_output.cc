@@ -18,28 +18,31 @@
 
 #include "logging/logging.h"
 
-XdgOutput::XdgOutput(zxdg_output_manager_v1* zxdg_output_manager_v1,
+XdgOutput::XdgOutput(wl_proxy* zxdg_output_manager_v1,
                      wl_output* wl_output) {
-  zxdg_output_v1_ =
-      zxdg_output_manager_v1_get_xdg_output(zxdg_output_manager_v1, wl_output);
-  zxdg_output_v1_add_listener(zxdg_output_v1_, &listener_, this);
+  zxdg_output_v1_ = wl_proxy_marshal_constructor(
+      zxdg_output_manager_v1,
+      xdg_output_unstable_v1::client::zxdg_output_manager_v1_traits::Op::GetXdgOutput,
+      &xdg_output_unstable_v1::client::zxdg_output_v1_traits::wl_iface(),
+      nullptr, (wl_proxy*)wl_output);
+  wl_proxy_add_listener(zxdg_output_v1_,
+                        reinterpret_cast<void(**)(void)>(
+                            const_cast<void**>(listener_)),
+                        this);
 }
 
 XdgOutput::~XdgOutput() {
   if (zxdg_output_v1_) {
     DLOG_TRACE("[Registrar] zxdg_output_v1_destroy(zxdg_output_v1_)");
-    zxdg_output_v1_destroy(zxdg_output_v1_);
+    wl_proxy_destroy(zxdg_output_v1_);
   }
 }
 
 void XdgOutput::handle_logical_position(void* data,
-                                        zxdg_output_v1* zxdg_output_v1,
+                                        wl_proxy* /*zxdg_output_v1*/,
                                         int32_t x,
                                         int32_t y) {
   auto obj = static_cast<XdgOutput*>(data);
-  if (obj->zxdg_output_v1_ != zxdg_output_v1) {
-    return;
-  }
   LOG_DEBUG("XdgOutput::handle_logical_position: x: {}, y: {}", x, y);
 
   obj->output_.logical_position = {
@@ -49,13 +52,10 @@ void XdgOutput::handle_logical_position(void* data,
 }
 
 void XdgOutput::handle_logical_size(void* data,
-                                    zxdg_output_v1* zxdg_output_v1,
+                                    wl_proxy* /*zxdg_output_v1*/,
                                     int32_t width,
                                     int32_t height) {
   auto obj = static_cast<XdgOutput*>(data);
-  if (obj->zxdg_output_v1_ != zxdg_output_v1) {
-    return;
-  }
   LOG_DEBUG("XdgOutput::handle_logical_size: width: {}, height: {}", width,
             height);
 
@@ -65,33 +65,24 @@ void XdgOutput::handle_logical_size(void* data,
   };
 }
 
-void XdgOutput::handle_done(void* data, zxdg_output_v1* zxdg_output_v1) {
+void XdgOutput::handle_done(void* data, wl_proxy* /*zxdg_output_v1*/) {
   auto obj = static_cast<XdgOutput*>(data);
-  if (obj->zxdg_output_v1_ != zxdg_output_v1) {
-    return;
-  }
   LOG_DEBUG("XdgOutput::handle_done");
   obj->output_.done = true;
 }
 
 void XdgOutput::handle_name(void* data,
-                            zxdg_output_v1* zxdg_output_v1,
+                            wl_proxy* /*zxdg_output_v1*/,
                             const char* name) {
   auto obj = static_cast<XdgOutput*>(data);
-  if (obj->zxdg_output_v1_ != zxdg_output_v1) {
-    return;
-  }
   LOG_DEBUG("XdgOutput::handle_name: {}", name);
   obj->output_.name = name;
 }
 
 void XdgOutput::handle_description(void* data,
-                                   zxdg_output_v1* zxdg_output_v1,
+                                   wl_proxy* /*zxdg_output_v1*/,
                                    const char* description) {
   auto obj = static_cast<XdgOutput*>(data);
-  if (obj->zxdg_output_v1_ != zxdg_output_v1) {
-    return;
-  }
   LOG_DEBUG("XdgOutput::handle_description: {}", description);
   obj->output_.description = description;
 }

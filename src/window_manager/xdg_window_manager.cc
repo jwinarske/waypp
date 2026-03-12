@@ -42,13 +42,11 @@ XdgWindowManager::XdgWindowManager(wl_display* display,
                     ext_interface_data,
                     context) {
   DLOG_TRACE("++XdgWindowManager::XdgWindowManager()");
-  xdg_wm_base_ = get_xdg_wm_base();
-  if (!xdg_wm_base_) {
+  xdg_wm_base_._SetProxy(get_xdg_wm_base());
+  if (!xdg_wm_base_.GetProxy()) {
     throw std::runtime_error(
         "XDG Window Manager (xdg_wm_base) is not supported by the compositor");
   }
-
-  xdg_wm_base_add_listener(xdg_wm_base_, &xdg_wm_base_listener_, this);
 
   DLOG_TRACE("--XdgWindowManager::XdgWindowManager()");
 }
@@ -66,24 +64,6 @@ XdgWindowManager::XdgWindowManager(wl_display* display,
  * objects, and implementing the necessary event handling functions.
  */
 XdgWindowManager::~XdgWindowManager() = default;
-
-/**
- *
- * @param data
- * @param xdg_wm_base
- * @param serial
- */
-void XdgWindowManager::xdg_wm_base_ping(void* data,
-                                        xdg_wm_base* xdg_wm_base,
-                                        uint32_t serial) {
-  auto wm = static_cast<XdgWindowManager*>(data);
-  if (wm->get_xdg_wm_base() != xdg_wm_base) {
-    DLOG_CRITICAL("wm->get_xdg_wm_base().value() != xdg_wm_base");
-    return;
-  }
-  DLOG_TRACE("xdg_wm_base_ping");
-  xdg_wm_base_pong(xdg_wm_base, serial);
-}
 
 std::shared_ptr<XdgTopLevel> XdgWindowManager::create_top_level(
     const char* title,

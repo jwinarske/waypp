@@ -30,7 +30,7 @@ class XdgOutput;
 class Output {
  public:
   explicit Output(wl_output* output,
-                  zxdg_output_manager_v1* zxdg_output_manager_v1);
+                  wl_proxy* zxdg_output_manager_v1);
 
   ~Output();
 
@@ -68,7 +68,7 @@ class Output {
 
  private:
   wl_output* wl_output_;
-  zxdg_output_manager_v1* zxdg_output_manager_v1_;
+  wl_proxy* zxdg_output_manager_v1_;
   std::unique_ptr<XdgOutput> xdg_output_;
 
   struct {

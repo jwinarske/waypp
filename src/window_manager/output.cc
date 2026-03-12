@@ -16,8 +16,6 @@
 
 #include "waypp/window_manager/output.h"
 
-#include <wayland-client-protocol.h>
-
 #include "logging/logging.h"
 
 /**
@@ -29,7 +27,7 @@
  * the events emitted by the output.
  */
 Output::Output(wl_output* wl_output,
-               zxdg_output_manager_v1* zxdg_output_manager_v1)
+               wl_proxy* zxdg_output_manager_v1)
     : wl_output_(wl_output), zxdg_output_manager_v1_(zxdg_output_manager_v1) {
   DLOG_TRACE("++Output::Output()");
   wl_output_add_listener(wl_output_, &listener_, this);

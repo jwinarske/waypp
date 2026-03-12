@@ -98,7 +98,7 @@ class Seat {
   /// Forward the cursor-shape manager to the Pointer once both are available.
   /// Safe to call before or after the Pointer is created; if the Pointer does
   /// not yet exist, the manager is stored and forwarded when it is constructed.
-  void set_cursor_shape_manager(wp_cursor_shape_manager_v1* manager);
+  void set_cursor_shape_manager(wl_proxy* manager);
 #endif
 
   void set_event_mask(const char* ignore_events);
@@ -119,7 +119,7 @@ class Seat {
   event_mask event_mask_{};
 
 #if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
-  wp_cursor_shape_manager_v1* cursor_shape_manager_{};
+  wl_proxy* cursor_shape_manager_{};
 #endif
 
   std::vector<SeatObserver*> observers_{};

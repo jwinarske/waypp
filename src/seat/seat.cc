@@ -167,7 +167,7 @@ std::optional<Touch*> Seat::get_touch() const {
 }
 
 #if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
-void Seat::set_cursor_shape_manager(wp_cursor_shape_manager_v1* manager) {
+void Seat::set_cursor_shape_manager(wl_proxy* manager) {
   cursor_shape_manager_ = manager;
   // If the Pointer is already constructed (capabilities arrived before the
   // manager was registered), forward immediately.

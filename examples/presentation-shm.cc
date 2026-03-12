@@ -29,7 +29,7 @@
 #include <cxxopts.hpp>
 
 #include "logging/logging.h"
-#include "presentation-time-client-protocol.h"
+#include "presentation-time-client-protocol.hpp"
 #include "waypp/window_manager/window_manager_factory.h"
 #include "window/xdg_toplevel.h"
 

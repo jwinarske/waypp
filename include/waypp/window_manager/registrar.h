@@ -80,11 +80,11 @@ class Registrar {
 
 #if ENABLE_XDG_CLIENT
 
-  [[nodiscard]] xdg_wm_base* get_xdg_wm_base() const { return xdg_wm_base_; }
+  [[nodiscard]] wl_proxy* get_xdg_wm_base() const { return xdg_wm_base_; }
 
 #if HAS_WAYLAND_PROTOCOL_XDG_OUTPUT_UNSTABLE_V1
 
-  [[nodiscard]] zxdg_output_manager_v1* get_xdg_output_manager() const {
+  [[nodiscard]] wl_proxy* get_xdg_output_manager() const {
     return zxdg_output_manager_v1_;
   }
 
@@ -92,7 +92,7 @@ class Registrar {
 
 #if HAS_WAYLAND_PROTOCOL_XDG_ACTIVATION_V1
 
-  [[nodiscard]] struct xdg_activation_v1* get_xdg_activation_v1() const {
+  [[nodiscard]] wl_proxy* get_xdg_activation_v1() const {
     return xdg_activation_v1_;
   }
 
@@ -102,8 +102,8 @@ class Registrar {
 
   /// Returns the per-display decoration manager used to negotiate CSD vs SSD
   /// for each toplevel window. Per-window decoration objects are created by
-  /// CsdFrame via zxdg_decoration_manager_v1_get_toplevel_decoration().
-  [[nodiscard]] zxdg_decoration_manager_v1* get_xdg_decoration_manager() const {
+  /// the C++ proxy API get_toplevel_decoration().
+  [[nodiscard]] wl_proxy* get_xdg_decoration_manager() const {
     return zxdg_decoration_manager_v1_;
   }
 
@@ -113,7 +113,7 @@ class Registrar {
 
   /// Returns the cursor-shape manager for compositors that support
   /// wp_cursor_shape_manager_v1 (preferred over wl_cursor_theme).
-  [[nodiscard]] wp_cursor_shape_manager_v1* get_cursor_shape_manager() const {
+  [[nodiscard]] wl_proxy* get_cursor_shape_manager() const {
     return wp_cursor_shape_manager_;
   }
 
@@ -122,20 +122,20 @@ class Registrar {
 #endif
 
 #if ENABLE_AGL_SHELL_CLIENT
-  [[nodiscard]] agl_shell* get_agl_shell() const { return agl_shell_; }
+  [[nodiscard]] wl_proxy* get_agl_shell() const { return agl_shell_; }
 #endif
 
 #if ENABLE_IVI_SHELL_CLIENT
-  [[nodiscard]] ivi_application* get_ivi_application() const {
+  [[nodiscard]] wl_proxy* get_ivi_application() const {
     return ivi_application_;
   }
 
-  [[nodiscard]] ivi_wm* get_ivi_wm() const { return ivi_wm_; }
+  [[nodiscard]] wl_proxy* get_ivi_wm() const { return ivi_wm_; }
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_PRESENTATION_TIME
 
-  [[nodiscard]] struct wp_presentation* get_presentation_time_wp_presentation()
+  [[nodiscard]] wl_proxy* get_presentation_time_wp_presentation()
       const {
     return presentation_time_.wp_presentation;
   }
@@ -148,8 +148,7 @@ class Registrar {
 
 #if HAS_WAYLAND_PROTOCOL_TEARING_CONTROL_V1
 
-  [[nodiscard]] struct wp_tearing_control_manager_v1*
-  get_tearing_control_manager() const {
+  [[nodiscard]] wl_proxy* get_tearing_control_manager() const {
     return wp_tearing_control_manager_;
   }
 
@@ -157,7 +156,7 @@ class Registrar {
 
 #if HAS_WAYLAND_PROTOCOL_VIEWPORTER
 
-  [[nodiscard]] struct wp_viewporter* get_viewporter() const {
+  [[nodiscard]] wl_proxy* get_viewporter() const {
     return wp_viewporter_;
   }
 
@@ -165,8 +164,7 @@ class Registrar {
 
 #if HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1
 
-  [[nodiscard]] struct wp_fractional_scale_manager_v1*
-  get_fractional_scale_manager() const {
+  [[nodiscard]] wl_proxy* get_fractional_scale_manager() const {
     return fractional_scale_manager_;
   }
 
@@ -174,7 +172,7 @@ class Registrar {
 
 #if HAS_WAYLAND_PROTOCOL_WESTON_OUTPUT_CAPTURE
 
-  [[nodiscard]] struct weston_capture_v1* get_weston_capture_v1() const {
+  [[nodiscard]] wl_proxy* get_weston_capture_v1() const {
     return weston_capture_v1_;
   }
 
@@ -194,7 +192,7 @@ class Registrar {
 
 #if HAS_WAYLAND_PROTOCOL_IDLE_INHIBIT_UNSTABLE_V1
 
-  [[nodiscard]] zwp_idle_inhibit_manager_v1* get_idle_inhibit_manager() const {
+  [[nodiscard]] wl_proxy* get_idle_inhibit_manager() const {
     return zwp_idle_inhibit_manager_v1_;
   }
 
@@ -202,7 +200,7 @@ class Registrar {
 
 #if HAS_WAYLAND_PROTOCOL_POINTER_GESTURES_UNSTABLE_V1
 
-  [[nodiscard]] zwp_pointer_gestures_v1* get_zwp_pointer_gestures_v1() const {
+  [[nodiscard]] wl_proxy* get_zwp_pointer_gestures_v1() const {
     return zwp_pointer_gestures_v1_;
   }
 
@@ -210,7 +208,7 @@ class Registrar {
 
 #if HAS_WAYLAND_PROTOCOL_POINTER_CONSTRAINTS_UNSTABLE_V1
 
-  [[nodiscard]] zwp_pointer_constraints_v1* get_zwp_pointer_constraints_v1()
+  [[nodiscard]] wl_proxy* get_zwp_pointer_constraints_v1()
       const {
     return zwp_pointer_constraints_v1_;
   }
@@ -219,7 +217,7 @@ class Registrar {
 
 #if HAS_WAYLAND_PROTOCOL_RELATIVE_POINTER_UNSTABLE_V1
 
-  [[nodiscard]] struct zwp_relative_pointer_manager_v1*
+  [[nodiscard]] wl_proxy*
   get_zwp_relative_pointer_manager_v1() const {
     return zwp_relative_pointer_manager_v1_;
   }
@@ -228,7 +226,7 @@ class Registrar {
 
 #if HAS_WAYLAND_PROTOCOL_PRIMARY_SELECTION_UNSTABLE_V1
 
-  [[nodiscard]] struct zwp_primary_selection_device_manager_v1*
+  [[nodiscard]] wl_proxy*
   get_zwp_primary_selection_device_manager_v1() const {
     return zwp_primary_selection_device_manager_v1_;
   }
@@ -261,53 +259,53 @@ class Registrar {
   wl_subcompositor* wl_subcompositor_{};
 
 #if ENABLE_XDG_CLIENT
-  xdg_wm_base* xdg_wm_base_{};
+  wl_proxy* xdg_wm_base_{};
 #if HAS_WAYLAND_PROTOCOL_XDG_DECORATION_UNSTABLE_V1
   // Per-display singleton — used to create per-window decoration objects.
-  zxdg_decoration_manager_v1* zxdg_decoration_manager_v1_{};
+  wl_proxy* zxdg_decoration_manager_v1_{};
 #endif
 #if HAS_WAYLAND_PROTOCOL_XDG_OUTPUT_UNSTABLE_V1
-  zxdg_output_manager_v1* zxdg_output_manager_v1_{};
+  wl_proxy* zxdg_output_manager_v1_{};
 #endif
 #if HAS_WAYLAND_PROTOCOL_XDG_ACTIVATION_V1
-  struct xdg_activation_v1* xdg_activation_v1_{};
+  wl_proxy* xdg_activation_v1_{};
 #endif
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
-  wp_cursor_shape_manager_v1* wp_cursor_shape_manager_{};
+  wl_proxy* wp_cursor_shape_manager_{};
 #endif
 
 #if ENABLE_AGL_SHELL_CLIENT
-  agl_shell* agl_shell_{};
+  wl_proxy* agl_shell_{};
 #endif
 
 #if ENABLE_IVI_SHELL_CLIENT
-  ivi_application* ivi_application_{};
-  ivi_wm* ivi_wm_{};
+  wl_proxy* ivi_application_{};
+  wl_proxy* ivi_wm_{};
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_PRESENTATION_TIME
   struct {
-    struct wp_presentation* wp_presentation;
+    wl_proxy* wp_presentation;
     clockid_t clk_id;
   } presentation_time_{};
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_TEARING_CONTROL_V1
-  struct wp_tearing_control_manager_v1* wp_tearing_control_manager_{};
+  wl_proxy* wp_tearing_control_manager_{};
 #endif
 #if HAS_WAYLAND_PROTOCOL_VIEWPORTER
-  wp_viewporter* wp_viewporter_{};
+  wl_proxy* wp_viewporter_{};
 #endif
 #if HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1
-  struct wp_fractional_scale_manager_v1* fractional_scale_manager_{};
+  wl_proxy* fractional_scale_manager_{};
 #endif
 #if HAS_WAYLAND_PROTOCOL_WESTON_OUTPUT_CAPTURE
-  weston_capture_v1* weston_capture_v1_{};
+  wl_proxy* weston_capture_v1_{};
 #endif
 #if HAS_WAYLAND_PROTOCOL_IDLE_INHIBIT_UNSTABLE_V1
-  zwp_idle_inhibit_manager_v1* zwp_idle_inhibit_manager_v1_{};
+  wl_proxy* zwp_idle_inhibit_manager_v1_{};
 #endif
 
   // Handles global registry events.
@@ -429,11 +427,11 @@ class Registrar {
 #endif
 
   static void handle_presentation_clock_id(void* data,
-                                           wp_presentation* presentation,
+                                           wl_proxy* /*wp_presentation*/,
                                            uint32_t clk_id);
 
-  static constexpr wp_presentation_listener presentation_listener_ = {
-      handle_presentation_clock_id};
+  static const void* presentation_listener_[] = {
+      reinterpret_cast<const void*>(&handle_presentation_clock_id)};
 
   static void handle_interface_presentation(Registrar* r,
                                             wl_registry* registry,
@@ -491,7 +489,7 @@ class Registrar {
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_POINTER_GESTURES_UNSTABLE_V1
-  zwp_pointer_gestures_v1* zwp_pointer_gestures_v1_{};
+  wl_proxy* zwp_pointer_gestures_v1_{};
 
   static void handle_interface_zwp_pointer_gestures_v1(Registrar* r,
                                                        wl_registry* registry,
@@ -502,7 +500,7 @@ class Registrar {
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_POINTER_CONSTRAINTS_UNSTABLE_V1
-  zwp_pointer_constraints_v1* zwp_pointer_constraints_v1_{};
+  wl_proxy* zwp_pointer_constraints_v1_{};
 
   static void handle_interface_zwp_pointer_constraints_v1(Registrar* r,
                                                           wl_registry* registry,
@@ -513,7 +511,7 @@ class Registrar {
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_RELATIVE_POINTER_UNSTABLE_V1
-  zwp_relative_pointer_manager_v1* zwp_relative_pointer_manager_v1_{};
+  wl_proxy* zwp_relative_pointer_manager_v1_{};
 
   static void handle_interface_zwp_relative_pointer_manager_v1(
       Registrar* r,
@@ -525,8 +523,7 @@ class Registrar {
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_PRIMARY_SELECTION_UNSTABLE_V1
-  zwp_primary_selection_device_manager_v1*
-      zwp_primary_selection_device_manager_v1_{};
+  wl_proxy* zwp_primary_selection_device_manager_v1_{};
 
   static void handle_interface_zwp_primary_selection_device_manager_v1(
       Registrar* r,

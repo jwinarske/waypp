@@ -68,9 +68,8 @@ Pointer::Pointer(wl_pointer* pointer,
 Pointer::~Pointer() {
 #if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
   if (cursor_shape_device_) {
-    DLOG_TRACE(
-        "[Pointer] wp_cursor_shape_device_v1_destroy(cursor_shape_device_)");
-    wp_cursor_shape_device_v1_destroy(cursor_shape_device_);
+    DLOG_TRACE("[Pointer] wl_proxy_destroy(cursor_shape_device_)");
+    wl_proxy_destroy(cursor_shape_device_);
     cursor_shape_device_ = nullptr;
   }
 #endif
@@ -467,84 +466,88 @@ void Pointer::handle_axis_relative_direction(void* data,
 
 #if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
 
-void Pointer::set_cursor_shape_manager(wp_cursor_shape_manager_v1* manager) {
+void Pointer::set_cursor_shape_manager(wl_proxy* manager) {
   if (!manager || !wl_pointer_) {
     return;
   }
   if (cursor_shape_device_) {
     return;  // already set
   }
-  cursor_shape_device_ =
-      wp_cursor_shape_manager_v1_get_pointer(manager, wl_pointer_);
+  cursor_shape_device_ = wl_proxy_marshal_constructor(
+      manager,
+      cursor_shape_v1::client::wp_cursor_shape_manager_v1_traits::Op::GetPointer,
+      &cursor_shape_v1::client::wp_cursor_shape_device_v1_traits::wl_iface(),
+      nullptr, (wl_proxy*)wl_pointer_);
   if (!cursor_shape_device_) {
     LOG_WARN("[Pointer] wp_cursor_shape_manager_v1_get_pointer failed");
   }
 }
 
 /// Map an XCursor name string to a wp_cursor_shape_device_v1 shape enum value.
-/// Returns WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT (1) for any unknown name.
+/// Returns Default (1) for any unknown name.
 static uint32_t name_to_shape(const char* name) {
+  using S = cursor_shape_v1::client::WpCursorShapeDeviceV1Shape;
   if (!name) {
-    return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT;
+    return static_cast<uint32_t>(S::Default);
   }
   // clang-format off
-  struct Entry { const char* name; uint32_t shape; };
+  struct Entry { const char* name; S shape; };
   static constexpr Entry kTable[] = {
-    { "default",         WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT         },
-    { "left_ptr",        WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT         },
-    { "right_ptr",       WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT         },
-    { "context-menu",    WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_CONTEXT_MENU    },
-    { "help",            WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_HELP            },
-    { "pointer",         WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER         },
-    { "hand",            WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER         },
-    { "hand1",           WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER         },
-    { "hand2",           WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER         },
-    { "progress",        WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_PROGRESS        },
-    { "wait",            WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_WAIT            },
-    { "cell",            WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_CELL            },
-    { "crosshair",       WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_CROSSHAIR       },
-    { "text",            WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_TEXT            },
-    { "xterm",           WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_TEXT            },
-    { "vertical-text",   WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_VERTICAL_TEXT   },
-    { "alias",           WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_ALIAS           },
-    { "copy",            WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_COPY            },
-    { "move",            WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_MOVE            },
-    { "no-drop",         WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NO_DROP         },
-    { "not-allowed",     WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NOT_ALLOWED     },
-    { "grab",            WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_GRAB            },
-    { "grabbing",        WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_GRABBING        },
-    { "e-resize",        WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_E_RESIZE        },
-    { "right_side",      WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_E_RESIZE        },
-    { "n-resize",        WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_N_RESIZE        },
-    { "top_side",        WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_N_RESIZE        },
-    { "ne-resize",       WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NE_RESIZE       },
-    { "top_right_corner",WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NE_RESIZE       },
-    { "nw-resize",       WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NW_RESIZE       },
-    { "top_left_corner", WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NW_RESIZE       },
-    { "s-resize",        WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_S_RESIZE        },
-    { "bottom_side",     WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_S_RESIZE        },
-    { "se-resize",       WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_SE_RESIZE       },
-    { "bottom_right_corner", WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_SE_RESIZE   },
-    { "sw-resize",       WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_SW_RESIZE       },
-    { "bottom_left_corner",  WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_SW_RESIZE   },
-    { "w-resize",        WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_W_RESIZE        },
-    { "left_side",       WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_W_RESIZE        },
-    { "ew-resize",       WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_EW_RESIZE       },
-    { "col-resize",      WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_EW_RESIZE       },
-    { "ns-resize",       WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NS_RESIZE       },
-    { "row-resize",      WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NS_RESIZE       },
-    { "nesw-resize",     WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NESW_RESIZE     },
-    { "nwse-resize",     WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NWSE_RESIZE     },
-    { "zoom-in",         WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_ZOOM_IN         },
-    { "zoom-out",        WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_ZOOM_OUT        },
+    { "default",         S::Default       },
+    { "left_ptr",        S::Default       },
+    { "right_ptr",       S::Default       },
+    { "context-menu",    S::ContextMenu   },
+    { "help",            S::Help          },
+    { "pointer",         S::Pointer       },
+    { "hand",            S::Pointer       },
+    { "hand1",           S::Pointer       },
+    { "hand2",           S::Pointer       },
+    { "progress",        S::Progress      },
+    { "wait",            S::Wait          },
+    { "cell",            S::Cell          },
+    { "crosshair",       S::Crosshair     },
+    { "text",            S::Text          },
+    { "xterm",           S::Text          },
+    { "vertical-text",   S::VerticalText  },
+    { "alias",           S::Alias         },
+    { "copy",            S::Copy          },
+    { "move",            S::Move          },
+    { "no-drop",         S::NoDrop        },
+    { "not-allowed",     S::NotAllowed    },
+    { "grab",            S::Grab          },
+    { "grabbing",        S::Grabbing      },
+    { "e-resize",        S::EResize       },
+    { "right_side",      S::EResize       },
+    { "n-resize",        S::NResize       },
+    { "top_side",        S::NResize       },
+    { "ne-resize",       S::NeResize      },
+    { "top_right_corner",S::NeResize      },
+    { "nw-resize",       S::NwResize      },
+    { "top_left_corner", S::NwResize      },
+    { "s-resize",        S::SResize       },
+    { "bottom_side",     S::SResize       },
+    { "se-resize",       S::SeResize      },
+    { "bottom_right_corner", S::SeResize  },
+    { "sw-resize",       S::SwResize      },
+    { "bottom_left_corner",  S::SwResize  },
+    { "w-resize",        S::WResize       },
+    { "left_side",       S::WResize       },
+    { "ew-resize",       S::EwResize      },
+    { "col-resize",      S::EwResize      },
+    { "ns-resize",       S::NsResize      },
+    { "row-resize",      S::NsResize      },
+    { "nesw-resize",     S::NeswResize    },
+    { "nwse-resize",     S::NwseResize    },
+    { "zoom-in",         S::ZoomIn        },
+    { "zoom-out",        S::ZoomOut       },
   };
   // clang-format on
   for (const auto& [key, value] : kTable) {
     if (std::strcmp(key, name) == 0) {
-      return value;
+      return static_cast<uint32_t>(value);
     }
   }
-  return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT;
+  return static_cast<uint32_t>(S::Default);
 }
 
 #endif  // HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
@@ -560,7 +563,9 @@ void Pointer::set_cursor(uint32_t serial,
 #if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
   if (cursor_shape_device_) {
     const uint32_t shape = name_to_shape(cursor_name);
-    wp_cursor_shape_device_v1_set_shape(cursor_shape_device_, serial, shape);
+    wl_proxy_marshal(cursor_shape_device_,
+                     cursor_shape_v1::client::wp_cursor_shape_device_v1_traits::Op::SetShape,
+                     serial, shape);
     return;
   }
 #endif
