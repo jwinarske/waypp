@@ -150,7 +150,7 @@ class Pointer {
   /// wp_cursor_shape_device_v1 protocol instead of wl_cursor_theme.
   /// Called by Seat after the Pointer is constructed, when the manager
   /// becomes available from the registry.
-  void set_cursor_shape_manager(wp_cursor_shape_manager_v1* manager);
+  void set_cursor_shape_manager(wl_proxy* manager);
 #endif
 
   [[nodiscard]] std::pair<double, double> get_xy() const { return {sx_, sy_}; }
@@ -174,12 +174,12 @@ class Pointer {
   double sy_{};
 
 #if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
-  wp_cursor_shape_device_v1* cursor_shape_device_{};
+  wl_proxy* cursor_shape_device_{};
 #endif
 
 #if ENABLE_XDG_CLIENT
-  enum xdg_toplevel_resize_edge prev_resize_edge_ =
-      XDG_TOPLEVEL_RESIZE_EDGE_NONE;
+  xdg_shell::client::XdgToplevelResizeEdge prev_resize_edge_ =
+      xdg_shell::client::XdgToplevelResizeEdge::None;
 #endif
 
   event_mask event_mask_{};

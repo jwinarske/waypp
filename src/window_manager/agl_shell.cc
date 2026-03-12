@@ -43,14 +43,12 @@ AglShell::AglShell(struct wl_display* display,
                        context),
       wait_for_bound_(true),
       bound_ok_(false) {
-  agl_shell_ = get_agl_shell();
-  if (!agl_shell_) {
+  _SetProxy(get_agl_shell());
+  if (!GetProxy()) {
     throw std::runtime_error(
-        std::string(agl_shell_interface.name) +
+        std::string(agl_shell::client::agl_shell_traits::interface_name) +
         " protocol is required but not advertised by the compositor");
   }
-
-  agl_shell_add_listener(agl_shell_, &agl_shell_listener_, this);
 
   int ret = 0;
   while (ret != -1 && wait_for_bound_) {
@@ -65,16 +63,10 @@ AglShell::AglShell(struct wl_display* display,
   }
 }
 
-void AglShell::handle_bound_ok(void* data, struct agl_shell* agl_shell) {
-  auto* obj = static_cast<AglShell*>(data);
-  if (obj->agl_shell_ != agl_shell) {
-    return;
-  }
-
-  DLOG_DEBUG("AglShell::handle_bound_ok");
-
-  obj->wait_for_bound_ = false;
-  obj->bound_ok_ = true;
+void AglShell::OnBoundOk() {
+  DLOG_DEBUG("AglShell::OnBoundOk");
+  wait_for_bound_ = false;
+  bound_ok_ = true;
 }
 
 void AglShell::activate_app(const std::string& app_id) {
@@ -107,7 +99,7 @@ void AglShell::activate_app(const std::string& app_id) {
     DLOG_DEBUG("[AGL] Activating app_id {} on output {}", app_id, output_name);
   }
 
-  agl_shell_activate_app(agl_shell_, app_id.c_str(), wl_output);
+  ActivateApp(app_id.c_str(), (wl_proxy*)wl_output);
   wl_display_flush(get_display());
 }
 
@@ -131,80 +123,46 @@ void AglShell::add_app_to_stack(const std::string& app_id) {
   }
 }
 
-void AglShell::handle_bound_fail(void* data, struct agl_shell* agl_shell) {
-  auto* obj = static_cast<AglShell*>(data);
-  if (obj->agl_shell_ != agl_shell) {
-    return;
-  }
-
-  LOG_DEBUG("AglShell::handle_bound_fail");
-
-  obj->wait_for_bound_ = false;
-  obj->bound_ok_ = false;
+void AglShell::OnBoundFail() {
+  LOG_DEBUG("AglShell::OnBoundFail");
+  wait_for_bound_ = false;
+  bound_ok_ = false;
 }
 
-void AglShell::handle_app_state(void* data,
-                                struct agl_shell* agl_shell,
-                                const char* app_id,
-                                uint32_t state) {
-  auto* obj = static_cast<AglShell*>(data);
-  if (obj->agl_shell_ != agl_shell) {
-    return;
-  }
-
-  switch (state) {
-    case AGL_SHELL_APP_STATE_STARTED:
-      LOG_DEBUG("[AGL] app_id: {}, AGL_SHELL_APP_STATE_STARTED", app_id);
-      obj->activate_app(app_id);
+void AglShell::OnAppState(const char* app_id, uint32_t state) {
+  using namespace agl_shell::client;
+  switch (static_cast<AglShellAppState>(state)) {
+    case AglShellAppState::Started:
+      LOG_DEBUG("[AGL] app_id: {}, AglShellAppState::Started", app_id);
+      activate_app(app_id);
       break;
-    case AGL_SHELL_APP_STATE_TERMINATED:
-      LOG_DEBUG("[AGL] app_id: {}, AGL_SHELL_APP_STATE_TERMINATED", app_id);
-      obj->deactivate_app(app_id);
+    case AglShellAppState::Terminated:
+      LOG_DEBUG("[AGL] app_id: {}, AglShellAppState::Terminated", app_id);
+      deactivate_app(app_id);
       break;
-    case AGL_SHELL_APP_STATE_ACTIVATED:
-      LOG_DEBUG("[AGL] app_id: {}, AGL_SHELL_APP_STATE_ACTIVATED", app_id);
-      obj->add_app_to_stack(app_id);
+    case AglShellAppState::Activated:
+      LOG_DEBUG("[AGL] app_id: {}, AglShellAppState::Activated", app_id);
+      add_app_to_stack(app_id);
       break;
-    case AGL_SHELL_APP_STATE_DEACTIVATED:
-      LOG_DEBUG("[AGL] app_id: {}, AGL_SHELL_APP_STATE_DEACTIVATED", app_id);
+    case AglShellAppState::Deactivated:
+      LOG_DEBUG("[AGL] app_id: {}, AglShellAppState::Deactivated", app_id);
       break;
     default:
       break;
   }
 }
 
-void AglShell::handle_app_on_output(void* data,
-                                    struct agl_shell* agl_shell,
-                                    const char* app_id,
-                                    const char* output_name) {
-  auto* obj = static_cast<AglShell*>(data);
-  if (obj->agl_shell_ != agl_shell) {
-    return;
-  }
-
+void AglShell::OnAppOnOutput(const char* app_id, const char* output_name) {
   LOG_DEBUG("[AGL] app_on_output: app_id: {}, output name: {}", app_id,
             output_name);
 
-  // a couple of use-cases, if there is no app_id in the app_list then it
-  // means this is a request to map the application, from the start to a
-  // different output that the default one. We'd get an
-  // AGL_SHELL_APP_STATE_STARTED which will handle activation.
-  //
-  // if there's an app_id then it means we might have gotten an event to
-  // move the application to another output; so we'd need to process it
-  // by explicitly calling processAppStatusEvent() which would ultimately
-  // activate the application on other output. We'd have to pick up the
-  // last activated surface and activate the default output.
-  //
-  // finally if the outputs are identical probably that's a user-error -
-  // but the compositor won't activate it again, so we don't handle that.
-  obj->pending_app_list_.emplace_back(std::pair(app_id, output_name));
+  pending_app_list_.emplace_back(std::pair(app_id, output_name));
 
-  auto iter = obj->apps_stack_.begin();
-  while (iter != obj->apps_stack_.end()) {
+  auto iter = apps_stack_.begin();
+  while (iter != apps_stack_.end()) {
     if (*iter == std::string(app_id)) {
       LOG_DEBUG("[AGL] move {} to another output {}", app_id, output_name);
-      obj->activate_app(app_id);
+      activate_app(app_id);
       break;
     }
     ++iter;
@@ -215,30 +173,32 @@ void AglShell::set_background(struct wl_surface* wl_surface,
                               struct wl_output* wl_output) const {
   LOG_DEBUG("[AGL] Set Background: surface: {}, output: {}",
             fmt::ptr(wl_surface), fmt::ptr(wl_output));
-  agl_shell_set_background(agl_shell_, wl_surface, wl_output);
+  SetBackground((wl_proxy*)wl_surface, (wl_proxy*)wl_output);
 }
 
-std::string AglShell::edge_to_string(const enum agl_shell_edge mode) {
+std::string AglShell::edge_to_string(const agl_shell::client::AglShellEdge mode) {
+  using namespace agl_shell::client;
   switch (mode) {
-    case AGL_SHELL_EDGE_TOP:
-      return "AGL_SHELL_EDGE_TOP";
-    case AGL_SHELL_EDGE_BOTTOM:
-      return "AGL_SHELL_EDGE_BOTTOM";
-    case AGL_SHELL_EDGE_LEFT:
-      return "AGL_SHELL_EDGE_LEFT";
-    case AGL_SHELL_EDGE_RIGHT:
-      return "AGL_SHELL_EDGE_RIGHT";
+    case AglShellEdge::Top:
+      return "AglShellEdge::Top";
+    case AglShellEdge::Bottom:
+      return "AglShellEdge::Bottom";
+    case AglShellEdge::Left:
+      return "AglShellEdge::Left";
+    case AglShellEdge::Right:
+      return "AglShellEdge::Right";
   }
   return {};
 }
 
 void AglShell::set_panel(struct wl_surface* wl_surface,
                          struct wl_output* wl_output,
-                         const enum agl_shell_edge mode) const {
+                         const agl_shell::client::AglShellEdge mode) const {
   LOG_DEBUG("[AGL] Set Panel: surface: {}, output: {}, mode: {}",
             fmt::ptr(wl_surface), fmt::ptr(wl_output),
             edge_to_string(mode).c_str());
-  agl_shell_set_panel(agl_shell_, wl_surface, wl_output, mode);
+  SetPanel((wl_proxy*)wl_surface, (wl_proxy*)wl_output,
+           static_cast<uint32_t>(mode));
 }
 
 void AglShell::set_activate_region(struct wl_output* wl_output,
@@ -250,19 +210,19 @@ void AglShell::set_activate_region(struct wl_output* wl_output,
       "[AGL] Set Activate Region: output: {}, x: {}, y: {}, width: {}, height: "
       "{}",
       fmt::ptr(wl_output), x, y, width, height);
-  agl_shell_set_activate_region(
-      agl_shell_, wl_output, static_cast<int32_t>(x), static_cast<int32_t>(y),
-      static_cast<int32_t>(width), static_cast<int32_t>(height));
+  SetActivateRegion((wl_proxy*)wl_output, static_cast<int32_t>(x),
+                    static_cast<int32_t>(y), static_cast<int32_t>(width),
+                    static_cast<int32_t>(height));
 }
 
 void AglShell::ready() const {
   LOG_DEBUG("[AGL] Ready");
-  agl_shell_ready(agl_shell_);
+  Ready();
 }
 
 void AglShell::process_app_status_event(const char* app_id,
                                         const std::string& event_type) {
-  if (!agl_shell_)
+  if (!GetProxy())
     return;
 
   if (event_type == "started") {

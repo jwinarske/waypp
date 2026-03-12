@@ -38,7 +38,7 @@ class XdgWindowManager : public std::enable_shared_from_this<XdgWindowManager>,
   ~XdgWindowManager();
 
   [[nodiscard]] uint32_t get_version() const {
-    return xdg_wm_base_get_version(xdg_wm_base_);
+    return wl_proxy_get_version(xdg_wm_base_.GetProxy());
   }
 
   std::shared_ptr<XdgTopLevel> create_top_level(
@@ -63,14 +63,10 @@ class XdgWindowManager : public std::enable_shared_from_this<XdgWindowManager>,
   XdgWindowManager& operator=(const XdgWindowManager&) = delete;
 
  private:
-  xdg_wm_base* xdg_wm_base_;
-  std::shared_ptr<XdgTopLevel> xdg_top_level_;
-
-  static void xdg_wm_base_ping(void* data,
-                               struct xdg_wm_base* xdg_wm_base,
-                               uint32_t serial);
-
-  static constexpr struct xdg_wm_base_listener xdg_wm_base_listener_ = {
-      .ping = xdg_wm_base_ping,
+  class WmBase : public xdg_shell::client::CXdgWmBase<WmBase> {
+   public:
+    void OnPing(uint32_t serial) override { Pong(serial); }
   };
+  WmBase xdg_wm_base_;
+  std::shared_ptr<XdgTopLevel> xdg_top_level_;
 };

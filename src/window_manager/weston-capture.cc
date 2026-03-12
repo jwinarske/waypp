@@ -3,23 +3,36 @@
 
 #include "logging/logging.h"
 
-WestonCapture::WestonCapture(weston_capture_v1* weston_capture_v1,
+const void* WestonCapture::listener_[] = {
+    reinterpret_cast<const void*>(&WestonCapture::handle_format),
+    reinterpret_cast<const void*>(&WestonCapture::handle_size),
+    reinterpret_cast<const void*>(&WestonCapture::handle_complete),
+    reinterpret_cast<const void*>(&WestonCapture::handle_retry),
+    reinterpret_cast<const void*>(&WestonCapture::handle_failed),
+};
+
+WestonCapture::WestonCapture(wl_proxy* weston_capture_v1,
                              wl_output* wl_output,
-                             weston_capture_v1_source source,
+                             weston_output_capture::client::WestonCaptureV1Source source,
                              WestonCaptureObserver* observer,
                              void* user_data)
     : weston_capture_v1_(weston_capture_v1),
       wl_output_(wl_output),
-      source_(source),
+      source_(static_cast<uint32_t>(source)),
       user_data_(user_data) {
   if (observer) {
     register_observer(observer);
   }
 
-  weston_capture_source_v1_ =
-      weston_capture_v1_create(weston_capture_v1_, wl_output_, source_);
-  weston_capture_source_v1_add_listener(weston_capture_source_v1_, &listener_,
-                                        this);
+  weston_capture_source_v1_ = wl_proxy_marshal_constructor(
+      weston_capture_v1_,
+      weston_output_capture::client::weston_capture_v1_traits::Op::Create,
+      &weston_output_capture::client::weston_capture_source_v1_traits::wl_iface(),
+      nullptr, (wl_proxy*)wl_output_, source_);
+  wl_proxy_add_listener(weston_capture_source_v1_,
+                        reinterpret_cast<void(**)(void)>(
+                            const_cast<void**>(listener_)),
+                        this);
 }
 
 WestonCapture::~WestonCapture() = default;

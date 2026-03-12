@@ -189,14 +189,14 @@ class Window {
   std::shared_ptr<WindowManager> wm_;
   const std::map<wl_output*, std::unique_ptr<Output>>& outputs_;
 #if HAS_WAYLAND_PROTOCOL_TEARING_CONTROL_V1
-  wp_tearing_control_v1* tearing_control_{};
+  wl_proxy* tearing_control_{};
 #endif
   wl_output_transform buffer_transform_;
   wl_output* wl_output_{};
   RuntimeMode runtime_mode_;
 
   struct {
-    struct wp_presentation* wp_presentation;
+    wl_proxy* wp_presentation;
     clockid_t clock_id;
     std::list<std::unique_ptr<Feedback>> feedback_list;
   } presentation_{};
@@ -268,19 +268,18 @@ class Window {
 #endif
   };
 
-  wp_viewport* viewport_{};
+  wl_proxy* viewport_{};
 
-  struct wp_fractional_scale_v1* fractional_scale_{};
+  wl_proxy* fractional_scale_{};
 
   static void handle_preferred_scale(
       void* data,
-      wp_fractional_scale_v1* wp_fractional_scale_v1,
+      wl_proxy* /*wp_fractional_scale_v1*/,
       uint32_t scale);
 
 #if HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1
-  static constexpr struct wp_fractional_scale_v1_listener
-      fractional_scale_listener_ = {
-          .preferred_scale = handle_preferred_scale,
+  static const void* fractional_scale_listener_[] = {
+      reinterpret_cast<const void*>(&handle_preferred_scale),
   };
 #endif
 

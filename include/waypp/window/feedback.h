@@ -14,12 +14,12 @@ class FeedbackObserver {
 
   virtual void notify_feedback_sync_output(
       Feedback* feedback,
-      struct wp_presentation_feedback* wp_presentation_feedback,
+      wl_proxy* wp_presentation_feedback,
       wl_output* output) = 0;
 
   virtual void notify_feedback_presented(
       Feedback* feedback,
-      struct wp_presentation_feedback* wp_presentation_feedback,
+      wl_proxy* wp_presentation_feedback,
       uint32_t tv_sec_hi,
       uint32_t tv_sec_lo,
       uint32_t tv_nano_sec,
@@ -34,12 +34,12 @@ class FeedbackObserver {
 
   virtual void notify_feedback_discarded(
       void* data,
-      struct wp_presentation_feedback* wp_presentation_feedback) = 0;
+      wl_proxy* wp_presentation_feedback) = 0;
 };
 
 class Feedback {
  public:
-  Feedback(wp_presentation* wp_presentation,
+  Feedback(wl_proxy* wp_presentation,
            clockid_t clock_id,
            wl_surface* wl_surface,
            uint32_t time,
@@ -58,9 +58,9 @@ class Feedback {
  private:
   static std::atomic<unsigned> sequence_;
 
-  wp_presentation* wp_presentation_;
+  wl_proxy* wp_presentation_;
   clockid_t clock_id_ = -1;
-  struct wp_presentation_feedback* feedback_;
+  wl_proxy* feedback_;
   FeedbackObserver* observer_;
   std::function<void(Feedback*)> on_done_;
 
@@ -71,12 +71,12 @@ class Feedback {
 
   static void handle_sync_output(
       void* data,
-      struct wp_presentation_feedback* wp_presentation_feedback,
+      wl_proxy* /*wp_presentation_feedback*/,
       wl_output* output);
 
   static void handle_presented(
       void* data,
-      struct wp_presentation_feedback* wp_presentation_feedback,
+      wl_proxy* /*wp_presentation_feedback*/,
       uint32_t tv_sec_hi,
       uint32_t tv_sec_lo,
       uint32_t tv_nano_sec,
@@ -87,11 +87,11 @@ class Feedback {
 
   static void handle_discarded(
       void* data,
-      struct wp_presentation_feedback* wp_presentation_feedback);
+      wl_proxy* /*wp_presentation_feedback*/);
 
-  static constexpr wp_presentation_feedback_listener listener_ = {
-      .sync_output = handle_sync_output,
-      .presented = handle_presented,
-      .discarded = handle_discarded,
+  static const void* listener_[] = {
+      reinterpret_cast<const void*>(&handle_sync_output),
+      reinterpret_cast<const void*>(&handle_presented),
+      reinterpret_cast<const void*>(&handle_discarded),
   };
 };

@@ -19,7 +19,7 @@ project(
   license: 'Apache-2.0',
   meson_version: '>= 1.1',
   default_options: [
-    'cpp_std=c++17',
+    'cpp_std=c++23',
     'c_std=c11',
     'warning_level=2',
     'b_ndebug=if-release',
