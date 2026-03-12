@@ -18,7 +18,7 @@
 
 #include <list>
 
-#include "agl-shell-client-protocol.h"
+#include "agl-shell-client-protocol.hpp"
 #include "registrar.h"
 #include "xdg_window_manager.h"
 

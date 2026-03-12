@@ -84,6 +84,17 @@ wp_dir        = wp.get_variable(pkgconfig: 'pkgdatadir')
 
 wl_scanner = find_program('wayland-scanner')
 
+# ── wayland-cxx-scanner (host tool) ──────────────────────────────────────────
+#
+# wayland-cxx-scanner is a host build tool installed separately in CI
+# (see .github/workflows/meson.yml).  It is found the same way as
+# wayland-scanner — via find_program — and used only to generate C++23
+# protocol proxy headers (.hpp) from Wayland XML files at build time.
+# No framework library dependency is required here; only the generated
+# header files are consumed by the waypp build.
+
+wl_cxx_scanner_exe = find_program('wayland-cxx-scanner')
+
 # ── Third-party header-only libraries ────────────────────────────────────────
 
 cxxopts_dep = declare_dependency(
@@ -255,11 +266,15 @@ proto_list += [[
 
 # ── Generate protocol files ───────────────────────────────────────────────────
 #
-# Iterate the list: for each XML that exists, produce a client-header (.h) and
-# a private-code (.c) custom_target and record the flag as active.
+# Iterate the list: for each XML that exists, produce:
+#   • a C++23 client proxy header (.hpp) via wayland-cxx-scanner  ← only header
+#   • a private-code C file (.c) via wayland-scanner               ← wl_interface ABI data
+#
+# C client-headers (.h from "wayland-scanner client-header") are NOT generated.
+# The waypp source must use the C++23 proxy API from the generated .hpp files.
 
-wayland_proto_h = []   # custom_target objects that produce .h files
-wayland_proto_c = []   # custom_target objects that produce .c files
+wayland_proto_hpp  = []  # custom_target objects that produce .hpp files
+wayland_proto_c    = []  # custom_target objects that produce .c files
 active_proto_flags = []  # list of flag key strings that were activated
 
 foreach p : proto_list
@@ -268,17 +283,17 @@ foreach p : proto_list
   flag = p[2]
 
   if fs.is_file(xml)
-    h = custom_target(
-      stem + '-h',
-      output:  stem + '.h',
-      command: [wl_scanner, 'client-header', xml, '@OUTPUT@'],
+    hpp = custom_target(
+      stem + '-hpp',
+      output:  stem + '.hpp',
+      command: [wl_cxx_scanner_exe, '--mode=client-header', xml, '@OUTPUT@'],
     )
     c = custom_target(
       stem + '-c',
       output:  stem + '.c',
       command: [wl_scanner, 'private-code', xml, '@OUTPUT@'],
     )
-    wayland_proto_h     += [h]
+    wayland_proto_hpp   += [hpp]
     wayland_proto_c     += [c]
     active_proto_flags  += [flag]
   endif
@@ -286,13 +301,14 @@ endforeach
 
 # ── wayland-gen static library ────────────────────────────────────────────────
 #
-# The .c custom_targets are compiled as C.  The .h custom_targets are listed as
-# sources too so Meson ensures they are generated before compilation starts and
-# automatically adds the build-directory to include paths for this target.
+# The .c custom_targets are compiled as C (wl_interface ABI data).
+# The .hpp custom_targets are listed as sources so Meson guarantees they are
+# generated before compilation starts and automatically adds the build-directory
+# to include paths — allowing  #include "xdg-shell-client-protocol.hpp"  etc.
 
 wayland_gen_lib = static_library(
   'wayland-gen',
-  sources:          wayland_proto_c + wayland_proto_h,
+  sources:          wayland_proto_c + wayland_proto_hpp,
   dependencies:     wayland_client,
   override_options: ['c_std=c11'],
   pic:              true,
@@ -357,7 +373,7 @@ subdir('include/waypp')
 
 # ── Build-tree include roots ──────────────────────────────────────────────────
 #
-# <build>/         — generated protocol headers (*-client-protocol.h)
+# <build>/         — generated protocol headers (*-client-protocol.hpp)
 # <build>/include/ — generated config header   (waypp/waypp.h)
 #
 # subdir('include/waypp') above has already created <build>/include/waypp/ so

@@ -38,8 +38,19 @@ jobs:
             libwayland-dev wayland-protocols \
             libxkbcommon-dev \
             mesa-common-dev libegl1-mesa-dev libgles2-mesa-dev \
-            cmake libgtest-dev
+            cmake libgtest-dev \
+            libpugixml-dev
           pip install meson
+
+      - name: Build and install wayland-cxx-scanner
+        run: |
+          git clone --depth=1 https://github.com/jwinarske/wayland-cxx-scanner \
+            /tmp/wayland-cxx-scanner
+          meson setup /tmp/wayland-cxx-scanner-build /tmp/wayland-cxx-scanner \
+            --buildtype=release \
+            --prefix=/usr/local
+          ninja -C /tmp/wayland-cxx-scanner-build
+          sudo --preserve-env=PATH ninja -C /tmp/wayland-cxx-scanner-build install
 
       - name: Build and install GoogleTest
         run: |

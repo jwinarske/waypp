@@ -1,178 +1,137 @@
-# wayland-cxx-scanner Integration Plan
+# wayland-cxx-scanner Integration
 
-> **Status:** Pending — implement after the Meson CI is green.
+> **Status:** In progress — C++23 protocol header generation is implemented.
+> Source migration (switching waypp from C API to C++ proxy API) is the next step.
 
-## Background
+## Architecture
 
-`wayland-cxx-scanner` (<https://github.com/jwinarske/wayland-cxx-scanner>) is a
-C++23 replacement for the standard `wayland-scanner` tool.  Where
-`wayland-scanner` emits plain C headers and private-code `.c` files,
-`wayland-cxx-scanner` emits idiomatic C++23 CRTP-based proxy classes.
+`wayland-cxx-scanner` (<https://github.com/jwinarske/wayland-cxx-scanner>) is
+a **host build tool** — it is installed separately in CI before the waypp build
+begins, then found via `find_program()` exactly like `wayland-scanner`.
 
-The scanner provides two things:
+Only the **generated C++23 protocol headers** (`.hpp` files) produced by the
+tool are consumed by the waypp build.  No framework library dependency
+(`wayland-cxx` pkg-config, `wl/proxy_impl.hpp`, etc.) is required in
+`wayland_gen_dep`; when source migration is complete those headers will be
+pulled in naturally as part of the migrated source includes.
 
-| Artifact | Location | Purpose |
+### What is generated per protocol XML
+
+| Tool | Output | Purpose |
 |---|---|---|
-| **Scanner tool** (`wayland-cxx-scanner`) | built from `src/` | Reads a protocol XML, writes a C++23 header |
-| **Framework headers** (`include/wl/`) | installed to `${includedir}/wl/` | Base classes / helpers consumed by every generated header |
+| `wayland-cxx-scanner --mode=client-header` | `*-client-protocol.hpp` | C++23 CRTP proxy header **← only generated header** |
+| `wayland-scanner private-code` | `*-client-protocol.c` | `wl_interface` ABI data (still required by the Wayland client runtime) |
 
-### Scanner modes
-
-| `--mode` flag | Output | Replaces |
-|---|---|---|
-| `client-header` | C++23 client-proxy header (`.hpp`) | `wayland-scanner client-header` |
-| `server-header` | C++23 server-resource header (`.hpp`) | `wayland-scanner server-header` |
-| `c-header` | C-style client header (`.h`) | `wayland-scanner client-header` (backward-compat) |
-
-`wayland-scanner private-code` (`.c` files for `wl_interface` data) is **still
-needed** — `wayland-cxx-scanner` does not replace this step.
+`wayland-scanner client-header` (`.h` C client-headers) is **not generated**.
 
 ---
 
-## Phases
+## CI setup
 
-### Phase 1 — Add the scanner as a Meson subproject
+Both Meson and CMake CI workflows install `wayland-cxx-scanner` as a host tool
+before the waypp configure step:
 
-1. Create `subprojects/wayland-cxx-scanner.wrap`:
+```yaml
+- name: Install packages
+  run: |
+    sudo apt-get install -y libpugixml-dev   # scanner dependency
+    pip install meson                         # for building the scanner
 
-   ```ini
-   [wrap-git]
-   url = https://github.com/jwinarske/wayland-cxx-scanner
-   revision = main
-   depth = 1
-
-   [provide]
-   wayland-cxx-scanner = wayland_cxx_scanner_exe
-   ```
-
-2. In `meson.build`, resolve the subproject and grab the executable:
-
-   ```meson
-   wl_cxx_scanner_sp  = subproject('wayland-cxx-scanner')
-   wl_cxx_scanner_exe = wl_cxx_scanner_sp.get_variable('wayland_cxx_scanner_exe')
-   wl_cxx_fw_dep      = wl_cxx_scanner_sp.get_variable('wayland_cxx_dep')
-   ```
-
-3. Export `wl_cxx_fw_dep` through `wayland_gen_dep` so all consumers
-   automatically get the `wl/` framework headers.
-
-### Phase 2 — Generate C++23 protocol headers alongside C headers
-
-Extend `meson.build`'s `foreach` protocol loop to emit a `.hpp` as well as the
-existing `.h` and `.c`:
-
-```meson
-foreach p : proto_list
-  xml  = p[0]
-  stem = p[1]
-  flag = p[2]
-
-  if fs.is_file(xml)
-    # Existing C artifacts (keep for wl_interface ABI data)
-    h = custom_target(stem + '-h', ...)
-    c = custom_target(stem + '-c', ...)   # wayland-scanner private-code
-
-    # New: C++23 proxy header
-    hpp = custom_target(stem + '-hpp',
-      output:  stem + '.hpp',
-      command: [wl_cxx_scanner_exe, '--mode=client-header', xml, '@OUTPUT@'],
-    )
-
-    wayland_proto_h   += [h, hpp]
-    wayland_proto_c   += [c]
-    active_proto_flags += [flag]
-  endif
-endforeach
+- name: Build and install wayland-cxx-scanner
+  run: |
+    git clone --depth=1 https://github.com/jwinarske/wayland-cxx-scanner \
+      /tmp/wayland-cxx-scanner
+    meson setup /tmp/wayland-cxx-scanner-build /tmp/wayland-cxx-scanner \
+      --buildtype=release --prefix=/usr/local
+    ninja -C /tmp/wayland-cxx-scanner-build
+    sudo ninja -C /tmp/wayland-cxx-scanner-build install
 ```
 
-### Phase 3 — Expose framework headers to waypp consumers
+After installation:
+- Tool: `/usr/local/bin/wayland-cxx-scanner`
+- Framework headers (for future use): `/usr/local/include/wl/`
 
-Update `wayland_gen_dep` to pull in the framework:
+---
+
+## Build system integration
+
+### Meson (`meson.build`)
 
 ```meson
-wayland_gen_dep = declare_dependency(
-  link_with:           wayland_gen_lib,
-  include_directories: [include_directories('include'), build_root_inc],
-  dependencies:        [wayland_client, wl_cxx_fw_dep],
+wl_scanner         = find_program('wayland-scanner')
+wl_cxx_scanner_exe = find_program('wayland-cxx-scanner')
+
+# Per-protocol generation (in the foreach loop):
+hpp = custom_target(stem + '-hpp',
+  output:  stem + '.hpp',
+  command: [wl_cxx_scanner_exe, '--mode=client-header', xml, '@OUTPUT@'],
+)
+c = custom_target(stem + '-c',
+  output:  stem + '.c',
+  command: [wl_scanner, 'private-code', xml, '@OUTPUT@'],
 )
 ```
 
-This makes `#include <wl/proxy.hpp>` available everywhere that links
-`wayland-gen` — both the waypp library and examples.
+### CMake (`cmake/wayland.cmake`)
 
-### Phase 4 — CMake support
+```cmake
+find_program(WAYLAND_SCANNER_EXECUTABLE     NAMES wayland-scanner     REQUIRED)
+find_program(WAYLAND_CXX_SCANNER_EXECUTABLE NAMES wayland-cxx-scanner REQUIRED)
 
-`wayland-cxx-scanner` is a Meson project.  CMake can consume it via
-`ExternalProject_Add`:
+macro(wayland_generate protocol_file output_file)
+    add_custom_command(OUTPUT ${output_file}.hpp
+        COMMAND ${WAYLAND_CXX_SCANNER_EXECUTABLE}
+                --mode=client-header ${protocol_file} ${output_file}.hpp
+        DEPENDS ${protocol_file})
+    list(APPEND WAYLAND_PROTOCOL_SOURCES ${output_file}.hpp)
 
-1. Add `cmake/WaylandCxxScanner.cmake`:
+    add_custom_command(OUTPUT ${output_file}.c
+        COMMAND ${WAYLAND_SCANNER_EXECUTABLE} private-code
+                < ${protocol_file} > ${output_file}.c
+        DEPENDS ${protocol_file})
+    list(APPEND WAYLAND_PROTOCOL_SOURCES ${output_file}.c)
+endmacro()
+```
 
-   ```cmake
-   include(ExternalProject)
-   ExternalProject_Add(wayland-cxx-scanner-build
-     GIT_REPOSITORY https://github.com/jwinarske/wayland-cxx-scanner
-     GIT_TAG        main
-     CONFIGURE_COMMAND meson setup <BINARY_DIR> <SOURCE_DIR>
-                       --prefix=<INSTALL_DIR>
-                       --buildtype=${CMAKE_BUILD_TYPE_LOWER}
-     BUILD_COMMAND     ninja -C <BINARY_DIR>
-     INSTALL_COMMAND   ninja -C <BINARY_DIR> install
-   )
-   ExternalProject_Get_Property(wayland-cxx-scanner-build INSTALL_DIR)
-   set(WAYLAND_CXX_SCANNER_EXE
-       "${INSTALL_DIR}/bin/wayland-cxx-scanner" CACHE FILEPATH "" FORCE)
-   set(WAYLAND_CXX_INCLUDE_DIR
-       "${INSTALL_DIR}/include"               CACHE PATH "" FORCE)
-   ```
+---
 
-2. Add a `wayland_generate_cxx()` macro in `cmake/wayland.cmake` that calls
-   `WAYLAND_CXX_SCANNER_EXE --mode=client-header` and appends the `.hpp` to
-   `WAYLAND_PROTOCOL_SOURCES` alongside the existing C artifacts.
+## Source migration (next step)
 
-3. Add `${WAYLAND_CXX_INCLUDE_DIR}` to `wayland-gen`'s PUBLIC include
-   directories so all consumers see the `wl/` headers.
+The waypp library source currently uses the C API (raw `wl_*` function calls
+and C struct callbacks) that was previously provided by the `wayland-scanner
+client-header` `.h` files.  Now that those `.h` files are no longer generated,
+the source must be migrated to the C++23 CRTP proxy API from the generated
+`.hpp` files.
 
-### Phase 5 — Migrate waypp source to C++23 API
+### Migration pattern
 
-Once the generated `.hpp` files are available and the framework headers are on
-the include path, waypp source can be ported incrementally:
-
-| File | Change |
+| Before (C API) | After (C++23 proxy API) |
 |---|---|
-| `include/waypp/window_manager/registrar.h` | Replace `wl_registry_listener` callback struct with `wl::Registry<Registrar>` |
-| `src/window_manager/registrar.cc` | Use `wl::wl_ptr<wl_compositor>` etc. instead of raw pointers |
-| `src/window_manager/agl_shell.cc` | Include `agl-shell-client-protocol.hpp`; use scoped enums |
-| `src/seat/keyboard.cc` | Replace `wl_keyboard_listener` with generated `XdgShell::KeyboardListener` |
-| `include/waypp/window_manager/xdg_window_manager.h` | Include `xdg-shell-client-protocol.hpp` |
+| `struct agl_shell* agl_shell_` | proxy member of generated type |
+| `agl_shell_add_listener(agl_shell_, &listener, this)` | virtual `OnEvent()` overrides |
+| `agl_shell_set_ready(agl_shell_)` | `agl_shell_.SetReady()` |
+| `agl_shell_destroy(agl_shell_)` | `agl_shell_.Destroy()` |
+| `AGL_SHELL_APP_STATE_STARTED` (bare C enum) | `AglShellAppState::Started` (scoped enum class) |
 
-**Enum migration:** `wayland-cxx-scanner` generates `enum class` values.
-Code using bare enum values such as `AGL_SHELL_APP_STATE_STARTED` must be
-updated to the scoped form `agl_shell_app_state::started` (name mapping follows
-the scanner's `name_transform.cpp`).
+### Files requiring migration
 
-**Backwards compatibility:** The C `.h` headers and private-code `.c` files
-continue to be generated unchanged, so the existing `wl_*` C API remains
-available during migration.
+| File | Reason |
+|---|---|
+| `include/waypp/window_manager/agl_shell.h` | includes generated AGL shell header |
+| `src/window_manager/agl_shell.cc` | uses AGL shell C API |
+| `src/window_manager/registrar.cc` | uses `*_interface.name` + C bind calls for all protocols |
+| `src/window_manager/xdg_window_manager.cc` | uses XDG shell C API |
+| `src/window/xdg_toplevel.cc` | uses XDG toplevel C API |
+| `src/window_manager/ivi_wm.cc` | uses IVI WM C API |
+| `src/window_manager/ivi_window_manager.cc` | uses IVI shell C API |
+| `src/window/ivi_surface.cc` | uses IVI surface C API |
+| `examples/presentation-shm.cc` | direct include of presentation-time header |
+| `examples/simple-ext-protocol.cc` | direct include of xdg-output header |
 
----
+### Acceptance criteria for source migration
 
-## CI additions required
-
-- Add `libpugixml-dev` to the `meson.yml` apt install list (dependency of the
-  scanner's `pugixml` fallback subproject).
-- The wrap file will cause `meson setup` to fetch the scanner source.  If
-  network access is restricted, vendor the source into `subprojects/` and omit
-  the wrap `[wrap-git]` section.
-
----
-
-## Acceptance criteria
-
-- [ ] `subprojects/wayland-cxx-scanner.wrap` fetches and builds the tool.
-- [ ] Every protocol that was previously generating a `.h` now also generates a
-      `.hpp` via `--mode=client-header`.
-- [ ] `#include <wl/proxy.hpp>` resolves for all waypp consumers.
-- [ ] `cmake/WaylandCxxScanner.cmake` builds and finds the tool via `ExternalProject`.
-- [ ] At least one waypp source file (`registrar.cc`) is ported to the C++23 API
-      as a proof-of-concept; all existing tests still pass.
-- [ ] Meson and CMake CI remain green throughout.
+- [ ] All generated `.hpp` files are included in source (not `.h`)
+- [ ] All C API function calls replaced with C++ proxy method calls
+- [ ] All C struct listener registrations replaced with virtual overrides
+- [ ] All bare C enum values replaced with scoped `enum class` equivalents
+- [ ] Both Meson and CMake CI are green with examples building

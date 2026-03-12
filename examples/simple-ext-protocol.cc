@@ -46,7 +46,7 @@
 #include "logging/logging.h"
 #include "waypp/window/xdg_toplevel.h"
 #include "waypp/window_manager/window_manager_factory.h"
-#include "xdg-output-unstable-v1-client-protocol.h"
+#include "xdg-output-unstable-v1-client-protocol.hpp"
 
 struct Configuration {
   int width;

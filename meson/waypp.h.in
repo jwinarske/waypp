@@ -60,80 +60,80 @@
 #define BUILD_WAYPP_STANDALONE @BUILD_WAYPP_STANDALONE@
 
 #if ENABLE_XDG_CLIENT
-#include "xdg-shell-client-protocol.h"
+#include "xdg-shell-client-protocol.hpp"
 #endif
 
 #if ENABLE_AGL_SHELL_CLIENT
-#include "agl-screenshooter-client-protocol.h"
-#include "agl-shell-client-protocol.h"
-#include "agl-shell-desktop-client-protocol.h"
+#include "agl-screenshooter-client-protocol.hpp"
+#include "agl-shell-client-protocol.hpp"
+#include "agl-shell-desktop-client-protocol.hpp"
 #endif
 
 #if ENABLE_IVI_SHELL_CLIENT
-#include "ivi-application-client-protocol.h"
-#include "ivi-wm-client-protocol.h"
+#include "ivi-application-client-protocol.hpp"
+#include "ivi-wm-client-protocol.hpp"
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_DRM_LEASE_V1
-#include "drm-lease-v1-client-protocol.h"
+#include "drm-lease-v1-client-protocol.hpp"
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_XDG_DECORATION_UNSTABLE_V1
-#include "xdg-decoration-unstable-v1-client-protocol.h"
+#include "xdg-decoration-unstable-v1-client-protocol.hpp"
 #endif
 
-#include "presentation-time-client-protocol.h"
+#include "presentation-time-client-protocol.hpp"
 
 #if HAS_WAYLAND_PROTOCOL_FRACTIONAL_SCALE_V1
-#include "fractional-scale-v1-client-protocol.h"
+#include "fractional-scale-v1-client-protocol.hpp"
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_TEARING_CONTROL_V1
-#include "tearing-control-v1-client-protocol.h"
+#include "tearing-control-v1-client-protocol.hpp"
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_VIEWPORTER
-#include "viewporter-client-protocol.h"
+#include "viewporter-client-protocol.hpp"
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_XDG_OUTPUT_UNSTABLE_V1
-#include "xdg-output-unstable-v1-client-protocol.h"
+#include "xdg-output-unstable-v1-client-protocol.hpp"
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_XDG_ACTIVATION_V1
-#include "xdg-activation-v1-client-protocol.h"
+#include "xdg-activation-v1-client-protocol.hpp"
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_LINUX_DMABUF_V1
-#include "linux-dmabuf-v1-client-protocol.h"
+#include "linux-dmabuf-v1-client-protocol.hpp"
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_WESTON_OUTPUT_CAPTURE
-#include "weston-output-capture-client-protocol.h"
+#include "weston-output-capture-client-protocol.hpp"
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_CURSOR_SHAPE_V1
-#include "cursor-shape-v1-client-protocol.h"
+#include "cursor-shape-v1-client-protocol.hpp"
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_POINTER_CONSTRAINTS_UNSTABLE_V1
-#include "pointer-constraints-unstable-v1-client-protocol.h"
+#include "pointer-constraints-unstable-v1-client-protocol.hpp"
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_POINTER_GESTURES_UNSTABLE_V1
-#include "pointer-gestures-unstable-v1-client-protocol.h"
+#include "pointer-gestures-unstable-v1-client-protocol.hpp"
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_RELATIVE_POINTER_UNSTABLE_V1
-#include "relative-pointer-unstable-v1-client-protocol.h"
+#include "relative-pointer-unstable-v1-client-protocol.hpp"
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_IDLE_INHIBIT_UNSTABLE_V1
-#include "idle-inhibit-unstable-v1-client-protocol.h"
+#include "idle-inhibit-unstable-v1-client-protocol.hpp"
 #endif
 
 #if HAS_WAYLAND_PROTOCOL_PRIMARY_SELECTION_UNSTABLE_V1
-#include "primary-selection-unstable-v1-client-protocol.h"
+#include "primary-selection-unstable-v1-client-protocol.hpp"
 #endif
 
 #endif  /* INCLUDE_WAYPP_WAYPP_H_ */
