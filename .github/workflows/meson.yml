@@ -1,3 +1,17 @@
+# Copyright 2026 Joel Winarske
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 name: meson
 permissions:
   contents: read
@@ -17,14 +31,27 @@ jobs:
 
       - name: Install packages
         run: |
-          sudo apt-get -y install \
-            meson ninja-build pkg-config \
+          sudo apt-get update -q
+          sudo apt-get install -y \
+            ninja-build pkg-config \
             libglib2.0-dev \
             libwayland-dev wayland-protocols \
             libxkbcommon-dev \
-            mesa-common-dev libegl1-mesa-dev libgles2-mesa-dev
+            mesa-common-dev libegl1-mesa-dev libgles2-mesa-dev \
+            cmake libgtest-dev
+          pip install meson
 
-      - name: Configure (Meson)
+      - name: Build and install GoogleTest
+        run: |
+          cmake /usr/src/googletest \
+            -B /tmp/gtest-build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DINSTALL_GTEST=ON \
+            -DBUILD_GMOCK=OFF
+          cmake --build /tmp/gtest-build
+          sudo cmake --install /tmp/gtest-build
+
+      - name: Configure (default options + AGL shell + examples)
         run: |
           meson setup build \
             --buildtype=release \
@@ -34,5 +61,15 @@ jobs:
       - name: Build
         run: ninja -C build
 
+      - name: Configure (with tests)
+        run: |
+          meson setup build-tests \
+            --buildtype=release \
+            -Denable_agl_shell=true \
+            -Dbuild_tests=true
+
+      - name: Build (with tests)
+        run: ninja -C build-tests
+
       - name: Test
-        run: meson test -C build --print-errorlogs
+        run: meson test -C build-tests --print-errorlogs

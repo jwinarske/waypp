@@ -12,15 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# gl-shadertoy only makes sense when EGL is enabled (guaranteed by caller).
-
-glm_dep = declare_dependency(
-  include_directories: include_directories('../../third_party', is_system: true),
-)
-
-executable(
-  'gl-shadertoy',
-  'shadertoy.cc',
-  dependencies: [waypp_dep, cxxopts_dep, glm_dep, threads_dep] + egl_deps,
-  install: true,
+# conf is inherited from the root meson.build scope.
+# output: 'waypp.h' places the result at <build>/include/waypp/waypp.h.
+configure_file(
+  input:         '../../meson/waypp.h.in',
+  output:        'waypp.h',
+  configuration: conf,
+  format:        'meson',
 )

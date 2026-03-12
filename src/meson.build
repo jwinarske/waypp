@@ -1,4 +1,4 @@
-# Copyright 2024 Joel Winarske
+# Copyright 2026 Joel Winarske
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,23 +32,12 @@ waypp_sources = files(
   'command.cc',
 )
 
-waypp_compile_args = [
-  '-DMESA_EGL_NO_X11_HEADERS',
-  '-DWL_EGL_PLATFORM',
-  '-DEGL_NO_X11',
-]
-
-waypp_deps = [
-  wayland_gen_dep,
-  glib,
-  spdlog_dep,
-  threads_dep,
-]
+waypp_cpp_args = []
+waypp_deps = [wayland_gen_dep, wayland_cursor, xkbcommon, glib, spdlog_dep, threads_dep]
 
 if enable_egl
   waypp_sources += files('window/egl.cc')
-  waypp_deps += egl_deps
-  waypp_compile_args += ['-DEGL_NO_X11', '-DMESA_EGL_NO_X11_HEADERS']
+  waypp_deps    += egl_deps
 endif
 
 if enable_xdg
@@ -57,18 +46,17 @@ if enable_xdg
     'window_manager/xdg_output.cc',
     'window_manager/xdg_window_manager.cc',
   )
+  waypp_cpp_args += ['-DENABLE_XDG_CLIENT=1']
 endif
 
 if enable_csd and enable_xdg
-  waypp_sources += files(
-    'window/csd_frame.cc',
-    'window/csd_shm_plugin.cc',
-  )
-  waypp_compile_args += ['-DENABLE_CSD=1']
+  waypp_sources  += files('window/csd_frame.cc', 'window/csd_shm_plugin.cc')
+  waypp_cpp_args += ['-DENABLE_CSD=1']
 endif
 
 if enable_agl
-  waypp_sources += files('window_manager/agl_shell.cc')
+  waypp_sources  += files('window_manager/agl_shell.cc')
+  waypp_cpp_args += ['-DENABLE_AGL_SHELL_CLIENT=1']
 endif
 
 if enable_ivi
@@ -77,64 +65,42 @@ if enable_ivi
     'window_manager/ivi_wm.cc',
     'window/ivi_surface.cc',
   )
-  waypp_compile_args += ['-DENABLE_IVI_SHELL_CLIENT=1']
+  waypp_cpp_args += ['-DENABLE_IVI_SHELL_CLIENT=1']
 endif
+
+# build_root_inc is defined in the root meson.build and covers both the
+# generated protocol headers and the generated waypp/waypp.h config header.
+# include/waypp is added for logging/logging.h (mirrors CMake LOGGING_INCLUDE_DIRS).
+waypp_inc = [
+  include_directories('../include'),
+  include_directories('../include/waypp'),
+  build_root_inc,
+]
 
 waypp_lib = library(
   'waypp',
   waypp_sources,
-  include_directories: [
-    include_directories('../include'),
-    include_directories('../include/waypp'),
-    waypp_conf_inc,
-  ],
-  cpp_args: waypp_compile_args,
-  dependencies: waypp_deps,
-  install: true,
+  include_directories: waypp_inc,
+  cpp_args:            waypp_cpp_args,
+  dependencies:        waypp_deps,
+  install:             true,
 )
 
 waypp_dep = declare_dependency(
-  link_with: waypp_lib,
-  include_directories: [
-    include_directories('../include'),
-    include_directories('../include/waypp'),
-    waypp_conf_inc,
-  ],
-  dependencies: waypp_deps,
+  link_with:           waypp_lib,
+  include_directories: waypp_inc,
+  dependencies:        waypp_deps,
 )
 
-install_headers(
-  '../include/waypp/config.h',
-  '../include/waypp/window_manager/agl_shell.h',
-  '../include/waypp/window_manager/ivi_window_manager.h',
-  '../include/waypp/window_manager/ivi_wm.h',
-  '../include/waypp/window_manager/output.h',
-  '../include/waypp/window_manager/registrar.h',
-  '../include/waypp/window_manager/weston-capture.h',
-  '../include/waypp/window_manager/window_manager.h',
-  '../include/waypp/window_manager/window_manager_factory.h',
-  '../include/waypp/window_manager/xdg_output.h',
-  '../include/waypp/window_manager/xdg_window_manager.h',
-  '../include/waypp/seat/keyboard.h',
-  '../include/waypp/seat/pointer.h',
-  '../include/waypp/seat/seat.h',
-  '../include/waypp/seat/touch.h',
-  '../include/waypp/window/buffer.h',
-  '../include/waypp/window/csd_frame.h',
-  '../include/waypp/window/csd_frame_extents.h',
-  '../include/waypp/window/csd_hit_zone.h',
-  '../include/waypp/window/csd_plugin.h',
-  '../include/waypp/window/egl.h',
-  '../include/waypp/window/feedback.h',
-  '../include/waypp/window/ivi_surface.h',
-  '../include/waypp/window/window.h',
-  '../include/waypp/window/xdg_toplevel.h',
-  subdir: 'waypp',
+install_subdir(
+  '../include/waypp',
+  install_dir: 'include',
+  strip_directory: false,
 )
 
 pkgconfig.generate(
   waypp_lib,
-  name: 'waypp',
+  name:        'waypp',
   description: 'Wayland C++ Library',
-  version: meson.project_version(),
+  version:     meson.project_version(),
 )
