@@ -1,0 +1,46 @@
+# Copyright 2024 Joel Winarske
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+option('enable_egl',
+  type: 'boolean', value: true,
+  description: 'Enable EGL/GLES2 support',
+)
+option('enable_csd',
+  type: 'boolean', value: true,
+  description: 'Enable built-in client-side decorations (CSD)',
+)
+option('enable_xdg_client',
+  type: 'boolean', value: true,
+  description: 'Enable XDG shell client (xdg-shell, xdg-output, xdg-activation, xdg-decoration)',
+)
+option('enable_agl_shell',
+  type: 'boolean', value: true,
+  description: 'Enable AGL shell client (agl-shell, agl-shell-desktop, agl-screenshooter)',
+)
+option('enable_ivi_shell',
+  type: 'boolean', value: false,
+  description: 'Enable IVI shell client (ivi-application, ivi-wm)',
+)
+option('enable_drm_lease',
+  type: 'boolean', value: false,
+  description: 'Enable DRM lease client (requires wayland-protocols >= 1.22)',
+)
+option('build_examples',
+  type: 'boolean', value: false,
+  description: 'Build example applications',
+)
+option('build_tests',
+  type: 'boolean', value: false,
+  description: 'Build unit tests',
+)
