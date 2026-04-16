@@ -168,7 +168,10 @@ if (EXT_PROTOCOL)
     endforeach ()
 endif ()
 
-configure_file(cmake/waypp.h.in ${CMAKE_CURRENT_SOURCE_DIR}/include/waypp/waypp.h)
+# Generate into the build tree so a clean source tree (e.g. a freshly
+# fetched submodule in CI) is always paired with an up-to-date waypp.h,
+# and so config caches that exclude the source tree don't silently drop it.
+configure_file(cmake/waypp.h.in ${CMAKE_CURRENT_BINARY_DIR}/include/waypp/waypp.h @ONLY)
 
 add_library(wayland-gen STATIC ${WAYLAND_PROTOCOL_SOURCES})
 target_link_libraries(wayland-gen PUBLIC PkgConfig::WAYLAND)
@@ -177,6 +180,7 @@ if (ENABLE_EGL)
 endif ()
 target_include_directories(wayland-gen PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_BINARY_DIR}/include
         ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/protocols
 )
 target_include_directories(wayland-gen PUBLIC ${LOGGING_INCLUDE_DIRS})

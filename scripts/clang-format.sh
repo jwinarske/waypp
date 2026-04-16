@@ -12,7 +12,7 @@ workdir="${2:-.}"
 file_list="clang-format-files"
 
 # Allow override via env; fall back to clang-format-18.
-CLANG_FORMAT="${CLANG_FORMAT:-clang-format-18}"
+CLANG_FORMAT="${CLANG_FORMAT:-clang-format-19}"
 
 cd "$workdir"
 

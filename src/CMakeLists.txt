@@ -101,4 +101,5 @@ endif ()
 add_sanitizers(waypp)
 
 install(DIRECTORY ../include/waypp DESTINATION include)
+install(FILES ${PROJECT_BINARY_DIR}/include/waypp/waypp.h DESTINATION include/waypp)
 install(TARGETS waypp DESTINATION lib)
