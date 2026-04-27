@@ -179,9 +179,9 @@ if (ENABLE_EGL)
     target_link_libraries(wayland-gen PUBLIC PkgConfig::WAYLAND_EGL)
 endif ()
 target_include_directories(wayland-gen PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_BINARY_DIR}/include
         ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/protocols
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 target_include_directories(wayland-gen PUBLIC ${LOGGING_INCLUDE_DIRS})
 
